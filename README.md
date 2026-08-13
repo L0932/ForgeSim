@@ -1,4 +1,4 @@
-\# ForgeSim
+# ForgeSim
 
 
 
@@ -10,7 +10,7 @@ The project is intended as a personal software engineering, graphics, simulation
 
 
 
-\## Project Status
+## Project Status
 
 
 
@@ -22,7 +22,7 @@ This repository records the project's architecture, implementation, documentatio
 
 
 
-\## Planned Technical Direction
+## Planned Technical Direction
 
 
 
@@ -30,35 +30,35 @@ The current planned architecture includes:
 
 
 
-\* Modern C++
+* Modern C++
 
-\* CMake-based build system
+* CMake-based build system
 
-\* OpenGL rendering
+* OpenGL rendering
 
-\* Fixed-timestep simulation
+* Fixed-timestep simulation
 
-\* Dear ImGui editor interface
+* Dear ImGui editor interface
 
-\* Scene hierarchy
+* Scene hierarchy
 
-\* Property inspector
+* Property inspector
 
-\* UI-independent command architecture
+* UI-independent command architecture
 
-\* Undo/redo system
+* Undo/redo system
 
-\* Scenario and behavior graph systems
+* Scenario and behavior graph systems
 
-\* Asset and resource management
+* Asset and resource management
 
-\* Serialization
+* Serialization
 
-\* Runtime/editor separation
+* Runtime/editor separation
 
-\* Modular simulation systems
+* Modular simulation systems
 
-\* Debugging and visualization tools
+* Debugging and visualization tools
 
 
 
@@ -66,7 +66,7 @@ The exact architecture and feature set may evolve as the project develops.
 
 
 
-\## Project Goals
+## Project Goals
 
 
 
@@ -74,25 +74,25 @@ ForgeSim is intended to:
 
 
 
-\* Explore modern real-time simulation architecture
+* Explore modern real-time simulation architecture
 
-\* Develop reusable C++ engine and tools systems
+* Develop reusable C++ engine and tools systems
 
-\* Strengthen graphics and rendering engineering skills
+* Strengthen graphics and rendering engineering skills
 
-\* Explore editor and workflow tooling
+* Explore editor and workflow tooling
 
-\* Develop deterministic and fixed-timestep simulation systems
+* Develop deterministic and fixed-timestep simulation systems
 
-\* Demonstrate software architecture suitable for simulation, engine, graphics, and tools programming
+* Demonstrate software architecture suitable for simulation, engine, graphics, and tools programming
 
-\* Serve as a foundation for future simulation applications and experiments
+* Serve as a foundation for future simulation applications and experiments
 
-\* Potentially support future open-source, educational, consulting, or commercial work
+* Potentially support future open-source, educational, consulting, or commercial work
 
 
 
-\## Independent Development
+## Independent Development
 
 
 
@@ -108,7 +108,7 @@ No confidential information, proprietary material, source code, datasets, work p
 
 
 
-\## Repository History
+## Repository History
 
 
 
@@ -120,7 +120,7 @@ The Git history should be considered the authoritative development record for ma
 
 
 
-\## Current Scope
+## Current Scope
 
 
 
@@ -154,7 +154,7 @@ The initial development focus is expected to include:
 
 
 
-\## Ownership
+## Ownership
 
 
 
@@ -166,7 +166,7 @@ Third-party libraries and dependencies remain subject to their respective licens
 
 
 
-\## License
+## License
 
 
 
