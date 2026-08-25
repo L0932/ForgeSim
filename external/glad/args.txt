@@ -1,0 +1,1 @@
+--out-path "C:/Users/Arnol/OneDrive/Documents/Personal Projects/ForgeSim/out/build/x64-Debug/gladsources/ForgeSimGlad" --api gl:core=4.6 --extensions " " --reproducible c 

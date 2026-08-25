@@ -25,9 +25,8 @@ target_include_directories(
 
 target_link_libraries(
     ForgeSimPlatformGLFW
-    PUBLIC
-        ForgeSim::Core
     PRIVATE
+        ForgeSim::Core
         glfw
         ForgeSimGlad
 )
