@@ -17,11 +17,7 @@ target_sources(
             include/ForgeSim/Platform/GlfwWindow.hpp
 )
 
-target_include_directories(
-    ForgeSimPlatformGLFW
-    PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-)
+#include <iosteam>
 
 target_link_libraries(
     ForgeSimPlatformGLFW

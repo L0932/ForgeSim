@@ -54,6 +54,35 @@ namespace ForgeSim::Platform
 		{
 			glfwSwapInterval(0); // Disable V-Sync
 		}
+
+		int framebufferWidth = 0, framebufferHeight = 0;
+
+		glfwGetFramebufferSize(
+			m_Window, 
+			&framebufferWidth, 
+			&framebufferHeight
+		);
+
+		glViewport(
+			0,
+			0,
+			framebufferWidth,
+			framebufferHeight
+		);
+
+		glfwSetFramebufferSizeCallback(
+			m_Window,
+			[](GLFWwindow* window, int width, int height)
+			{
+				glViewport(0, 0, width, height);
+
+				if (width > 0 && height > 0)
+				{
+					glClear(GL_COLOR_BUFFER_BIT);
+					glfwSwapBuffers(window);
+				}
+			}
+		);
 	}
 	GlfwWindow::~GlfwWindow()
 	{

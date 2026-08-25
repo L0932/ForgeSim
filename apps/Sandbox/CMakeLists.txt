@@ -19,6 +19,7 @@ target_link_libraries(
 	PRIVATE
 		ForgeSim::Core
 		ForgeSim::PlatformGLFW
+		ForgeSim::Glad
 )
 
 forgesim_set_project_warnings(ForgeSimSandbox)
