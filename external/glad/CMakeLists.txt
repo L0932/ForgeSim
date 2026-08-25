@@ -4,6 +4,12 @@ add_library(
 	src/gl.c
 )
 
+add_library(
+	ForgeSim::Glad
+	ALIAS 
+	ForgeSimGlad
+)
+
 target_include_directories(
 	ForgeSimGlad
 	PUBLIC

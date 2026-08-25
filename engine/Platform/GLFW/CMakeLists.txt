@@ -27,8 +27,8 @@ target_link_libraries(
     ForgeSimPlatformGLFW
     PRIVATE
         ForgeSim::Core
+        ForgeSim::Glad
         glfw
-        ForgeSimGlad
 )
 
 target_compile_features(
