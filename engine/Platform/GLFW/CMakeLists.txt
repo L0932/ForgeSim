@@ -29,12 +29,19 @@ target_link_libraries(
         ForgeSim::Core
     PRIVATE
         glfw
+        ForgeSimGlad
 )
 
 target_compile_features(
     ForgeSimPlatformGLFW 
     PUBLIC 
-    cxx_std_20
+        cxx_std_20
+)
+
+target_compile_definitions(
+    ForgeSimPlatformGLFW
+    PRIVATE
+        GLFW_INCLUDE_NONE
 )
 
 forgesim_set_project_warnings(ForgeSimPlatformGLFW)

@@ -8,17 +8,17 @@ namespace ForgeSim::Core
 		while (true)
 		{
 			// Update application state
-			Update();
+			//Update();
 			// Render application
-			Render();
+			//Render();
 		}
 	}
-	void Application::Update()
-	{
-		// Update application logic here
-	}
-	void Application::Render()
-	{
-		// Render application visuals here
-	}
+	//void Application::Update()
+	//{
+	//	// Update application logic here
+	//}
+	//void Application::Render()
+	//{
+	//	// Render application visuals here
+	//}
 }

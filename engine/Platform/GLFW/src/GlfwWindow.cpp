@@ -1,4 +1,5 @@
 #include <ForgeSim/Platform/GlfwWindow.hpp>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 
@@ -8,20 +9,46 @@ namespace ForgeSim::Platform
 		const WindowSpecification& specification
 	)
 	{
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifndef NDEBUG
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
+
 		if (!glfwInit())
 		{
 			throw std::runtime_error("Failed to initialize GLFW");
 		}
-		m_Window = glfwCreateWindow(specification.width, specification.height, specification.title.c_str(), nullptr, nullptr);
+		m_Window = glfwCreateWindow(
+						specification.width, 
+						specification.height, 
+						specification.title.c_str(), 
+						nullptr, 
+						nullptr);
+
 		if (!m_Window)
 		{
 			glfwTerminate();
 			throw std::runtime_error("Failed to create GLFW window");
 		}
 		glfwMakeContextCurrent(m_Window);
+
+		const int loadedVersion =
+			gladLoadGL(reinterpret_cast<GLADloadfunc>(glfwGetProcAddress));
+
+		if (loadedVersion == 0)
+		{
+			glfwDestroyWindow(m_Window);
+			m_Window = nullptr;
+			glfwTerminate();
+			throw std::runtime_error("Failed to load OpenGL functions");
+		}
+
 		if (specification.verticalSync)
 		{
-			glfwSwapInterval(1); // Enable V-Sync
+			glfwSwapInterval(specification.verticalSync ? 1 : 0); // Enable V-Sync
 		}
 		else
 		{
@@ -37,6 +64,12 @@ namespace ForgeSim::Platform
 			glfwTerminate();
 		}
 	}
+
+	void GlfwWindow::Show()
+	{
+		glfwShowWindow(m_Window);
+	}
+
 	void GlfwWindow::PollEvents()
 	{
 		glfwPollEvents();

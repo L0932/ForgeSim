@@ -16,8 +16,10 @@ namespace ForgeSim::Platform
 	class GlfwWindow
 	{
 	public:
-		explicit GlfwWindow(WindowSpecification& specification = {}
+		explicit GlfwWindow(const
+			WindowSpecification& specification = {}
 		);
+
 		~GlfwWindow();
 		
 		GlfwWindow(const GlfwWindow&) = delete;
@@ -26,15 +28,13 @@ namespace ForgeSim::Platform
 		GlfwWindow(GlfwWindow&&) = delete;
 		GlfwWindow& operator=(GlfwWindow&&) = delete;
 
+		void Show();
 		void PollEvents();
 		void SwapBuffers();
 
-		[nodiscard] bool ShouldClose() const;
+		[[nodiscard]] bool ShouldClose() const;
 		
-		void Show();
-		void PollEvents();
-		bool ShouldClose() const;
 	private:
-		GLFWwindow* m_Window;
+		GLFWwindow* m_Window = nullptr;
 	};
 }

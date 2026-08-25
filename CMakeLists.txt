@@ -7,7 +7,7 @@ project(
     ForgeSim
     VERSION 0.1.0
     DESCRIPTION "A modular real-time simulation framework and editor"
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 # Prevent accidental in-source builds.
@@ -39,6 +39,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Dependencies
 # ---------------------------------------------------------------------------
 
+# GLFW 
+
 FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -52,6 +54,27 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(glfw)
+
+# GLAD
+
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG        v2.0.8
+    SOURCE_SUBDIR  cmake
+)
+
+FetchContent_MakeAvailable(glad)
+
+glad_add_library(
+    ForgeSimGlad
+    STATIC
+    REPRODUCIBLE
+    API gl:core=4.6
+    EXTENSIONS NONE
+)
+
+# Properties
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
