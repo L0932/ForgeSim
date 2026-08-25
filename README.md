@@ -90,7 +90,13 @@ ForgeSim is intended to:
 
 * Potentially support future open-source, educational, consulting, or commercial work
 
+## Development Approach
 
+The project owner defines and evaluates the project requirements, architecture, module boundaries, technical direction, and acceptance criteria. AI-assisted contributions are reviewed, integrated, tested, and revised as part of the development process.
+
+All material committed to this repository is treated as the project owner’s responsibility and is expected to be understood, validated, and maintainable. AI-generated output is not assumed to be correct and must be evaluated against the project’s architectural requirements and verification criteria before acceptance.
+
+This AI-assisted workflow is itself part of the project’s software-engineering process, with an emphasis on technical judgment, deliberate system design, validation, and transparent documentation.
 
 ## Independent Development
 
@@ -128,29 +134,29 @@ The initial development focus is expected to include:
 
 
 
-1\. Project and CMake structure
+1. Project and CMake structure
 
-2\. Application and platform layer
+2. Application and platform layer
 
-3\. OpenGL rendering foundation
+3. OpenGL rendering foundation
 
-4\. Main loop and fixed-timestep simulation
+4. Main loop and fixed-timestep simulation
 
-5\. Entity/scene representation
+5. Entity/scene representation
 
-6\. Dear ImGui editor integration
+6. Dear ImGui editor integration
 
-7\. Scene hierarchy and inspector
+7. Scene hierarchy and inspector
 
-8\. Command and undo/redo architecture
+8. Command and undo/redo architecture
 
-9\. Scenario systems
+9. Scenario systems
 
-10\. Serialization and project persistence
+10. Serialization and project persistence
 
-11\. Debugging and profiling tools
+11. Debugging and profiling tools
 
-12\. Example simulation scenarios
+12. Example simulation scenarios
 
 
 
