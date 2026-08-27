@@ -10,6 +10,8 @@ project(
     LANGUAGES C CXX
 )
 
+set (CMAKE_CXX_EXTENSIONS OFF)
+
 # Prevent accidental in-source builds.
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 message(

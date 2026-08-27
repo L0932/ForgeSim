@@ -9,7 +9,11 @@ function(forgesim_set_project_warnings target_name)
         )
 
         if(FORGESIM_WARNINGS_AS_ERRORS)
-            target_compile_options(${target_name} PRIVATE /WX)
+            target_compile_options(
+                ${target_name} 
+                PRIVATE 
+                /WX
+            )
         endif()
     else()
         target_compile_options(
@@ -23,7 +27,10 @@ function(forgesim_set_project_warnings target_name)
         )
 
         if(FORGESIM_WARNINGS_AS_ERRORS)
-            target_compile_options(${target_name} PRIVATE -Werror)
+            target_compile_options(
+                ${target_name} 
+                PRIVATE 
+                -Werror)
         endif()
     endif()
 endfunction()
