@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
 
-include (FetchContent)
-
 # set project name
 project(
     ForgeSim
@@ -9,6 +7,8 @@ project(
     DESCRIPTION "A modular real-time simulation framework and editor"
     LANGUAGES C CXX
 )
+
+include (FetchContent)
 
 set (CMAKE_CXX_EXTENSIONS OFF)
 
@@ -78,7 +78,7 @@ add_subdirectory(engine/core)
 add_subdirectory(engine/Platform/GLFW)
 
 # ---------------------------------------------------------------------------
-# Applications
+# Applications /
 # ---------------------------------------------------------------------------
 
 if(FORGESIM_BUILD_SANDBOX)
@@ -90,7 +90,6 @@ endif()
 # ---------------------------------------------------------------------------
 
 if (FORGESIM_BUILD_TESTS)
-    include(CTest)
     enable_testing()
     add_subdirectory(tests)
 endif()
