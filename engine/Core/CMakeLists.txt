@@ -6,6 +6,8 @@ target_sources(
     ForgeSimCore
     PRIVATE
         src/Application.cpp
+        src/Assert.cpp
+        src/Log.cpp
     PUBLIC
         FILE_SET 
             HEADERS

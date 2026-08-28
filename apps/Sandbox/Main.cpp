@@ -1,14 +1,13 @@
+#include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <glad/gl.h>
-
-#include <cstdlib>
-#include <exception>
-#include <iostream>
 
 int main()
 {
 	try
 	{
+		ForgeSim::Core::LogInfo("Starting ForgeSim Sandbox Application");
+
 		ForgeSim::Platform::WindowSpecification windowSpec{
 			.width = 1280,
 			.height = 720,
@@ -31,9 +30,9 @@ int main()
 			window.SwapBuffers();
 		}
 	}
-	catch (const std::exception& e)
+	catch (const std::exception& exception)
 	{
-		std::cerr << "Error: " << e.what() << std::endl;
+		ForgeSim::Core::LogError(exception.what());
 		return EXIT_FAILURE; 
 	}
 
