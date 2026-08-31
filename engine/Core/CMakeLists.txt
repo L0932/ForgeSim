@@ -8,13 +8,16 @@ target_sources(
         src/Application.cpp
         src/Assert.cpp
         src/Log.cpp
+        src/Timer.cpp
     PUBLIC
-        FILE_SET 
-            HEADERS
+        FILE_SET HEADERS
         BASE_DIRS 
             include
         FILES
             include/ForgeSim/Core/Application.hpp
+            include/ForgeSim/Core/Assert.hpp
+            include/ForgeSim/Core/Log.hpp
+            include/ForgeSim/Core/Timer.hpp
 )
 
 target_include_directories(

@@ -1,6 +1,11 @@
 #include <ForgeSim/Core/Application.hpp>
 #include <ForgeSim/Core/Assert.hpp>
 #include <ForgeSim/Core/Log.hpp>
+#include <ForgeSim/Core/Timer.hpp>
+
+#include <chrono>
+#include <concepts>
+#include <utility>
 
 #include <cstdlib>
 #include <iostream>
@@ -8,7 +13,21 @@
 #include <string>
 #include <string_view>
 
-int main(int argc, char* argv[])
+static_assert(
+	std::same_as<
+	ForgeSim::Core::Timer::Duration,
+	std::chrono::nanoseconds
+	>
+);
+
+static_assert(
+	std::same_as<
+	decltype(ForgeSim::Core::Timer().Elapsed()),
+	ForgeSim::Core::Timer::Duration
+	>
+);
+
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
 #if !defined(NDEBUG)
 
@@ -64,10 +83,30 @@ int main(int argc, char* argv[])
 		assertionEvaluationCount == 1;
 #endif
 
-	if (!infoPassed || 
-		!warningPassed || 
+	ForgeSim::Core::Timer timer;
+
+	const auto firstElapsed = timer.Elapsed();
+	const auto secondElapsed = timer.Elapsed();
+
+	const bool monotonicPassed = 
+		firstElapsed >= ForgeSim::Core::Timer::Duration(0) &&
+		secondElapsed >= firstElapsed;
+
+	timer.Reset();
+
+	const auto firstElapsedAfterReset = timer.Elapsed();
+	const auto secondElapsedAfterReset = timer.Elapsed();
+
+	const bool resetPassed =
+		firstElapsedAfterReset >= ForgeSim::Core::Timer::Duration(0) &&
+		secondElapsedAfterReset >= firstElapsedAfterReset;
+
+	if (!infoPassed ||
+		!warningPassed ||
 		!errorPassed ||
-		!assertionPassed
+		!assertionPassed ||
+		!monotonicPassed ||
+		!resetPassed
 		)
 	{
 		std::cerr << "ForgeSim Core smoke test failed \n";
