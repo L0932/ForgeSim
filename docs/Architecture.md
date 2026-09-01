@@ -150,7 +150,7 @@ The names below describe architectural roles. Except for already established tar
 | `ForgeSim::Core` | Narrow foundational utilities, diagnostics, identifiers, and common infrastructure | GLFW, OpenGL, physics SDK, VR SDK, Dear ImGui, project logic |
 | Platform abstraction, if justified | Platform-neutral window, event, and input boundaries | Renderer, world, mechanics, editor |
 | `ForgeSim::PlatformGLFW` | GLFW-backed windowing, native events, input collection, and OpenGL context support | World, mechanics, scenarios, editor |
-| Runtime | Application coordination, clocks, update scheduling, and lifecycle contracts | Dear ImGui and project-specific policy |
+| `ForgeSim::Runtime` | Application coordination, clocks, update scheduling, and lifecycle contracts | GLFW, OpenGL, renderer implementation, Dear ImGui, project-specific policy |
 | World/Scene | Object identity, components, transforms, hierarchy, lifecycle, and system access | Editor UI, GLFW, VR SDK, training policy |
 | Renderer | Render resources, cameras, submission, OpenGL implementation, and render diagnostics | Editor UI, mechanics policy, scenarios |
 | Physics integration | Physics-world ownership, bodies, shapes, queries, constraints, and synchronization | Editor UI, gameplay rules, training rules |
@@ -207,7 +207,30 @@ Whether a standalone platform-neutral target is required is provisional. The pro
 
 The runtime coordinates subsystem lifecycle and update order. It does not own all subsystem implementation details.
 
-### 9.1 Time Domains
+### 9.1 Application Lifecycle Boundary
+
+Issue #12 establishes `ForgeSim::Runtime` as a concrete target. The target is justified by reusable lifecycle coordination and an independent headless testing boundary rather than by the conceptual module table alone. `ForgeSim::Runtime` may depend on `ForgeSim::Core`; it must not depend on `ForgeSim::PlatformGLFW`, GLFW, OpenGL or Glad, renderer implementation, Dear ImGui, or project-specific code.
+
+The executable remains the composition root. The Sandbox selects configuration, constructs the runtime coordinator and concrete lifecycle participant, supplies top-level subsystem instances or factories, and decides how the returned runtime outcome becomes a process exit status. It may contain demonstration-specific setup, but it must not implement the reusable run loop or lifecycle sequencing.
+
+Runtime coordination owns the application-level sequence:
+
+1. Request initialization from the lifecycle participant.
+2. Execute one frame at a time until the participant requests termination or reports failure.
+3. Coordinate shutdown for successfully initialized participants.
+4. Return a platform-neutral success or failure outcome.
+
+The runtime coordinator owns this sequencing, not the native resources used by each step. Participants and subsystems retain RAII ownership of their implementation resources. A participant whose initialization fails must unwind any partially acquired resources through its own RAII invariants. Runtime must not request normal shutdown for a participant that did not complete initialization, and it must coordinate shutdown exactly once after successful initialization, including when frame execution fails.
+
+`ForgeSim::PlatformGLFW` owns GLFW initialization and termination, native window and OpenGL-context resources, native event pumping, close-request observation, buffer presentation, and translation of GLFW callbacks. It does not own the application run loop, decide application exit status, or coordinate non-platform subsystem initialization and shutdown.
+
+The runtime-facing lifecycle contract must be platform-neutral and no broader than issue #12 requires. It must support initialization, execution of one frame with an explicit continue-or-stop result, and shutdown. Failures must cross the boundary as ForgeSim-owned results or standard C++ errors, never GLFW or OpenGL types. The contract does not define generalized input, a complete event model, rendering abstractions, clocks, or fixed-step scheduling.
+
+Lifecycle tests must link without `ForgeSim::PlatformGLFW`, GLFW, OpenGL, or an interactive window. A fake participant must make initialization, frame execution, termination, failure, and shutdown observable so tests can verify ordering, early stop, initialization failure, frame failure, and exactly-once shutdown.
+
+This clarification is sufficient to implement issue #12 because it applies existing ownership and dependency principles to the first concrete runtime responsibility. The broader application-composition and lifecycle decision remains a candidate for an ADR as the runtime gains additional subsystem scheduling responsibilities. Absence of the ADR structure must not block this bounded lifecycle work.
+
+### 9.2 Time Domains
 
 ForgeSim will distinguish at least:
 
@@ -218,7 +241,7 @@ ForgeSim will distinguish at least:
 
 Systems must receive the time information they require rather than querying arbitrary global clocks.
 
-### 9.2 Initial Frame Sequence
+### 9.3 Initial Frame Sequence
 
 ```text
 Pump platform events
@@ -234,7 +257,7 @@ Present the frame
 
 The exact placement of editor UI rendering may follow the renderer integration, but editor activity must not advance simulation implicitly.
 
-### 9.3 Fixed-Step Contract
+### 9.4 Fixed-Step Contract
 
 The runtime will:
 
