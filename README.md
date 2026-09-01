@@ -22,6 +22,79 @@ This repository records the project's architecture, implementation, documentatio
 
 
 
+## Building from Source on Windows
+
+
+
+### Prerequisites
+
+ForgeSim currently supports building on Windows with:
+
+* Git
+* CMake 3.24 or later
+* Ninja
+* An x64 MSVC toolchain
+
+Run the commands below from a terminal in which the x64 MSVC developer environment is active. These commands should all succeed before configuring ForgeSim:
+
+```bash
+git --version
+cmake --version
+ninja --version
+cl
+```
+
+An internet connection is required during the first configuration so CMake can retrieve GLFW. GLAD’s generated source and headers are included in the repository; Python and Jinja2 are not required.
+
+### Clone the repository
+
+```bash
+git clone https://github.com/L0932/ForgeSim.git
+cd ForgeSim
+```
+
+### Debug configuration
+
+Configure and build the Debug version:
+
+```bash
+cmake -S . -B out/build/x64-Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build out/build/x64-Debug --parallel
+```
+
+Run the Debug tests:
+
+```bash
+ctest --test-dir out/build/x64-Debug --output-on-failure
+```
+
+Launch the Debug Sandbox:
+
+```bash
+./out/build/x64-Debug/apps/Sandbox/ForgeSimSandbox.exe
+```
+
+### Release configuration
+
+Configure and build the Release version:
+
+```bash
+cmake -S . -B out/build/x64-Release -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build out/build/x64-Release --parallel
+```
+
+Run the Release tests:
+
+```bash
+ctest --test-dir out/build/x64-Release --output-on-failure
+```
+
+Launch the Release Sandbox:
+
+```bash
+./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe
+```
+
 ## Planned Technical Direction
 
 
