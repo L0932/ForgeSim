@@ -60,23 +60,24 @@ Mechanical state must remain independent of game-specific progression and traini
 
 ## Repository and Build System
 
-- [ ] Establish Git repository
-- [ ] Establish project directory structure
-- [ ] Configure CMake
-- [ ] Configure compiler warnings
-- [ ] Establish Debug and Release configurations
-- [ ] Establish namespaced ForgeSim targets
-- [ ] Integrate initial dependencies deliberately
+- [x] Establish Git repository
+- [x] Establish project directory structure
+- [x] Configure CMake
+- [x] Configure compiler warnings
+- [x] Establish Debug and Release configurations
+- [x] Establish namespaced ForgeSim targets
+- [x] Integrate initial dependencies deliberately
 - [x] Create a basic Sandbox executable
+- [ ] Verify a reproducible clean-checkout build
 
 ## Engineering Infrastructure
 
-- [ ] Logging
-- [ ] Assertions
-- [ ] Automated test foundation
-- [ ] Basic profiling and timing utilities
+- [x] Logging
+- [x] Assertions
+- [x] Automated test foundation
+- [x] Basic profiling and timing utilities
 - [ ] Coding conventions
-- [ ] Architecture documentation
+- [x] Architecture documentation
 - [ ] Architecture decision record structure
 
 ## Current Application Baseline
@@ -122,12 +123,16 @@ Mechanical state must remain independent of game-specific progression and traini
 
 ## OpenGL Rendering
 
-- [ ] Establish OpenGL function loading
+- [x] Establish OpenGL function loading
 - [ ] Add graphics-resource ownership and lifetime rules
 - [ ] Implement shader abstraction and diagnostics
 - [ ] Implement vertex and index buffers
 - [ ] Implement vertex array abstraction
 - [ ] Implement basic mesh representation
+- [ ] Select a narrow initial format for externally authored static meshes
+- [ ] Load one externally authored static mesh into the runtime mesh representation
+- [ ] Support the minimum vertex attributes required by the initial renderer
+- [ ] Report useful model-loading errors
 - [ ] Implement texture loading
 - [ ] Implement basic material representation
 - [ ] Implement camera and projection support
@@ -140,7 +145,13 @@ Mechanical state must remain independent of game-specific progression and traini
 - [ ] Add frame timing instrumentation
 - [ ] Establish debug-rendering primitives
 
-**Milestone:** ForgeSim renders a navigable 3D test environment through narrowly scoped OpenGL abstractions.
+## Initial Model-Loading Boundary
+
+The initial model loader exists to provide representative authored geometry for renderer development. It will support one deliberately narrow static-mesh format and only the attributes required by the current renderer.
+
+This work does not establish the final asset database, project asset organization, persistent asset identity, animation import, or a general-purpose content pipeline. Those responsibilities remain in Phase 7 or later.
+
+**Milestone:** ForgeSim renders a navigable 3D test environment containing externally authored static geometry through narrowly scoped OpenGL abstractions.
 
 ---
 
@@ -263,7 +274,9 @@ Mechanical state must remain independent of game-specific progression and traini
 
 - [ ] Define project and scene organization
 - [ ] Establish asset identifiers and handles
-- [ ] Implement initial mesh, texture, material, and part-definition loading
+- [ ] Integrate early mesh and texture loading with asset identifiers and handles
+- [ ] Implement asset-managed material and part-definition loading
+- [ ] Reconstruct runtime rendering resources from persistent asset references
 - [ ] Distinguish source assets from runtime resources
 - [ ] Save and load the mechanic test scene
 
@@ -463,7 +476,7 @@ These capabilities are part of ForgeSim's intended direction but are not commitm
 - Audio system
 - GPU profiling
 - Instancing and batching
-- Model and scene import pipeline
+- Broader model and scene import pipeline beyond the initial static-mesh format
 - Specialized VR rendering optimizations
 - Alternative rendering backends only when justified
 
