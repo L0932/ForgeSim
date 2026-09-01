@@ -68,7 +68,7 @@ Mechanical state must remain independent of game-specific progression and traini
 - [x] Establish namespaced ForgeSim targets
 - [x] Integrate initial dependencies deliberately
 - [x] Create a basic Sandbox executable
-- [ ] Verify a reproducible clean-checkout build
+- [x] Verify a reproducible clean-checkout build
 
 ## Engineering Infrastructure
 
@@ -76,9 +76,9 @@ Mechanical state must remain independent of game-specific progression and traini
 - [x] Assertions
 - [x] Automated test foundation
 - [x] Basic profiling and timing utilities
-- [ ] Coding conventions
+- [ ] Coding conventions *(Engineering Hygiene — Low priority, non-blocking)*
 - [x] Architecture documentation
-- [ ] Architecture decision record structure
+- [ ] Architecture decision record structure *(Engineering Hygiene — Low priority, non-blocking)*
 
 ## Current Application Baseline
 
@@ -90,9 +90,13 @@ Mechanical state must remain independent of game-specific progression and traini
 
 **Milestone:** ForgeSim builds cleanly, launches a minimal application, and has sufficient engineering infrastructure for incremental development.
 
+**Status:** Complete. Remaining Engineering Hygiene items are valid backlog work but do not block this milestone.
+
 ---
 
 # Phase 1 — Runtime, Platform, and Timing Foundation
+
+Phase 1 technical implementation is prioritized ahead of the non-blocking Engineering Hygiene items remaining from Phase 0.
 
 ## Runtime and Platform
 
