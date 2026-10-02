@@ -1,7 +1,9 @@
 #include <ForgeSim/Platform/GlfwWindow.hpp>
+
+#include <stdexcept>
+
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include <stdexcept>
 
 namespace ForgeSim::Platform
 {

@@ -1,6 +1,6 @@
-#include <chrono>
-
 #include <ForgeSim/Core/FrameStatistics.hpp>
+
+#include <chrono>
 
 namespace ForgeSim::Core
 {

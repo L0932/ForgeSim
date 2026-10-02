@@ -1,17 +1,15 @@
-#include <ForgeSim/Core/Application.hpp>
-#include <ForgeSim/Core/Assert.hpp>
-#include <ForgeSim/Core/Log.hpp>
-#include <ForgeSim/Core/Timer.hpp>
-
 #include <chrono>
 #include <concepts>
-#include <utility>
-
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <string_view>
+#include <utility>
+
+#include <ForgeSim/Core/Application.hpp>
+#include <ForgeSim/Core/Assert.hpp>
+#include <ForgeSim/Core/Log.hpp>
+#include <ForgeSim/Core/Timer.hpp>
 
 static_assert(
 	std::same_as<

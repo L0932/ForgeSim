@@ -1,8 +1,9 @@
+#include "SandboxApplication.hpp"
+
 #include <cstdlib>
 #include <exception>
 
 #include <ForgeSim/Core/Log.hpp>
-#include "SandboxApplication.hpp"
 
 int main()
 {

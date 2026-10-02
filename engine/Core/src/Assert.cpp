@@ -1,8 +1,8 @@
-#include <ForgeSim/Core/Log.hpp>
-#include <ForgeSim/Core/Assert.hpp>
-
 #include <cstdlib>
 #include <string>
+
+#include <ForgeSim/Core/Log.hpp>
+#include <ForgeSim/Core/Assert.hpp>
 
 namespace ForgeSim::Core
 {
