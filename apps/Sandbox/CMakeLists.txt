@@ -6,6 +6,8 @@ target_sources(
 	ForgeSimSandbox
 	PRIVATE
 		Main.cpp
+		SandboxApplication.cpp
+		SandboxApplication.hpp 
 )
 
 target_compile_features(
