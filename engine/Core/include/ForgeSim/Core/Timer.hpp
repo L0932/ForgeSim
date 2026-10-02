@@ -12,6 +12,7 @@ namespace ForgeSim::Core
 		Timer() noexcept;
 
 		[[nodiscard]] Duration Elapsed() const noexcept;
+		[[nodiscard]] Duration Restart() noexcept;
 
 		void Reset() noexcept;
 

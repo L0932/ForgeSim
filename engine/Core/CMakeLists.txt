@@ -7,6 +7,7 @@ target_sources(
     PRIVATE
         src/Application.cpp
         src/Assert.cpp
+        src/FrameStatistics.cpp
         src/Log.cpp
         src/Timer.cpp
     PUBLIC
@@ -16,6 +17,7 @@ target_sources(
         FILES
             include/ForgeSim/Core/Application.hpp
             include/ForgeSim/Core/Assert.hpp
+            include/ForgeSim/Core/FrameStatistics.hpp
             include/ForgeSim/Core/Log.hpp
             include/ForgeSim/Core/Timer.hpp
 )
