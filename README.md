@@ -45,6 +45,11 @@ Implemented foundation work includes:
 
 The repository records the architecture, implementation, testing, and development history as the project evolves.
 
+## Documentation
+
+- [Architecture](docs/Architecture.md)
+- [Roadmap](docs/Roadmap.md)
+
 ## Technical Direction
 
 Planned areas of development include:
