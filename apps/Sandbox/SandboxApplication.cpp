@@ -1,6 +1,5 @@
 #include "SandboxApplication.hpp"
 
-#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <string>
@@ -21,9 +20,11 @@ namespace ForgeSim::Sandbox
 
 	void SandboxApplication::Run()
 	{
-		assert(
-			!m_RunAttempted &&
-			"Run() can only be called once per application instance");
+		if (m_RunAttempted)
+		{
+			throw std::logic_error(
+				"Run() can only be called once per application instance.");
+		}
 
 		m_RunAttempted = true;
 

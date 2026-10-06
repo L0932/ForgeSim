@@ -209,26 +209,38 @@ The runtime coordinates subsystem lifecycle and update order. It does not own al
 
 ### 9.1 Application Lifecycle Boundary
 
-Issue #12 establishes `ForgeSim::Runtime` as a concrete target. The target is justified by reusable lifecycle coordination and an independent headless testing boundary rather than by the conceptual module table alone. `ForgeSim::Runtime` may depend on `ForgeSim::Core`; it must not depend on `ForgeSim::PlatformGLFW`, GLFW, OpenGL or Glad, renderer implementation, Dear ImGui, or project-specific code.
+The executable remains the composition root. `main()` selects the
+application configuration, constructs `SandboxApplication`, invokes
+`Run()`, and translates uncaught standard exceptions into a failure
+exit status.
 
-The executable remains the composition root. The Sandbox selects configuration, constructs the runtime coordinator and concrete lifecycle participant, supplies top-level subsystem instances or factories, and decides how the returned runtime outcome becomes a process exit status. It may contain demonstration-specific setup, but it must not implement the reusable run loop or lifecycle sequencing.
+`SandboxApplication` coordinates the interactive application lifecycle:
 
-Runtime coordination owns the application-level sequence:
+1. Construct application-owned resources.
+2. Enter the interactive loop once.
+3. Return from the loop when window closure is requested.
+4. Release resources through deterministic RAII destruction.
 
-1. Request initialization from the lifecycle participant.
-2. Execute one frame at a time until the participant requests termination or reports failure.
-3. Coordinate shutdown for successfully initialized participants.
-4. Return a platform-neutral success or failure outcome.
+`SandboxApplication::Run()` may be attempted only once for each
+application instance. Repeated calls report a standard C++ logic error
+in both Debug and Release configurations. Restarting an application
+within the same process is not currently supported.
 
-The runtime coordinator owns this sequencing, not the native resources used by each step. Participants and subsystems retain RAII ownership of their implementation resources. A participant whose initialization fails must unwind any partially acquired resources through its own RAII invariants. Runtime must not request normal shutdown for a participant that did not complete initialization, and it must coordinate shutdown exactly once after successful initialization, including when frame execution fails.
+`ForgeSim::PlatformGLFW` owns GLFW initialization and termination, the
+native window, and the OpenGL context. A `GlfwWindow` constructor either
+establishes a complete usable window and context or releases partially
+acquired resources before reporting failure.
 
-`ForgeSim::PlatformGLFW` owns GLFW initialization and termination, native window and OpenGL-context resources, native event pumping, close-request observation, buffer presentation, and translation of GLFW callbacks. It does not own the application run loop, decide application exit status, or coordinate non-platform subsystem initialization and shutdown.
+Graphics resources must not outlive the OpenGL context used to create
+them. Application-owned or renderer-owned OpenGL resources must
+therefore be destroyed before the `GlfwWindow`. Where these resources
+are direct members of the same owner, the window must be declared
+before them so reverse member destruction releases the graphics
+resources first.
 
-The runtime-facing lifecycle contract must be platform-neutral and no broader than issue #12 requires. It must support initialization, execution of one frame with an explicit continue-or-stop result, and shutdown. Failures must cross the boundary as ForgeSim-owned results or standard C++ errors, never GLFW or OpenGL types. The contract does not define generalized input, a complete event model, rendering abstractions, clocks, or fixed-step scheduling.
-
-Lifecycle tests must link without `ForgeSim::PlatformGLFW`, GLFW, OpenGL, or an interactive window. A fake participant must make initialization, frame execution, termination, failure, and shutdown observable so tests can verify ordering, early stop, initialization failure, frame failure, and exactly-once shutdown.
-
-This clarification is sufficient to implement issue #12 because it applies existing ownership and dependency principles to the first concrete runtime responsibility. The broader application-composition and lifecycle decision remains a candidate for an ADR as the runtime gains additional subsystem scheduling responsibilities. Absence of the ADR structure must not block this bounded lifecycle work.
+A general subsystem manager and dedicated reusable Runtime lifecycle
+coordinator are deferred until multiple concrete consumers demonstrate
+the need for them.
 
 ### 9.2 Time Domains
 

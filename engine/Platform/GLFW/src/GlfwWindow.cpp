@@ -11,6 +11,11 @@ namespace ForgeSim::Platform
 		const WindowSpecification& specification
 	)
 	{
+		if (!glfwInit())
+		{
+			throw std::runtime_error("Failed to initialize GLFW");
+		}
+
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -19,10 +24,6 @@ namespace ForgeSim::Platform
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
 
-		if (!glfwInit())
-		{
-			throw std::runtime_error("Failed to initialize GLFW");
-		}
 		m_Window = glfwCreateWindow(
 						specification.width, 
 						specification.height, 
