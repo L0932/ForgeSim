@@ -3,7 +3,7 @@ add_executable(ForgeSimCoreTests)
 target_sources(
 	ForgeSimCoreTests
 	PRIVATE
-		CoreSmokeTests.cpp
+		FixedStepSchedulerTest.cpp
 )
 
 target_link_libraries(
@@ -21,6 +21,6 @@ target_compile_features(
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimCoreTests)
 
 add_test(
-	NAME ForgeSim.CoreSmoke
+	NAME ForgeSim.Core
 	COMMAND ForgeSimCoreTests
 )
