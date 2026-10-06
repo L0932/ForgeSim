@@ -1,32 +1,75 @@
-# ForgeSim
+ForgeSim
 
+ForgeSim is an independently developed real-time simulation engine and editor written in modern C++, focused on interactive mechanical systems.
 
+The project is being developed as a foundation for simulation-heavy games, interactive simulations, and training applications where mechanical components, equipment, tools, and other simulated systems can be represented through reusable engine and simulation infrastructure.
 
-ForgeSim is an independently developed real-time simulation framework and editor written in modern C++.
+ForgeSim is currently in early development. The architecture and feature set will continue to evolve as concrete simulation requirements emerge.
 
+Vision
 
+ForgeSim is intended to explore an engine architecture in which simulation systems are first-class components rather than application-specific implementations.
 
-The project is intended as a personal software engineering, graphics, simulation, and engine-development project. Its purpose is to explore and implement reusable systems for interactive real-time simulation while also serving as a portfolio and potentially future open-source or commercial software project.
+Potential applications include:
 
+* Mechanical systems and assemblies
+* Vehicle and equipment simulation
+* Component interaction, replacement, and failure
+* Interactive tools and maintenance workflows
+* Procedural training scenarios
+* Simulation-heavy games
+* Debugging and visualization of simulated systems
+* Future immersive and VR interaction
 
+The long-term goal is not to reproduce the feature set of a general-purpose commercial game engine, but to develop reusable systems and tooling around interactive real-time simulation.
 
-## Project Status
+Current Status
 
+ForgeSim is in the early foundation stage.
 
+Current development is focused on establishing a small, testable runtime foundation before higher-level simulation and editor systems are introduced.
 
-ForgeSim is currently in the early design and development stage.
+Implemented foundation work includes:
 
+* Modern C++20 project structure
+* CMake and Ninja build workflow
+* GLFW-based window and platform integration
+* OpenGL rendering foundation
+* Runtime application loop
+* std::chrono::steady_clock-based timing
+* Frame timing and runtime statistics
+* Fixed-timestep simulation scheduling
+* Bounded fixed-step catch-up
+* Deterministic automated tests for core timing behavior
+* Debug and Release build/test validation
 
+The repository records the architecture, implementation, testing, and development history as the project evolves.
 
-This repository records the project's architecture, implementation, documentation, and development history from its initial stages onward.
+Technical Direction
 
+Planned areas of development include:
 
+* Mechanical simulation systems
+* Entity and scene representation
+* OpenGL rendering systems
+* Dear ImGui editor interface
+* Scene hierarchy
+* Property inspection and editing
+* UI-independent command architecture
+* Undo/redo
+* Scenario and behavior systems
+* Asset and resource management
+* Serialization and project persistence
+* Runtime/editor separation
+* Debugging and visualization tools
+* Profiling and telemetry
+* Example mechanical simulation scenarios
 
-## Building from Source on Windows
+Features are intentionally introduced as concrete requirements emerge rather than designing the complete engine architecture in advance.
 
+Building from Source on Windows
 
-
-### Prerequisites
+Prerequisites
 
 ForgeSim currently supports building on Windows with:
 
@@ -35,225 +78,117 @@ ForgeSim currently supports building on Windows with:
 * Ninja
 * An x64 MSVC toolchain
 
-Run the commands below from a terminal in which the x64 MSVC developer environment is active. These commands should all succeed before configuring ForgeSim:
+Run the following commands from a terminal in which the x64 MSVC developer environment is active:
 
-```bash
 git --version
 cmake --version
 ninja --version
 cl
-```
+
+These commands should all succeed before configuring ForgeSim.
 
 An internet connection is required during the first configuration so CMake can retrieve GLFW. GLAD’s generated source and headers are included in the repository; Python and Jinja2 are not required.
 
-### Clone the repository
+Clone the Repository
 
-```bash
 git clone https://github.com/L0932/ForgeSim.git
 cd ForgeSim
-```
 
-### Debug configuration
+Debug Configuration
 
-Configure and build the Debug version:
+Configure and build:
 
-```bash
 cmake -S . -B out/build/x64-Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build out/build/x64-Debug --parallel
-```
 
-Run the Debug tests:
+Run the tests:
 
-```bash
 ctest --test-dir out/build/x64-Debug --output-on-failure
-```
 
-Launch the Debug Sandbox:
+Launch the Sandbox:
 
-```bash
 ./out/build/x64-Debug/apps/Sandbox/ForgeSimSandbox.exe
-```
 
-### Release configuration
+Release Configuration
 
-Configure and build the Release version:
+Configure and build:
 
-```bash
 cmake -S . -B out/build/x64-Release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build out/build/x64-Release --parallel
-```
 
-Run the Release tests:
+Run the tests:
 
-```bash
 ctest --test-dir out/build/x64-Release --output-on-failure
-```
 
-Launch the Release Sandbox:
+Launch the Sandbox:
 
-```bash
 ./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe
-```
 
-## Planned Technical Direction
+Development Priorities
 
+The current development sequence is broadly focused on:
 
+1. Project and build infrastructure
+2. Application and platform foundation
+3. Rendering foundation
+4. Timing and fixed-timestep simulation
+5. Entity and scene representation
+6. Editor integration
+7. Scene hierarchy and property inspection
+8. Command and undo/redo architecture
+9. Simulation and mechanical systems
+10. Scenario systems
+11. Serialization and project persistence
+12. Debugging and profiling tools
+13. Example simulation scenarios
 
-The current planned architecture includes:
+This sequence is expected to evolve as implementation exposes new requirements.
 
+Project Goals
 
+ForgeSim serves several related goals:
 
-* Modern C++
-
-* CMake-based build system
-
-* OpenGL rendering
-
-* Fixed-timestep simulation
-
-* Dear ImGui editor interface
-
-* Scene hierarchy
-
-* Property inspector
-
-* UI-independent command architecture
-
-* Undo/redo system
-
-* Scenario and behavior graph systems
-
-* Asset and resource management
-
-* Serialization
-
-* Runtime/editor separation
-
-* Modular simulation systems
-
-* Debugging and visualization tools
-
-
-
-The exact architecture and feature set may evolve as the project develops.
-
-
-
-## Project Goals
-
-
-
-ForgeSim is intended to:
-
-
-
-* Explore modern real-time simulation architecture
-
-* Develop reusable C++ engine and tools systems
-
-* Strengthen graphics and rendering engineering skills
-
+* Develop reusable infrastructure for interactive real-time simulation
+* Explore architecture for mechanical and systems-oriented simulation
+* Develop modern C++ engine and tools systems
+* Strengthen graphics and rendering engineering
 * Explore editor and workflow tooling
-
-* Develop deterministic and fixed-timestep simulation systems
-
-* Demonstrate software architecture suitable for simulation, engine, graphics, and tools programming
-
-* Serve as a foundation for future simulation applications and experiments
-
+* Develop deterministic and fixed-timestep simulation infrastructure
+* Build debugging, visualization, and profiling tools for simulation
+* Provide a foundation for future simulation applications and experiments
+* Demonstrate engineering work relevant to simulation, engine, graphics, and tools development
 * Potentially support future open-source, educational, consulting, or commercial work
 
-## Development Approach
+Development Approach
 
-The project owner defines and evaluates the project requirements, architecture, module boundaries, technical direction, and acceptance criteria. AI-assisted contributions are reviewed, integrated, tested, and revised as part of the development process.
+ForgeSim is developed incrementally around concrete engineering requirements.
 
-All material committed to this repository is treated as the project owner’s responsibility and is expected to be understood, validated, and maintainable. AI-generated output is not assumed to be correct and must be evaluated against the project’s architectural requirements and verification criteria before acceptance.
+Architecture, module boundaries, technical direction, and acceptance criteria are evaluated as the project develops rather than attempting to fully design the engine in advance.
 
-This AI-assisted workflow is itself part of the project’s software-engineering process, with an emphasis on technical judgment, deliberate system design, validation, and transparent documentation.
+AI-assisted tools may be used during development for research, review, validation, and implementation assistance. All committed material remains the project owner’s responsibility and is expected to be understood, reviewed, tested, and maintainable.
 
-## Independent Development
+AI-generated output is not assumed to be correct and must satisfy the same architectural and verification requirements as any other contribution.
 
-
+Independent Development
 
 ForgeSim is a personal project developed independently of any employer, client, or contracting engagement.
 
-
-
-The project's design, planning, architecture, source code, documentation, and other materials contained in this repository are developed using personal resources and are maintained separately from work performed for employers or clients.
-
-
+The project’s design, planning, architecture, source code, documentation, and other repository materials are developed using personal resources and maintained separately from work performed for employers or clients.
 
 No confidential information, proprietary material, source code, datasets, work product, or other restricted materials belonging to an employer or client are intended to be incorporated into this repository.
 
+Repository History
 
+The repository’s Git history records the ongoing implementation and evolution of ForgeSim.
 
-## Repository History
+Architecture and implementation decisions may change as the project develops. The Git history should be considered the authoritative development record for material committed to the repository.
 
-
-
-This repository is maintained using Git so that the development history, architecture decisions, documentation, and implementation of ForgeSim can be tracked over time.
-
-
-
-The Git history should be considered the authoritative development record for material committed to this repository.
-
-
-
-## Current Scope
-
-
-
-The initial development focus is expected to include:
-
-
-
-1. Project and CMake structure
-
-2. Application and platform layer
-
-3. OpenGL rendering foundation
-
-4. Main loop and fixed-timestep simulation
-
-5. Entity/scene representation
-
-6. Dear ImGui editor integration
-
-7. Scene hierarchy and inspector
-
-8. Command and undo/redo architecture
-
-9. Scenario systems
-
-10. Serialization and project persistence
-
-11. Debugging and profiling tools
-
-12. Example simulation scenarios
-
-
-
-## Ownership
-
-
+Ownership
 
 Unless otherwise explicitly stated, ForgeSim and original material contained in this repository are independently authored personal work.
 
-
-
 Third-party libraries and dependencies remain subject to their respective licenses.
 
-
-
-## License
-
-
+License
 
 No public software license has been granted at this stage.
-
-
-
-The repository is currently private while the project's architecture and licensing strategy are being developed.
-
-
-
