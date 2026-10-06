@@ -242,28 +242,40 @@ A general subsystem manager and dedicated reusable Runtime lifecycle
 coordinator are deferred until multiple concrete consumers demonstrate
 the need for them.
 
-### 9.2 Time Domains
+### 9.2 Current Time Domains
 
-ForgeSim will distinguish at least:
+ForgeSim currently distinguishes:
 
-- **Real time:** monotonic elapsed time used for frame measurement and external timing
-- **Simulation time:** scaled, pausable time advanced in fixed increments
-- **Presentation time:** frame-driven rendering and visual interpolation where used
-- **Editor time:** editor UI updates that may continue while simulation is paused
+- **Real frame time:** monotonic elapsed time measured with
+  `std::chrono::steady_clock`.
+- **Fixed simulation time:** time advanced through discrete intervals
+  requested by `FixedStepScheduler`.
+- **Presentation time:** frame-driven rendering and buffer presentation.
 
-Systems must receive the time information they require rather than querying arbitrary global clocks.
+The scheduler exposes an interpolation alpha derived from its remaining
+accumulated time, but the Sandbox does not currently use it for rendering.
 
-### 9.3 Initial Frame Sequence
+Scaled or pausable simulation time has not been implemented. Editor time
+will be defined when the editor provides a concrete consumer.
 
-```text
-Pump platform events
-Collect input state
-Calculate real frame duration
-Accumulate simulation time
-Run zero or more fixed simulation steps
-Prepare presentation state
-Render
-Update editor UI when present
+Systems receive required time information explicitly rather than
+querying a global clock.
+
+### 9.3 Current Outer-Frame Sequence
+
+During normal drawable operation, the Sandbox performs this sequence:
+
+```
+Check for an existing close request
+Poll platform events
+Recheck the close-request state
+Query the framebuffer extent
+Wait when the framebuffer is not drawable
+Measure real frame duration
+Accumulate time for fixed-step scheduling
+Run zero or more fixed updates
+Report timing and dropped-time diagnostics
+Clear the framebuffer
 Present the frame
 ```
 

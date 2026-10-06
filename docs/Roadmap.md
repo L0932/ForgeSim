@@ -96,30 +96,58 @@ Mechanical state must remain independent of game-specific progression and traini
 
 # Phase 1 — Runtime, Platform, and Timing Foundation
 
-Phase 1 technical implementation is prioritized ahead of the non-blocking Engineering Hygiene items remaining from Phase 0.
+Phase 1 established the interactive application lifecycle, monotonic
+frame timing, bounded fixed-step scheduling, and safe handling of
+non-drawable framebuffer states.
 
 ## Runtime and Platform
 
-- [ ] Define application lifecycle ownership
-- [ ] Complete platform-neutral window and input boundaries
-- [ ] Keep GLFW-specific behavior within `ForgeSim::PlatformGLFW`
-- [ ] Implement event processing
-- [ ] Implement clean initialization and shutdown sequencing
-- [ ] Establish the main runtime loop
+- [x] Define application lifecycle ownership
+- [x] Keep GLFW behavior within `ForgeSim::PlatformGLFW`
+- [x] Establish `main()` as the composition and fatal-error boundary
+- [x] Move interactive-loop ownership into `SandboxApplication`
+- [x] Prevent repeated entry into the interactive loop
+- [x] Implement clean initialization and deterministic shutdown
+- [x] Release partially initialized platform resources safely
+- [x] Preserve valid OpenGL-context lifetime for graphics resources
+- [x] Process platform events through `GlfwWindow`
+- [x] Handle close requests before entering an event wait
+- [x] Recognize zero-sized framebuffers as non-drawable
+- [x] Skip simulation and rendering while non-drawable
+- [x] Avoid a busy loop while minimized
+- [x] Resume normal operation after restoring the window
 
-## Time Domains
+## Timing and Fixed-Step Scheduling
 
-- [ ] Implement monotonic frame timing
-- [ ] Implement a simulation clock
-- [ ] Implement a fixed-timestep accumulator
-- [ ] Separate simulation updates from rendering updates
-- [ ] Define maximum catch-up behavior
-- [ ] Pause and resume simulation
-- [ ] Single-step simulation
-- [ ] Support simulation speed control
-- [ ] Test fixed-timestep behavior without a graphics context
+- [x] Implement monotonic real-frame timing
+- [x] Use explicit `std::chrono` duration types
+- [x] Implement a fixed-timestep accumulator
+- [x] Configure an approximately 60 Hz fixed interval
+- [x] Permit zero, one, or multiple fixed updates per drawable frame
+- [x] Separate fixed updates from normal rendering
+- [x] Limit catch-up work to four fixed updates per frame
+- [x] Report dropped simulation time
+- [x] Preserve fractional accumulated time
+- [x] Expose interpolation alpha for future presentation use
+- [x] Test fixed-step behavior without GLFW, OpenGL, or real sleeping
+- [x] Test drawable-framebuffer policy without creating a window
+- [x] Validate Debug and Release builds and tests
 
-**Milestone:** ForgeSim runs a testable fixed-step simulation independently of rendering frame rate and platform-specific code.
+## Deferred to Later Phases
+
+- Platform-neutral window events
+- Platform-neutral keyboard and pointer input
+- Additional runtime-loop test seams
+- A dedicated reusable Runtime target
+- Simulation pause, resume, and single-step
+- Simulation-speed scaling
+- Background-simulation and focus policy
+- Rendering interpolation
+- Camera, rendering, and editor integration
+
+**Milestone outcome:** ForgeSim now has explicit lifecycle ownership,
+monotonic frame timing, deterministic fixed-step scheduling, bounded
+catch-up, and safe minimized-window behavior.
 
 ---
 
