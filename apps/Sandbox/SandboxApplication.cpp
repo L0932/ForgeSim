@@ -56,6 +56,17 @@ namespace ForgeSim::Sandbox
 		{
 			m_Window.PollEvents();
 
+			if (m_Window.ShouldClose())
+			{
+				break;
+			}
+
+			if (!m_Window.GetFramebufferExtent().IsDrawable())
+			{
+				m_Window.WaitEvents();
+				continue;
+			}
+
 			const auto frameDelta = timer.Restart();
 
 			const auto fixedStepResult =

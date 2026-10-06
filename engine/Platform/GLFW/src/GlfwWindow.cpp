@@ -106,12 +106,32 @@ namespace ForgeSim::Platform
 	{
 		glfwPollEvents();
 	}
+
 	void GlfwWindow::SwapBuffers()
 	{
 		glfwSwapBuffers(m_Window);
 	}
+
 	bool GlfwWindow::ShouldClose() const
 	{
 		return glfwWindowShouldClose(m_Window);
+	}
+
+	FramebufferExtent GlfwWindow::GetFramebufferExtent() const
+	{
+		FramebufferExtent extent;
+
+		glfwGetFramebufferSize(
+			m_Window,
+			&extent.width,
+			&extent.height
+		);
+
+		return extent;
+	}
+
+	void GlfwWindow::WaitEvents()
+	{
+		glfwWaitEvents();
 	}
 }

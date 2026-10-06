@@ -13,6 +13,16 @@ namespace ForgeSim::Platform
 		bool verticalSync = true;
 	};
 
+	struct FramebufferExtent {
+		int width = 0;
+		int height = 0;
+
+		[[nodiscard]] constexpr bool IsDrawable() const noexcept
+		{
+			return width > 0 && height > 0;
+		}
+	};
+
 	class GlfwWindow
 	{
 	public:
@@ -33,6 +43,8 @@ namespace ForgeSim::Platform
 		void SwapBuffers();
 
 		[[nodiscard]] bool ShouldClose() const;
+		[[nodiscard]] FramebufferExtent GetFramebufferExtent() const;
+		void WaitEvents();
 		
 	private:
 		GLFWwindow* m_Window = nullptr;

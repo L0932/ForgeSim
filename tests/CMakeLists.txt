@@ -52,3 +52,30 @@ add_test(
 	NAME ForgeSim.Core.FixedStepScheduler
 	COMMAND ForgeSimFixedStepSchedulerTests
 )
+
+add_executable(ForgeSimPlatformGLFWTests)
+
+target_sources(
+	ForgeSimPlatformGLFWTests
+	PRIVATE
+		FramebufferExtentTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimPlatformGLFWTests
+	PRIVATE
+		ForgeSim::PlatformGLFW
+)
+
+target_compile_features(
+	ForgeSimPlatformGLFWTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimPlatformGLFWTests)
+
+add_test(
+	NAME ForgeSim.PlatformGLFW.FramebufferExtent
+	COMMAND ForgeSimPlatformGLFWTests
+)
