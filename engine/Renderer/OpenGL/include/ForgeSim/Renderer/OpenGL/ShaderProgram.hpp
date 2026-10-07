@@ -2,6 +2,8 @@
 
 #include <string_view>
 
+#include <glm/mat4x4.hpp>
+
 namespace ForgeSim::Renderer::OpenGL
 {
 	class ShaderProgram final
@@ -21,6 +23,10 @@ namespace ForgeSim::Renderer::OpenGL
 		ShaderProgram& operator=(ShaderProgram&&) = delete;
 
 		void Bind() const noexcept;
+
+		void SetMatrix4x4(
+			std::string_view name,
+			const glm::mat4& value) const;
 
 	private:
 		unsigned int m_Handle = 0;

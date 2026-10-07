@@ -22,8 +22,10 @@ target_link_libraries(
 	PRIVATE
 		ForgeSim::Core
 		ForgeSim::PlatformGLFW
+		ForgeSim::Renderer
 		ForgeSim::RendererOpenGL
 		ForgeSim::Glad
+		glm::glm-header-only
 )
 
 forgesim_set_project_warnings(ForgeSimSandbox)

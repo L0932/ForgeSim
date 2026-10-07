@@ -4,15 +4,21 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
 #include <glad/gl.h>
+#include <glm/mat4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/vec3.hpp>
+#include <glm/trigonometric.hpp>
 
 #include <ForgeSim/Core/FixedStepScheduler.hpp>
 #include <ForgeSim/Core/FrameStatistics.hpp>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/Timer.hpp>
+#include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -24,38 +30,87 @@ namespace ForgeSim::Sandbox
 			float color[3];
 		};
 
-		constexpr std::array<Vertex, 4> vertices{
+		constexpr std::array<Vertex, 8> vertices{
 			Vertex{
-				.position = { -0.5f, -0.5f, 0.0f },
+				.position = { -0.5f, -0.5f, -0.5f },
 				.color = { 1.0f, 0.0f, 0.0f }
 			},
 			Vertex{
-				.position = { 0.5f, -0.5f, 0.0f },
+				.position = { 0.5f, -0.5f, -0.5f },
 				.color = { 0.0f, 1.0f, 0.0f }
 			},
 			Vertex{
-				.position = { 0.5f, 0.5f, 0.0f },
+				.position = { 0.5f, 0.5f, -0.5f },
 				.color = { 0.0f, 0.0f, 1.0f }
 			},
 			Vertex{
-				.position = { -0.5f, 0.5f, 0.0f },
+				.position = { -0.5f, 0.5f, -0.5f },
 				.color = { 1.0f, 1.0f, 0.0f }
+			},
+			Vertex{
+				.position = { -0.5f, -0.5f, 0.5f },
+				.color = { 1.0f, 0.0f, 1.0f }
+			},
+			Vertex{
+				.position = { 0.5f, -0.5f, 0.5f },
+				.color = { 0.0f, 1.0f, 1.0f }
+			},
+			Vertex{
+				.position = { 0.5f, 0.5f, 0.5f },
+				.color = { 1.0f, 1.0f, 1.0f }
+			},
+			Vertex{
+				.position = { -0.5f, 0.5f, 0.5f },
+				.color = { 0.3f, 0.3f, 0.3f }
 			}
 		};
 
-		constexpr std::array<std::uint32_t, 6> indices{
-			0, 1, 2,
-			2, 3, 0,
+		constexpr std::array<std::uint32_t, 36> indices{
+			// Front
+			4, 5, 6,
+			6, 7, 4,
+
+			// Back
+			1, 0, 3,
+			3, 2, 1,
+
+			// Left
+			0, 4, 7,
+			7, 3, 0,
+
+			// Right
+			5, 1, 2,
+			2, 6, 5,
+
+			// Top
+			3, 7, 6,
+			6, 2, 3,
+
+			// Bottom
+			0, 1, 5,
+			5, 4, 0
 		};
 
 		constexpr std::string_view vertexShaderSource = R"(
 			#version 460 core
+
 			layout(location = 0) in vec3 aPosition;
 			layout(location = 1) in vec3 aColor;
+
+			uniform mat4 uModel;
+			uniform mat4 uView;
+			uniform mat4 uProjection;
+
 			out vec3 vColor;
+
 			void main()
 			{
-				gl_Position = vec4(aPosition, 1.0);
+				gl_Position = 
+					uProjection *
+					uView *
+					uModel *
+					vec4(aPosition, 1.0);
+
 				vColor = aColor;
 			}
 		)";
@@ -120,6 +175,37 @@ namespace ForgeSim::Sandbox
 		m_Window.Show();
 
 		glClearColor(0.05f, 0.15f, 0.30f, 1.0f);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+
+		glm::mat4 model{ 1.0f };
+
+		model = glm::rotate(
+			model,
+			glm::radians(25.0f),
+			glm::vec3{ 1.0f, 0.0f, 0.0f });
+
+		model = glm::rotate(
+			model,
+			glm::radians(35.0f),
+			glm::vec3{ 0.0f, 1.0f, 0.0f });
+
+		const ForgeSim::Renderer::PerspectiveCamera camera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		m_ShaderProgram.SetMatrix4x4(
+			"uModel",
+			model);
+		
+		m_ShaderProgram.SetMatrix4x4(
+			"uView",
+			camera.ViewMatrix());
 
 		ForgeSim::Core::Timer timer;
 		ForgeSim::Core::FrameStatistics frameStats;
@@ -150,11 +236,22 @@ namespace ForgeSim::Sandbox
 				break;
 			}
 
-			if (!m_Window.GetFramebufferExtent().IsDrawable())
+			const auto framebufferExtent =
+				m_Window.GetFramebufferExtent();
+
+			if (!framebufferExtent.IsDrawable())
 			{
 				m_Window.WaitEvents();
+				static_cast<void>(timer.Restart());
 				continue;
 			}
+
+			const float aspectRatio =
+				static_cast<float>(framebufferExtent.width) /
+				static_cast<float>(framebufferExtent.height);
+
+			const glm::mat4 projection =
+				camera.ProjectionMatrix(aspectRatio);
 
 			const auto frameDelta = timer.Restart();
 
@@ -198,7 +295,11 @@ namespace ForgeSim::Sandbox
 				fixedUpdateCount = 0;
 			}
 
-			glClear(GL_COLOR_BUFFER_BIT);
+			glClear(
+				GL_COLOR_BUFFER_BIT | 
+				GL_DEPTH_BUFFER_BIT);
+
+			m_ShaderProgram.SetMatrix4x4("uProjection", projection);
 
 			m_ShaderProgram.Bind();
 			m_VertexArray.Bind();

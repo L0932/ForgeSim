@@ -79,3 +79,32 @@ add_test(
 	NAME ForgeSim.PlatformGLFW.FramebufferExtent
 	COMMAND ForgeSimPlatformGLFWTests
 )
+
+add_executable(ForgeSimPerspectiveCameraTests)
+
+target_sources(
+	ForgeSimPerspectiveCameraTests
+	PRIVATE
+		PerspectiveCameraTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimPerspectiveCameraTests
+	PRIVATE
+		ForgeSim::Renderer
+)
+
+target_compile_features(
+	ForgeSimPerspectiveCameraTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimPerspectiveCameraTests
+)
+
+add_test(
+	NAME ForgeSim.Renderer.PerspectiveCamera
+	COMMAND ForgeSimPerspectiveCameraTests
+)

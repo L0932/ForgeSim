@@ -8,10 +8,6 @@ project(
     LANGUAGES C CXX
 )
 
-include (FetchContent)
-
-set (CMAKE_CXX_EXTENSIONS OFF)
-
 # Prevent accidental in-source builds.
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 message(
@@ -37,9 +33,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+include(CompilerWarnings)
+
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
+
+include (FetchContent)
 
 # GLFW 
 
@@ -61,14 +64,20 @@ FetchContent_MakeAvailable(glfw)
 
 add_subdirectory(external/glad)
 
-# Properties
+# GLM
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.3
+    GIT_SHALLOW TRUE
+)
 
-# Allow project CMake modules to be included by name.
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
 
-include(CompilerWarnings)
+FetchContent_MakeAvailable(glm)
 
 # ---------------------------------------------------------------------------
 # Engine modules
@@ -76,10 +85,10 @@ include(CompilerWarnings)
 
 add_subdirectory(engine/core)
 add_subdirectory(engine/Platform/GLFW)
-add_subdirectory(engine/Renderer/OpenGL)
+add_subdirectory(engine/Renderer)
 
 # ---------------------------------------------------------------------------
-# Applications /
+# Applications
 # ---------------------------------------------------------------------------
 
 if(FORGESIM_BUILD_SANDBOX)

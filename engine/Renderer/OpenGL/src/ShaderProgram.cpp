@@ -5,6 +5,7 @@
 #include <string>
 
 #include <glad/gl.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace ForgeSim::Renderer::OpenGL
 { 
@@ -248,5 +249,30 @@ namespace ForgeSim::Renderer::OpenGL
 	void ShaderProgram::Bind() const noexcept
 	{
 		glUseProgram(m_Handle);
+	}
+
+	void ShaderProgram::SetMatrix4x4(
+		std::string_view name,
+		const glm::mat4& value) const
+	{
+		const std::string nullTerminatedName{ name };
+
+		const int location = glGetUniformLocation(
+			m_Handle,
+			nullTerminatedName.c_str());
+
+		if (location == -1)
+		{
+			throw std::runtime_error(
+				"Shader uniform was not found: " +
+				nullTerminatedName);
+		}
+
+		glProgramUniformMatrix4fv(
+			m_Handle,
+			location,
+			1,
+			GL_FALSE,
+			glm::value_ptr(value));
 	}
 }

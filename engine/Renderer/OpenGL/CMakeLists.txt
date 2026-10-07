@@ -30,6 +30,8 @@ target_include_directories(
 
 target_link_libraries(
 	ForgeSimRendererOpenGL
+	PUBLIC
+		glm::glm-header-only
 	PRIVATE
 		ForgeSim::Glad
 )
