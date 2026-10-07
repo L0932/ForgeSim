@@ -76,6 +76,7 @@ include(CompilerWarnings)
 
 add_subdirectory(engine/core)
 add_subdirectory(engine/Platform/GLFW)
+add_subdirectory(engine/Renderer/OpenGL)
 
 # ---------------------------------------------------------------------------
 # Applications /

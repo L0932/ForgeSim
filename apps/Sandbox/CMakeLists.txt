@@ -22,6 +22,7 @@ target_link_libraries(
 	PRIVATE
 		ForgeSim::Core
 		ForgeSim::PlatformGLFW
+		ForgeSim::RendererOpenGL
 		ForgeSim::Glad
 )
 

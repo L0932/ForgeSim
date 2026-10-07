@@ -1,5 +1,6 @@
 #include "SandboxApplication.hpp"
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <string>
@@ -13,10 +14,96 @@
 
 namespace ForgeSim::Sandbox
 {
+	namespace
+	{
+		struct Vertex
+		{
+			float position[3];
+			float color[3];
+		};
+
+		constexpr std::array<Vertex, 4> vertices{
+			Vertex{
+				.position = { -0.5f, -0.5f, 0.0f },
+				.color = { 1.0f, 0.0f, 0.0f }
+			},
+			Vertex{
+				.position = { 0.5f, -0.5f, 0.0f },
+				.color = { 0.0f, 1.0f, 0.0f }
+			},
+			Vertex{
+				.position = { 0.5f, 0.5f, 0.0f },
+				.color = { 0.0f, 0.0f, 1.0f }
+			},
+			Vertex{
+				.position = { -0.5f, 0.5f, 0.0f },
+				.color = { 1.0f, 1.0f, 0.0f }
+			}
+		};
+
+		constexpr std::array<std::uint32_t, 6> indices{
+			0, 1, 2,
+			2, 3, 0,
+		};
+
+		constexpr std::string_view vertexShaderSource = R"(
+			#version 460 core
+			layout(location = 0) in vec3 aPosition;
+			layout(location = 1) in vec3 aColor;
+			out vec3 vColor;
+			void main()
+			{
+				gl_Position = vec4(aPosition, 1.0);
+				vColor = aColor;
+			}
+		)";
+
+		constexpr std::string_view fragmentShaderSource = R"(
+			#version 460 core
+			in vec3 vColor;
+			out vec4 fragColor;
+			void main()
+			{
+				fragColor = vec4(vColor, 1.0);
+			}
+		)";
+	}
+
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-	{}
+		, m_ShaderProgram(
+			vertexShaderSource, 
+			fragmentShaderSource)
+		, m_VertexBuffer(
+			vertices.data(),
+			vertices.size() * sizeof(Vertex))
+		, m_IndexBuffer(
+			indices.data(),
+			indices.size() * sizeof(std::uint32_t))
+		, m_VertexArray()
+	{
+		constexpr std::uint32_t vertexBindingIndex = 0;
+
+		m_VertexArray.SetVertexBuffer(
+			m_VertexBuffer,
+			vertexBindingIndex,
+			sizeof(Vertex));
+
+		m_VertexArray.SetIndexBuffer(m_IndexBuffer);
+
+		m_VertexArray.SetFloatAttribute(
+			0,
+			vertexBindingIndex,
+			3,
+			offsetof(Vertex, position));
+
+		m_VertexArray.SetFloatAttribute(
+			1,
+			vertexBindingIndex,
+			2,
+			offsetof(Vertex, color));
+	}
 
 	void SandboxApplication::Run()
 	{
@@ -110,6 +197,16 @@ namespace ForgeSim::Sandbox
 			}
 
 			glClear(GL_COLOR_BUFFER_BIT);
+
+			m_ShaderProgram.Bind();
+			m_VertexArray.Bind();
+
+			glDrawElements(
+				GL_TRIANGLES,
+				static_cast<GLsizei>(indices.size()),
+				GL_UNSIGNED_INT,
+				nullptr);
+
 			m_Window.SwapBuffers();
 		}
 	}

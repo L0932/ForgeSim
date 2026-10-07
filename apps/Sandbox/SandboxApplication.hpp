@@ -1,6 +1,9 @@
 #pragma once
 
 #include <ForgeSim/Platform/GlfwWindow.hpp>
+#include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
+#include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
+#include <ForgeSim/Renderer/OpenGL/VertexArray.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -26,6 +29,12 @@ namespace ForgeSim::Sandbox
 
 	private:
 		Platform::GlfwWindow m_Window;
+
+		ForgeSim::Renderer::OpenGL::ShaderProgram m_ShaderProgram;
+		ForgeSim::Renderer::OpenGL::Buffer m_VertexBuffer;
+		ForgeSim::Renderer::OpenGL::Buffer m_IndexBuffer;
+		ForgeSim::Renderer::OpenGL::VertexArray m_VertexArray;
+
 		bool m_RunAttempted = false;
 	};
 }
