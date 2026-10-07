@@ -2,8 +2,10 @@
 
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include <glad/gl.h>
 
@@ -101,7 +103,7 @@ namespace ForgeSim::Sandbox
 		m_VertexArray.SetFloatAttribute(
 			1,
 			vertexBindingIndex,
-			2,
+			3,
 			offsetof(Vertex, color));
 	}
 

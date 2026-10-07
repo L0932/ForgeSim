@@ -1,5 +1,6 @@
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 
