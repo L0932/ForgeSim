@@ -2,16 +2,24 @@ add_executable(
 	ForgeSimSandbox 
 )
 
-add_custom_command(
-	TARGET ForgeSimSandbox
-	POST_BUILD
+add_custom_target(
+	ForgeSimSandboxAssets
+	ALL
 	COMMAND
 		${CMAKE_COMMAND} -E copy_directory
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets"
 		"$<TARGET_FILE_DIR:ForgeSimSandbox>/assets"
+	DEPENDS
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Sandbox.vert"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Sandbox.frag"
 	COMMENT
 		"Copying Sandbox assets"
 	VERBATIM
+)
+
+add_dependencies(
+	ForgeSimSandbox
+	ForgeSimSandboxAssets
 )
 
 target_compile_definitions(
