@@ -180,6 +180,48 @@ set_target_properties(
 		FOLDER "ForgeSim/Tests"
 )
 
+add_executable(ForgeSimTransformTests)
+
+target_sources(
+	ForgeSimTransformTests
+	PRIVATE
+		TransformTest.cpp
+		${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
+
+target_include_directories(
+	ForgeSimTransformTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimTransformTests
+	PRIVATE
+		glm::glm
+)
+
+target_compile_features(
+	ForgeSimTransformTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimTransformTests
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.Transform
+	COMMAND ForgeSimTransformTests
+)
+
+set_target_properties(
+	ForgeSimTransformTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -187,6 +229,7 @@ set_target_properties(
 	ForgeSimPerspectiveCameraTests
 	ForgeSimInputStateTests
 	ForgeSimFreeCameraControllerTests
+	ForgeSimTransformTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

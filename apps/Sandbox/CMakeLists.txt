@@ -10,6 +10,9 @@ target_sources(
 		SandboxApplication.cpp
 		FreeCameraController.hpp
 		FreeCameraController.cpp
+		SandboxObject.hpp
+		Transform.hpp
+		Transform.cpp
 )
 
 target_compile_features(

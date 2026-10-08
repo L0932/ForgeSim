@@ -1,4 +1,5 @@
 #include "SandboxApplication.hpp"
+#include "SandboxObject.hpp"
 #include "FreeCameraController.hpp"
 
 #include <array>
@@ -180,18 +181,6 @@ namespace ForgeSim::Sandbox
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
 
-		glm::mat4 model{ 1.0f };
-
-		model = glm::rotate(
-			model,
-			glm::radians(25.0f),
-			glm::vec3{ 1.0f, 0.0f, 0.0f });
-
-		model = glm::rotate(
-			model,
-			glm::radians(35.0f),
-			glm::vec3{ 0.0f, 1.0f, 0.0f });
-
 		ForgeSim::Renderer::PerspectiveCamera camera{
 			glm::vec3{ 0.0f, 0.0f, 3.0f },
 			glm::vec3{ 0.0f, 0.0f, 0.0f },
@@ -203,9 +192,44 @@ namespace ForgeSim::Sandbox
 
 		FreeCameraController cameraController;
 
-		m_ShaderProgram.SetMatrix4x4(
-			"uModel",
-			model);
+		std::array<SandboxObject, 3> objects{
+			SandboxObject{
+				.id = 1,
+				.transform = Transform{
+					.position = glm::vec3{ -1.25f, 0.0f, 0.0f },
+					.rotationRadians = glm::vec3{
+						glm::radians(25.0f),
+						glm::radians(35.0f),
+						0.0f
+					},
+				.scale = glm::vec3{ 0.75f }
+				}
+			},
+			SandboxObject{
+				.id = 2,
+				.transform = Transform{
+					.position = glm::vec3{ 0.0f, 0.0f, 0.0f },
+					.rotationRadians = glm::vec3{
+						glm::radians(15.0f),
+						glm::radians(-20.0f),
+						0.0f
+					},
+					.scale = glm::vec3{ 1.0f }
+				}
+			},
+			SandboxObject{
+				.id = 3,
+				.transform = Transform{
+					.position = glm::vec3{ 1.25f, 0.0f, 0.0f },
+					.rotationRadians = glm::vec3{
+						glm::radians(-15.0f),
+						glm::radians(30.0f),
+						0.0f
+					},
+					.scale = glm::vec3{ 0.6f }
+				}
+			}
+		};
 
 		ForgeSim::Core::Timer timer;
 		ForgeSim::Core::FrameStatistics frameStats;
@@ -337,11 +361,18 @@ namespace ForgeSim::Sandbox
 			m_ShaderProgram.Bind();
 			m_VertexArray.Bind();
 
-			glDrawElements(
-				GL_TRIANGLES,
-				static_cast<GLsizei>(indices.size()),
-				GL_UNSIGNED_INT,
-				nullptr);
+			for (const SandboxObject& object : objects)
+			{
+				m_ShaderProgram.SetMatrix4x4(
+					"uModel",
+					object.transform.ModelMatrix());
+
+				glDrawElements(
+					GL_TRIANGLES,
+					static_cast<GLsizei>(indices.size()),
+					GL_UNSIGNED_INT,
+					nullptr);
+			}
 
 			m_Window.SwapBuffers();
 		}
