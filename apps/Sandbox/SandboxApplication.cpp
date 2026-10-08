@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <glad/gl.h>
 #include <glm/mat4x4.hpp>
@@ -32,6 +33,107 @@ namespace ForgeSim::Sandbox
 			float position[3];
 			float color[3];
 		};
+
+		[[nodiscard]] std::vector<Vertex> CreateGridVertices()
+		{
+			constexpr int halfLineCount = 10;
+			constexpr float spacing = 1.0f;
+			constexpr float gridHeight = -0.75f;
+
+			constexpr float gridColor = 0.35f;
+
+			const float extent =
+				static_cast<float>(halfLineCount) * spacing;
+
+			std::vector<Vertex> gridVertices;
+
+			gridVertices.reserve(
+				static_cast<std::size_t>(
+					(halfLineCount * 2 + 1) * 4));
+
+			for (int line = -halfLineCount; line <= halfLineCount; ++line)
+			{
+				const float offset =
+					static_cast<float>(line) * spacing;
+
+				// Lines parallel to X. The center line represents the X axis.
+				const float xAxisRed =
+					line == 0 ? 0.9f : gridColor;
+
+				const float xAxisGreen =
+					line == 0 ? 0.2f : gridColor;
+
+				const float xAxisBlue =
+					line == 0 ? 0.2f : gridColor;
+
+				gridVertices.push_back(
+					Vertex{
+						.position = {
+							-extent,
+							gridHeight,
+							offset
+						},
+						.color = {
+							xAxisRed,
+							xAxisGreen,
+							xAxisBlue
+						}
+						});
+
+				gridVertices.push_back(
+					Vertex{
+						.position = {
+							extent,
+							gridHeight,
+							offset
+						},
+						.color = {
+							xAxisRed,
+							xAxisGreen,
+							xAxisBlue
+						}
+					});
+
+				// Lines parallel to Z. The center line represents the Z axis.
+				const float zAxisRed =
+					line == 0 ? 0.2f : gridColor;
+
+				const float zAxisGreen =
+					line == 0 ? 0.4f : gridColor;
+
+				const float zAxisBlue =
+					line == 0 ? 0.9f : gridColor;
+
+				gridVertices.push_back(
+					Vertex{
+						.position = {
+							offset,
+							gridHeight,
+							-extent
+						},
+						.color = {
+							zAxisRed,
+							zAxisGreen,
+							zAxisBlue
+						}
+					});
+
+				gridVertices.push_back(
+					Vertex{
+						.position = {
+							offset,
+							gridHeight,
+							extent
+						},
+						.color = {
+							zAxisRed,
+							zAxisGreen,
+							zAxisBlue
+						}
+					});
+			}
+			return gridVertices;
+		}
 
 		constexpr std::array<Vertex, 8> vertices{
 			Vertex{
@@ -94,6 +196,9 @@ namespace ForgeSim::Sandbox
 			5, 4, 0
 		};
 
+		const std::vector<Vertex> gridVertices =
+			CreateGridVertices();
+
 		constexpr std::string_view vertexShaderSource = R"(
 			#version 460 core
 
@@ -142,6 +247,10 @@ namespace ForgeSim::Sandbox
 			indices.data(),
 			indices.size() * sizeof(std::uint32_t))
 		, m_VertexArray()
+		, m_GridVertexBuffer(
+			gridVertices.data(),
+			gridVertices.size() * sizeof(Vertex))
+		, m_GridVertexArray()
 	{
 		constexpr std::uint32_t vertexBindingIndex = 0;
 
@@ -159,6 +268,23 @@ namespace ForgeSim::Sandbox
 			offsetof(Vertex, position));
 
 		m_VertexArray.SetFloatAttribute(
+			1,
+			vertexBindingIndex,
+			3,
+			offsetof(Vertex, color));
+
+		m_GridVertexArray.SetVertexBuffer(
+			m_GridVertexBuffer,
+			vertexBindingIndex,
+			sizeof(Vertex));
+
+		m_GridVertexArray.SetFloatAttribute(
+			0,
+			vertexBindingIndex,
+			3,
+			offsetof(Vertex, position));
+
+		m_GridVertexArray.SetFloatAttribute(
 			1,
 			vertexBindingIndex,
 			3,
@@ -359,6 +485,18 @@ namespace ForgeSim::Sandbox
 				projection);
 
 			m_ShaderProgram.Bind();
+
+			m_ShaderProgram.SetMatrix4x4(
+				"uModel",
+				glm::mat4{ 1.0f });
+
+			m_GridVertexArray.Bind();
+
+			glDrawArrays(
+				GL_LINES,
+				0,
+				static_cast<GLsizei>(gridVertices.size()));
+
 			m_VertexArray.Bind();
 
 			for (const SandboxObject& object : objects)

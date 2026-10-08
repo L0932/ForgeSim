@@ -174,12 +174,6 @@ add_test(
 	COMMAND ForgeSimFreeCameraControllerTests
 )
 
-set_target_properties(
-	ForgeSimFreeCameraControllerTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
-)
-
 add_executable(ForgeSimTransformTests)
 
 target_sources(
@@ -214,12 +208,6 @@ FORGESIM_SET_PROJECT_WARNINGS(
 add_test(
 	NAME ForgeSim.Sandbox.Transform
 	COMMAND ForgeSimTransformTests
-)
-
-set_target_properties(
-	ForgeSimTransformTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
 )
 
 set_target_properties(

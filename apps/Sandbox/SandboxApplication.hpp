@@ -35,6 +35,9 @@ namespace ForgeSim::Sandbox
 		ForgeSim::Renderer::OpenGL::Buffer m_IndexBuffer;
 		ForgeSim::Renderer::OpenGL::VertexArray m_VertexArray;
 
+		ForgeSim::Renderer::OpenGL::Buffer m_GridVertexBuffer;
+		ForgeSim::Renderer::OpenGL::VertexArray m_GridVertexArray;
+
 		bool m_RunAttempted = false;
 	};
 }
