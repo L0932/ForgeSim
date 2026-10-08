@@ -203,21 +203,6 @@ namespace ForgeSim::Platform
 					});
 			});
 
-		glfwSetWindowFocusCallback(
-			m_Window,
-			[](GLFWwindow* window, int focused)
-			{
-				GlfwWindow* owner =
-					static_cast<GlfwWindow*>(
-						glfwGetWindowUserPointer(window));
-
-				if (owner != nullptr &&
-					focused == GLFW_FALSE)
-				{
-					owner->m_InputState.Clear();
-				}
-			});
-
 		glfwMakeContextCurrent(m_Window);
 
 		const int loadedVersion =

@@ -106,5 +106,227 @@ int main()
 		}
 	}
 
+	// Translation should move the camera while preserving its orientation.
+	{
+		PerspectiveCamera translatedCamera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		const glm::vec3 originalForward =
+			translatedCamera.ForwardDirection();
+
+		translatedCamera.Translate(
+			glm::vec3{ 0.0f, 0.0f, -1.0f });
+
+		const glm::vec4 viewSpaceOrigin =
+			translatedCamera.ViewMatrix() *
+			glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+		if (!NearlyEqual(viewSpaceOrigin.z, -2.0f))
+		{
+			std::cerr <<
+				"Camera translation produced an unexpected position.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		const glm::vec3 translatedForward =
+			translatedCamera.ForwardDirection();
+
+		if (!NearlyEqual(translatedForward.x, originalForward.x) ||
+			!NearlyEqual(translatedForward.y, originalForward.y) ||
+			!NearlyEqual(translatedForward.z, originalForward.z))
+		{
+			std::cerr <<
+				"Camera translation changed its orientation.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// Yaw rotation should rotate the forward direction around the up axis.
+	{
+		PerspectiveCamera rotatedCamera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		rotatedCamera.Rotate(
+			glm::radians(90.0f),
+			0.0f);
+
+		const glm::vec3 forward =
+			rotatedCamera.ForwardDirection();
+
+		if (!NearlyEqual(forward.x, -1.0f) ||
+			!NearlyEqual(forward.y, 0.0f) ||
+			!NearlyEqual(forward.z, 0.0f))
+		{
+			std::cerr <<
+				"Camera yaw produced an unexpected direction.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// Pitch rotation should remain within the configured safe range.
+	{
+		PerspectiveCamera rotatedCamera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		rotatedCamera.Rotate(
+			0.0f,
+			glm::radians(180.0f));
+
+		const glm::vec3 forward =
+			rotatedCamera.ForwardDirection();
+
+		const float maximumVerticalComponent =
+			std::sin(glm::radians(89.0f));
+
+		if (forward.y >
+			maximumVerticalComponent + tolerance)
+		{
+			std::cerr <<
+				"Camera pitch exceeded its safe range.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		if (forward.y < 0.99f)
+		{
+			std::cerr <<
+				"Camera pitch was not applied up to the clamp.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// Translation should move the camera while preserving its orientation.
+	{
+		PerspectiveCamera translatedCamera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		const glm::vec3 originalForward =
+			translatedCamera.ForwardDirection();
+
+		translatedCamera.Translate(
+			glm::vec3{ 0.0f, 0.0f, -1.0f });
+
+		const glm::vec4 viewSpaceOrigin =
+			translatedCamera.ViewMatrix() *
+			glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+		if (!NearlyEqual(viewSpaceOrigin.z, -2.0f))
+		{
+			std::cerr <<
+				"Camera translation produced an unexpected position.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		const glm::vec3 translatedForward =
+			translatedCamera.ForwardDirection();
+
+		if (!NearlyEqual(translatedForward.x, originalForward.x) ||
+			!NearlyEqual(translatedForward.y, originalForward.y) ||
+			!NearlyEqual(translatedForward.z, originalForward.z))
+		{
+			std::cerr <<
+				"Camera translation changed its orientation.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// Yaw rotation should rotate the forward direction around the up axis.
+	{
+		PerspectiveCamera rotatedCamera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		rotatedCamera.Rotate(
+			glm::radians(90.0f),
+			0.0f);
+
+		const glm::vec3 forward =
+			rotatedCamera.ForwardDirection();
+
+		if (!NearlyEqual(forward.x, -1.0f) ||
+			!NearlyEqual(forward.y, 0.0f) ||
+			!NearlyEqual(forward.z, 0.0f))
+		{
+			std::cerr <<
+				"Camera yaw produced an unexpected direction.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// Pitch rotation should remain within the configured safe range.
+	{
+		PerspectiveCamera rotatedCamera{
+			glm::vec3{ 0.0f, 0.0f, 3.0f },
+			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, 1.0f, 0.0f },
+			glm::radians(45.0f),
+			0.1f,
+			100.0f
+		};
+
+		rotatedCamera.Rotate(
+			0.0f,
+			glm::radians(180.0f));
+
+		const glm::vec3 forward =
+			rotatedCamera.ForwardDirection();
+
+		const float maximumVerticalComponent =
+			std::sin(glm::radians(89.0f));
+
+		if (forward.y >
+			maximumVerticalComponent + tolerance)
+		{
+			std::cerr <<
+				"Camera pitch exceeded its safe range.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		if (forward.y < 0.99f)
+		{
+			std::cerr <<
+				"Camera pitch was not applied up to the clamp.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
 	return EXIT_SUCCESS;
 }
