@@ -25,7 +25,6 @@ add_test(
 	COMMAND ForgeSimCoreSmokeTests
 )
 
-
 add_executable(ForgeSimFixedStepSchedulerTests)
 
 target_sources(
@@ -107,4 +106,43 @@ FORGESIM_SET_PROJECT_WARNINGS(
 add_test(
 	NAME ForgeSim.Renderer.PerspectiveCamera
 	COMMAND ForgeSimPerspectiveCameraTests
+)
+
+add_executable(ForgeSimInputStateTests)
+
+target_sources(
+	ForgeSimInputStateTests
+	PRIVATE
+		InputStateTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimInputStateTests
+	PRIVATE
+		ForgeSim::Platform
+)
+
+target_compile_features(
+	ForgeSimInputStateTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimInputStateTests
+)
+
+add_test(
+	NAME ForgeSim.Platform.InputState
+	COMMAND ForgeSimInputStateTests
+)
+
+set_target_properties(
+	ForgeSimCoreSmokeTests
+	ForgeSimFixedStepSchedulerTests
+	ForgeSimPlatformGLFWTests
+	ForgeSimPerspectiveCameraTests
+	ForgeSimInputStateTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
 )

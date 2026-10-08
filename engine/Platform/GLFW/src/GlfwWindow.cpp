@@ -1,5 +1,6 @@
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 
+#include <optional>
 #include <stdexcept>
 
 #include <glad/gl.h>
@@ -7,6 +8,50 @@
 
 namespace ForgeSim::Platform
 {
+	namespace
+	{
+		[[nodiscard]] std::optional<Key> TranslateKey(
+			int glfwKey) noexcept
+		{
+			switch (glfwKey)
+			{
+			case GLFW_KEY_W:
+				return Key::W;
+
+			case GLFW_KEY_A:
+				return Key::A;
+
+			case GLFW_KEY_S:
+				return Key::S;
+
+			case GLFW_KEY_D:
+				return Key::D;
+
+			case GLFW_KEY_SPACE:
+				return Key::Space;
+
+			case GLFW_KEY_LEFT_CONTROL:
+				return Key::LeftControl;
+
+			default:
+				return std::nullopt;
+			}
+		}
+
+		[[nodiscard]] std::optional<MouseButton>
+			TranslateMouseButton(int glfwButton) noexcept
+		{
+			switch (glfwButton)
+			{
+			case GLFW_MOUSE_BUTTON_RIGHT:
+				return MouseButton::Right;
+
+			default:
+				return std::nullopt;
+			}
+		}
+	}
+
 	GlfwWindow::GlfwWindow(
 		const WindowSpecification& specification
 	)
@@ -36,6 +81,143 @@ namespace ForgeSim::Platform
 			glfwTerminate();
 			throw std::runtime_error("Failed to create GLFW window");
 		}
+
+		glfwSetWindowUserPointer(
+			m_Window,
+			this);
+
+		glfwSetWindowFocusCallback(
+			m_Window,
+			[](GLFWwindow* window, int focused)
+			{
+				auto* owner = static_cast<GlfwWindow*>(
+					glfwGetWindowUserPointer(window));
+
+				if (owner != nullptr && focused == GLFW_FALSE)
+				{
+					owner->m_InputState.Clear();
+
+					glfwSetInputMode(
+						window,
+						GLFW_CURSOR,
+						GLFW_CURSOR_NORMAL);
+				}
+			});
+
+		glfwSetKeyCallback(
+			m_Window,
+			[](GLFWwindow* window,
+				int key,
+				int,
+				int action,
+				int)
+			{
+				GlfwWindow* owner =
+					static_cast<GlfwWindow*>(
+						glfwGetWindowUserPointer(window));
+
+				if (owner == nullptr)
+				{
+					return;
+				}
+
+				const auto translatedKey =
+					TranslateKey(key);
+
+				if (!translatedKey)
+				{
+					return;
+				}
+
+				if (action == GLFW_PRESS)
+				{
+					owner->m_InputState.SetKeyState(
+						*translatedKey,
+						true);
+				}
+				else if (action == GLFW_RELEASE)
+				{
+					owner->m_InputState.SetKeyState(
+						*translatedKey,
+						false);
+				}
+			});
+
+		glfwSetMouseButtonCallback(
+			m_Window,
+			[](GLFWwindow* window,
+				int button,
+				int action,
+				int)
+			{
+				GlfwWindow* owner =
+					static_cast<GlfwWindow*>(
+						glfwGetWindowUserPointer(window));
+
+				if (owner == nullptr)
+				{
+					return;
+				}
+
+				const auto translatedButton =
+					TranslateMouseButton(button);
+
+				if (!translatedButton)
+				{
+					return;
+				}
+
+				if (action == GLFW_PRESS)
+				{
+					owner->m_InputState.SetMouseButtonState(
+						*translatedButton,
+						true);
+				}
+				else if (action == GLFW_RELEASE)
+				{
+					owner->m_InputState.SetMouseButtonState(
+						*translatedButton,
+						false);
+				}
+			});
+
+		glfwSetCursorPosCallback(
+			m_Window,
+			[](GLFWwindow* window,
+				double x,
+				double y)
+			{
+				GlfwWindow* owner =
+					static_cast<GlfwWindow*>(
+						glfwGetWindowUserPointer(window));
+
+				if (owner == nullptr)
+				{
+					return;
+				}
+
+				owner->m_InputState.SetCursorPosition(
+					CursorPosition{
+						.x = x,
+						.y = y
+					});
+			});
+
+		glfwSetWindowFocusCallback(
+			m_Window,
+			[](GLFWwindow* window, int focused)
+			{
+				GlfwWindow* owner =
+					static_cast<GlfwWindow*>(
+						glfwGetWindowUserPointer(window));
+
+				if (owner != nullptr &&
+					focused == GLFW_FALSE)
+				{
+					owner->m_InputState.Clear();
+				}
+			});
+
 		glfwMakeContextCurrent(m_Window);
 
 		const int loadedVersion =
@@ -97,6 +279,12 @@ namespace ForgeSim::Platform
 		}
 	}
 
+	const InputState& GlfwWindow::GetInputState()
+		const noexcept
+	{
+		return m_InputState;
+	}
+
 	void GlfwWindow::Show()
 	{
 		glfwShowWindow(m_Window);
@@ -104,7 +292,31 @@ namespace ForgeSim::Platform
 
 	void GlfwWindow::PollEvents()
 	{
+		m_InputState.BeginFrame();
 		glfwPollEvents();
+	}
+
+	void GlfwWindow::SetCursorMode(
+		CursorMode mode)
+	{
+		switch (mode)
+		{
+			case CursorMode::Normal:
+				glfwSetInputMode(
+					m_Window,
+					GLFW_CURSOR,
+					GLFW_CURSOR_NORMAL);
+				break;
+
+			case CursorMode::Captured:
+				glfwSetInputMode(
+					m_Window,
+					GLFW_CURSOR,
+					GLFW_CURSOR_DISABLED);
+				break;
+		}
+
+		m_InputState.ResetCursorTracking();
 	}
 
 	void GlfwWindow::SwapBuffers()

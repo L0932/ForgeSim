@@ -8,7 +8,8 @@ target_sources(
 		Main.cpp
 		SandboxApplication.hpp
 		SandboxApplication.cpp
-		
+		FreeCameraController.hpp
+		FreeCameraController.cpp
 )
 
 target_compile_features(

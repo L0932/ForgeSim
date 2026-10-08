@@ -1,4 +1,5 @@
 #include "SandboxApplication.hpp"
+#include "FreeCameraController.hpp"
 
 #include <array>
 #include <chrono>
@@ -18,6 +19,7 @@
 #include <ForgeSim/Core/FrameStatistics.hpp>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/Timer.hpp>
+#include <ForgeSim/Platform/InputState.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
 namespace ForgeSim::Sandbox
@@ -130,7 +132,7 @@ namespace ForgeSim::Sandbox
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
 		, m_ShaderProgram(
-			vertexShaderSource, 
+			vertexShaderSource,
 			fragmentShaderSource)
 		, m_VertexBuffer(
 			vertices.data(),
@@ -190,7 +192,7 @@ namespace ForgeSim::Sandbox
 			glm::radians(35.0f),
 			glm::vec3{ 0.0f, 1.0f, 0.0f });
 
-		const ForgeSim::Renderer::PerspectiveCamera camera{
+		ForgeSim::Renderer::PerspectiveCamera camera{
 			glm::vec3{ 0.0f, 0.0f, 3.0f },
 			glm::vec3{ 0.0f, 0.0f, 0.0f },
 			glm::vec3{ 0.0f, 1.0f, 0.0f },
@@ -199,13 +201,11 @@ namespace ForgeSim::Sandbox
 			100.0f
 		};
 
+		FreeCameraController cameraController;
+
 		m_ShaderProgram.SetMatrix4x4(
 			"uModel",
 			model);
-		
-		m_ShaderProgram.SetMatrix4x4(
-			"uView",
-			camera.ViewMatrix());
 
 		ForgeSim::Core::Timer timer;
 		ForgeSim::Core::FrameStatistics frameStats;
@@ -236,6 +236,25 @@ namespace ForgeSim::Sandbox
 				break;
 			}
 
+			const ForgeSim::Platform::InputState& input =
+				m_Window.GetInputState();
+
+			const auto cameraLookState =
+				input.GetMouseButtonState(
+					ForgeSim::Platform::MouseButton::Right);
+
+			if (cameraLookState.pressed)
+			{
+				m_Window.SetCursorMode(
+					ForgeSim::Platform::CursorMode::Captured);
+			}
+
+			if (cameraLookState.released)
+			{
+				m_Window.SetCursorMode(
+					ForgeSim::Platform::CursorMode::Normal);
+			}
+
 			const auto framebufferExtent =
 				m_Window.GetFramebufferExtent();
 
@@ -254,6 +273,9 @@ namespace ForgeSim::Sandbox
 				camera.ProjectionMatrix(aspectRatio);
 
 			const auto frameDelta = timer.Restart();
+
+			const float deltaSeconds =
+				std::chrono::duration<float>{ frameDelta }.count();
 
 			const auto fixedStepResult =
 				scheduler.AddTime(frameDelta);
@@ -296,10 +318,21 @@ namespace ForgeSim::Sandbox
 			}
 
 			glClear(
-				GL_COLOR_BUFFER_BIT | 
+				GL_COLOR_BUFFER_BIT |
 				GL_DEPTH_BUFFER_BIT);
 
-			m_ShaderProgram.SetMatrix4x4("uProjection", projection);
+			cameraController.Update(
+				camera,
+				input,
+				deltaSeconds);
+
+			m_ShaderProgram.SetMatrix4x4(
+				"uView",
+				camera.ViewMatrix());
+
+			m_ShaderProgram.SetMatrix4x4(
+				"uProjection",
+				projection);
 
 			m_ShaderProgram.Bind();
 			m_VertexArray.Bind();

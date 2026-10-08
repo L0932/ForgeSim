@@ -21,6 +21,8 @@ target_sources(
 
 target_link_libraries(
     ForgeSimPlatformGLFW
+    PUBLIC
+        ForgeSim::Platform
     PRIVATE
         ForgeSim::Core
         ForgeSim::Glad

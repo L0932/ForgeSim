@@ -1,9 +1,13 @@
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/trigonometric.hpp>
+#include <glm/vec4.hpp>
 
 namespace ForgeSim::Renderer
 {
@@ -64,5 +68,81 @@ namespace ForgeSim::Renderer
 			aspectRatio,
 			m_NearClippingPlane,
 			m_FarClippingPlane);
+	}
+
+	void PerspectiveCamera::Translate(
+		const glm::vec3& displacement) noexcept
+	{
+		m_Position += displacement;
+		m_Target += displacement;
+	}
+
+	glm::vec3 PerspectiveCamera::ForwardDirection() const
+	{
+		return glm::normalize(
+			m_Target - m_Position);
+	}
+
+	glm::vec3 PerspectiveCamera::RightDirection() const
+	{
+		return glm::normalize(
+			glm::cross(
+				ForwardDirection(),
+				m_Up));
+	}
+
+	void PerspectiveCamera::Rotate(
+		float yawDeltaRadians,
+		float pitchDeltaRadians) noexcept
+	{
+		const glm::vec3 up =
+			glm::normalize(m_Up);
+
+		glm::vec3 forward =
+			ForwardDirection();
+
+		const float currentPitch = std::asin(
+			std::clamp(
+				glm::dot(forward, up),
+				-1.0f,
+				1.0f));
+
+		const float maximumPitch =
+			glm::radians(89.0f);
+
+		const float targetPitch = std::clamp(
+			currentPitch + pitchDeltaRadians,
+			-maximumPitch,
+			maximumPitch);
+
+		const float appliedPitch =
+			targetPitch - currentPitch;
+
+		const glm::mat4 yawRotation = glm::rotate(
+			glm::mat4{ 1.0f },
+			yawDeltaRadians,
+			up);
+
+		forward = glm::normalize(
+			glm::vec3{
+				yawRotation *
+				glm::vec4{ forward, 0.0f }
+			});
+
+		const glm::vec3 right = glm::normalize(
+			glm::cross(forward, up));
+
+		const glm::mat4 pitchRotation = glm::rotate(
+			glm::mat4{ 1.0f },
+			appliedPitch,
+			right);
+
+		forward = glm::normalize(
+			glm::vec3{
+				pitchRotation *
+				glm::vec4{ forward, 0.0f }
+			});
+
+		m_Target = m_Position + forward;
 	}
 }

@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <ForgeSim/Platform/InputState.hpp>
+
 struct GLFWwindow;
 
 namespace ForgeSim::Platform
@@ -42,11 +44,20 @@ namespace ForgeSim::Platform
 		void PollEvents();
 		void SwapBuffers();
 
+		void SetCursorMode(CursorMode mode);
+
 		[[nodiscard]] bool ShouldClose() const;
-		[[nodiscard]] FramebufferExtent GetFramebufferExtent() const;
+
+		[[nodiscard]] FramebufferExtent 
+			GetFramebufferExtent() const;
+
+		[[nodiscard]] const InputState& 
+			GetInputState() const noexcept;
+
 		void WaitEvents();
 		
 	private:
 		GLFWwindow* m_Window = nullptr;
+		InputState m_InputState;
 	};
 }
