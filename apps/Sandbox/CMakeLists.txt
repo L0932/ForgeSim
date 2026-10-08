@@ -2,6 +2,24 @@ add_executable(
 	ForgeSimSandbox 
 )
 
+add_custom_command(
+	TARGET ForgeSimSandbox
+	POST_BUILD
+	COMMAND
+		${CMAKE_COMMAND} -E copy_directory
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets"
+		"$<TARGET_FILE_DIR:ForgeSimSandbox>/assets"
+	COMMENT
+		"Copying Sandbox assets"
+	VERBATIM
+)
+
+target_compile_definitions(
+	ForgeSimSandbox
+	PRIVATE
+		FORGESIM_SANDBOX_ASSET_DIRECTORY="$<TARGET_FILE_DIR:ForgeSimSandbox>/assets"
+)
+
 target_sources(
 	ForgeSimSandbox
 	PRIVATE

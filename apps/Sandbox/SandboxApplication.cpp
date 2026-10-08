@@ -6,9 +6,11 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include <glad/gl.h>
@@ -24,6 +26,10 @@
 #include <ForgeSim/Platform/InputState.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
+#ifndef FORGESIM_SANDBOX_ASSET_DIRECTORY
+#error FORGESIM_SANDBOX_ASSET_DIRECTORY must be defined by CMake
+#endif
+
 namespace ForgeSim::Sandbox
 {
 	namespace
@@ -33,6 +39,60 @@ namespace ForgeSim::Sandbox
 			float position[3];
 			float color[3];
 		};
+
+		[[nodiscard]] std::string LoadTextFile(
+			const std::filesystem::path& path)
+		{
+			std::ifstream file{
+				path,
+				std::ios::in | std::ios::binary
+			};
+
+			if (!file)
+			{
+				throw std::runtime_error(
+					"Failed to open text file: " +
+					path.string());
+			}
+
+			std::ostringstream contents;
+			contents << file.rdbuf();
+
+			if (file.bad())
+			{
+				throw std::runtime_error(
+					"Failed while reading text file: " +
+					path.string());
+			}
+
+			return contents.str();
+		}
+
+		[[nodiscard]] ForgeSim::Renderer::OpenGL::ShaderProgram 
+			CreateSandboxShaderProgram()
+		{
+			const std::filesystem::path shaderDirectory =
+				std::filesystem::path{
+				FORGESIM_SANDBOX_ASSET_DIRECTORY				
+			} / "shaders";
+
+			const std::filesystem::path vertexShaderPath =
+				shaderDirectory / "Sandbox.vert";
+
+			const std::filesystem::path fragmentShaderPath =
+				shaderDirectory / "Sandbox.frag";
+
+			const std::string vertexShaderSource =
+				LoadTextFile(vertexShaderPath);
+
+			const std::string fragmentShaderSource =
+				LoadTextFile(fragmentShaderPath);
+
+			return ForgeSim::Renderer::OpenGL::ShaderProgram{
+				vertexShaderSource,
+				fragmentShaderSource
+			};
+		}
 
 		[[nodiscard]] std::vector<Vertex> CreateGridVertices()
 		{
@@ -198,48 +258,13 @@ namespace ForgeSim::Sandbox
 
 		const std::vector<Vertex> gridVertices =
 			CreateGridVertices();
-
-		constexpr std::string_view vertexShaderSource = R"(
-			#version 460 core
-
-			layout(location = 0) in vec3 aPosition;
-			layout(location = 1) in vec3 aColor;
-
-			uniform mat4 uModel;
-			uniform mat4 uView;
-			uniform mat4 uProjection;
-
-			out vec3 vColor;
-
-			void main()
-			{
-				gl_Position = 
-					uProjection *
-					uView *
-					uModel *
-					vec4(aPosition, 1.0);
-
-				vColor = aColor;
-			}
-		)";
-
-		constexpr std::string_view fragmentShaderSource = R"(
-			#version 460 core
-			in vec3 vColor;
-			out vec4 fragColor;
-			void main()
-			{
-				fragColor = vec4(vColor, 1.0);
-			}
-		)";
 	}
 
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
 		, m_ShaderProgram(
-			vertexShaderSource,
-			fragmentShaderSource)
+			CreateSandboxShaderProgram())
 		, m_VertexBuffer(
 			vertices.data(),
 			vertices.size() * sizeof(Vertex))
