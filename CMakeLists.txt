@@ -79,11 +79,38 @@ set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(glm)
 
+# cgltf
+
+FetchContent_Declare(
+    cgltf
+    GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
+    GIT_TAG v1.15
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(cgltf)
+
+add_library(ForgeSimCgltf INTERFACE)
+
+add_library(
+    ForgeSim::Cgltf
+    ALIAS
+        ForgeSimCgltf
+)
+
+target_include_directories(
+    ForgeSimCgltf
+    SYSTEM
+    INTERFACE
+        "${cgltf_SOURCE_DIR}"
+)
+
 # ---------------------------------------------------------------------------
 # Engine modules
 # ---------------------------------------------------------------------------
 
 add_subdirectory(engine/core)
+add_subdirectory(engine/Assets)
 add_subdirectory(engine/Platform)
 add_subdirectory(engine/Renderer)
 

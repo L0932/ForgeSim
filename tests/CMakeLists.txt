@@ -210,7 +210,47 @@ add_test(
 	COMMAND ForgeSimTransformTests
 )
 
+add_executable(ForgeSimGltfLoaderTests)
+
+target_sources(
+	ForgeSimGltfLoaderTests
+	PRIVATE
+		GltfLoaderTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimGltfLoaderTests
+	PRIVATE
+		ForgeSim::Assets
+)
+
+target_compile_features(
+	ForgeSimGltfLoaderTests
+	PRIVATE
+		cxx_std_20
+)
+
+target_compile_definitions(
+	ForgeSimGltfLoaderTests
+	PRIVATE
+		FORGESIM_TEST_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets"
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimGltfLoaderTests)
+
 set_target_properties(
+	ForgeSimGltfLoaderTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Assets.GltfLoader
+	COMMAND ForgeSimGltfLoaderTests
+)
+
+set_target_properties(
+	ForgeSimGltfLoaderTests
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
 	ForgeSimPlatformGLFWTests

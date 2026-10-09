@@ -2,6 +2,7 @@
 #include "SandboxObject.hpp"
 #include "FreeCameraController.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstddef>
@@ -19,6 +20,7 @@
 #include <glm/vec3.hpp>
 #include <glm/trigonometric.hpp>
 
+#include <ForgeSim/Assets/GltfLoader.hpp>
 #include <ForgeSim/Core/FixedStepScheduler.hpp>
 #include <ForgeSim/Core/FrameStatistics.hpp>
 #include <ForgeSim/Core/Log.hpp>
@@ -197,74 +199,28 @@ namespace ForgeSim::Sandbox
 			return gridVertices;
 		}
 
-		constexpr std::array<Vertex, 8> vertices{
-			Vertex{
-				.position = { -0.5f, -0.5f, -0.5f },
-				.color = { 1.0f, 0.0f, 0.0f }
-			},
-			Vertex{
-				.position = { 0.5f, -0.5f, -0.5f },
-				.color = { 0.0f, 1.0f, 0.0f }
-			},
-			Vertex{
-				.position = { 0.5f, 0.5f, -0.5f },
-				.color = { 0.0f, 0.0f, 1.0f }
-			},
-			Vertex{
-				.position = { -0.5f, 0.5f, -0.5f },
-				.color = { 1.0f, 1.0f, 0.0f }
-			},
-			Vertex{
-				.position = { -0.5f, -0.5f, 0.5f },
-				.color = { 1.0f, 0.0f, 1.0f }
-			},
-			Vertex{
-				.position = { 0.5f, -0.5f, 0.5f },
-				.color = { 0.0f, 1.0f, 1.0f }
-			},
-			Vertex{
-				.position = { 0.5f, 0.5f, 0.5f },
-				.color = { 1.0f, 1.0f, 1.0f }
-			},
-			Vertex{
-				.position = { -0.5f, 0.5f, 0.5f },
-				.color = { 0.3f, 0.3f, 0.3f }
-			}
-		};
-
-		constexpr std::array<std::uint32_t, 36> indices{
-			// Front
-			4, 5, 6,
-			6, 7, 4,
-
-			// Back
-			1, 0, 3,
-			3, 2, 1,
-
-			// Left
-			0, 4, 7,
-			7, 3, 0,
-
-			// Right
-			5, 1, 2,
-			2, 6, 5,
-
-			// Top
-			3, 7, 6,
-			6, 2, 3,
-
-			// Bottom
-			0, 1, 5,
-			5, 4, 0
-		};
-
 		const std::vector<Vertex> gridVertices =
 			CreateGridVertices();
+	}
+
+	[[nodiscard]] ForgeSim::Assets::MeshData LoadObjectMesh(
+		const std::filesystem::path& filename)
+	{
+		const std::filesystem::path modelPath =
+			std::filesystem::path{
+				FORGESIM_SANDBOX_ASSET_DIRECTORY
+		} /
+			"models" /
+			filename;
+
+		return ForgeSim::Assets::LoadGltfMesh(modelPath);
 	}
 
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
+		, m_ObjectMesh(
+			LoadObjectMesh("BoxVertexColors.glb"))
 		, m_ObjectShaderProgram(
 			CreateShaderProgram(
 				"Object.vert",
@@ -274,11 +230,13 @@ namespace ForgeSim::Sandbox
 				"Grid.vert",
 				"Grid.frag"))
 		, m_VertexBuffer(
-			vertices.data(),
-			vertices.size() * sizeof(Vertex))
+			m_ObjectMesh.vertices.data(),
+			m_ObjectMesh.vertices.size() *
+			sizeof(ForgeSim::Assets::MeshVertex))
 		, m_IndexBuffer(
-			indices.data(),
-			indices.size() * sizeof(std::uint32_t))
+			m_ObjectMesh.indices.data(),
+			m_ObjectMesh.indices.size() *
+			sizeof(std::uint32_t))
 		, m_VertexArray()
 		, m_GridVertexBuffer(
 			gridVertices.data(),
@@ -290,7 +248,7 @@ namespace ForgeSim::Sandbox
 		m_VertexArray.SetVertexBuffer(
 			m_VertexBuffer,
 			vertexBindingIndex,
-			sizeof(Vertex));
+			sizeof(ForgeSim::Assets::MeshVertex));
 
 		m_VertexArray.SetIndexBuffer(m_IndexBuffer);
 
@@ -298,13 +256,17 @@ namespace ForgeSim::Sandbox
 			0,
 			vertexBindingIndex,
 			3,
-			offsetof(Vertex, position));
+			offsetof(
+				ForgeSim::Assets::MeshVertex,
+				position));
 
 		m_VertexArray.SetFloatAttribute(
 			1,
 			vertexBindingIndex,
 			3,
-			offsetof(Vertex, color));
+			offsetof(
+				ForgeSim::Assets::MeshVertex,
+				color));
 
 		m_GridVertexArray.SetVertexBuffer(
 			m_GridVertexBuffer,
@@ -559,7 +521,7 @@ namespace ForgeSim::Sandbox
 
 				glDrawElements(
 					GL_TRIANGLES,
-					static_cast<GLsizei>(indices.size()),
+					static_cast<GLsizei>(m_ObjectMesh.indices.size()),
 					GL_UNSIGNED_INT,
 					nullptr);
 			}

@@ -14,6 +14,8 @@ add_custom_target(
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Grid.frag"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.vert"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.frag"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/models/BoxVertexColors.glb"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/models/README.md"
 	COMMENT
 		"Copying Sandbox assets"
 	VERBATIM
@@ -52,6 +54,7 @@ target_compile_features(
 target_link_libraries(
 	ForgeSimSandbox
 	PRIVATE
+		ForgeSim::Assets
 		ForgeSim::Core
 		ForgeSim::PlatformGLFW
 		ForgeSim::Renderer

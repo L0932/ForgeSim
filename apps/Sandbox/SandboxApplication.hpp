@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ForgeSim/Assets/MeshData.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
@@ -29,6 +30,8 @@ namespace ForgeSim::Sandbox
 
 	private:
 		Platform::GlfwWindow m_Window;
+
+		ForgeSim::Assets::MeshData m_ObjectMesh;
 
 		ForgeSim::Renderer::OpenGL::ShaderProgram m_ObjectShaderProgram;
 		ForgeSim::Renderer::OpenGL::ShaderProgram m_GridShaderProgram;
