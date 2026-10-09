@@ -30,7 +30,9 @@ namespace ForgeSim::Sandbox
 	private:
 		Platform::GlfwWindow m_Window;
 
-		ForgeSim::Renderer::OpenGL::ShaderProgram m_ShaderProgram;
+		ForgeSim::Renderer::OpenGL::ShaderProgram m_ObjectShaderProgram;
+		ForgeSim::Renderer::OpenGL::ShaderProgram m_GridShaderProgram;
+
 		ForgeSim::Renderer::OpenGL::Buffer m_VertexBuffer;
 		ForgeSim::Renderer::OpenGL::Buffer m_IndexBuffer;
 		ForgeSim::Renderer::OpenGL::VertexArray m_VertexArray;

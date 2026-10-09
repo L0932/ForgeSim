@@ -10,8 +10,10 @@ add_custom_target(
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets"
 		"$<TARGET_FILE_DIR:ForgeSimSandbox>/assets"
 	DEPENDS
-		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Sandbox.vert"
-		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Sandbox.frag"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Grid.vert"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Grid.frag"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.vert"
+		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.frag"
 	COMMENT
 		"Copying Sandbox assets"
 	VERBATIM

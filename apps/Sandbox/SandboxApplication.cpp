@@ -68,19 +68,21 @@ namespace ForgeSim::Sandbox
 			return contents.str();
 		}
 
-		[[nodiscard]] ForgeSim::Renderer::OpenGL::ShaderProgram 
-			CreateSandboxShaderProgram()
+		[[nodiscard]]
+		ForgeSim::Renderer::OpenGL::ShaderProgram CreateShaderProgram(
+			const std::filesystem::path& vertexShaderFilename,
+			const std::filesystem::path& fragmentShaderFilename)
 		{
 			const std::filesystem::path shaderDirectory =
 				std::filesystem::path{
-				FORGESIM_SANDBOX_ASSET_DIRECTORY				
+					FORGESIM_SANDBOX_ASSET_DIRECTORY
 			} / "shaders";
 
 			const std::filesystem::path vertexShaderPath =
-				shaderDirectory / "Sandbox.vert";
+				shaderDirectory / vertexShaderFilename;
 
 			const std::filesystem::path fragmentShaderPath =
-				shaderDirectory / "Sandbox.frag";
+				shaderDirectory / fragmentShaderFilename;
 
 			const std::string vertexShaderSource =
 				LoadTextFile(vertexShaderPath);
@@ -263,8 +265,14 @@ namespace ForgeSim::Sandbox
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_ShaderProgram(
-			CreateSandboxShaderProgram())
+		, m_ObjectShaderProgram(
+			CreateShaderProgram(
+				"Object.vert",
+				"Object.frag"))
+		, m_GridShaderProgram(
+			CreateShaderProgram(
+				"Grid.vert",
+				"Grid.frag"))
 		, m_VertexBuffer(
 			vertices.data(),
 			vertices.size() * sizeof(Vertex))
@@ -444,13 +452,15 @@ namespace ForgeSim::Sandbox
 				static_cast<float>(framebufferExtent.width) /
 				static_cast<float>(framebufferExtent.height);
 
-			const glm::mat4 projection =
-				camera.ProjectionMatrix(aspectRatio);
-
 			const auto frameDelta = timer.Restart();
 
 			const float deltaSeconds =
 				std::chrono::duration<float>{ frameDelta }.count();
+
+			constexpr float maximumCameraDeltaSeconds = 0.1f;
+
+			const float cameraDeltaSeconds =
+				std::min(deltaSeconds, maximumCameraDeltaSeconds);
 
 			const auto fixedStepResult =
 				scheduler.AddTime(frameDelta);
@@ -499,21 +509,27 @@ namespace ForgeSim::Sandbox
 			cameraController.Update(
 				camera,
 				input,
-				deltaSeconds);
+				cameraDeltaSeconds);
 
-			m_ShaderProgram.SetMatrix4x4(
-				"uView",
-				camera.ViewMatrix());
+			const glm::mat4 view =
+				camera.ViewMatrix();
 
-			m_ShaderProgram.SetMatrix4x4(
-				"uProjection",
-				projection);
+			const glm::mat4 projection =
+				camera.ProjectionMatrix(aspectRatio);
 
-			m_ShaderProgram.Bind();
-
-			m_ShaderProgram.SetMatrix4x4(
+			// Render the reference grid.
+			m_GridShaderProgram.Bind();
+			m_GridShaderProgram.SetMatrix4x4(
 				"uModel",
 				glm::mat4{ 1.0f });
+			m_GridShaderProgram.SetMatrix4x4(
+				"uView",
+				view
+			);
+			m_GridShaderProgram.SetMatrix4x4(
+				"uProjection",
+				projection
+			);
 
 			m_GridVertexArray.Bind();
 
@@ -522,11 +538,22 @@ namespace ForgeSim::Sandbox
 				0,
 				static_cast<GLsizei>(gridVertices.size()));
 
+			// Render Sandbox objects.
+			m_ObjectShaderProgram.Bind();
+			m_ObjectShaderProgram.SetMatrix4x4(
+				"uView",
+				view
+			);
+			m_ObjectShaderProgram.SetMatrix4x4(
+				"uProjection",
+				projection
+			);
+
 			m_VertexArray.Bind();
 
 			for (const SandboxObject& object : objects)
 			{
-				m_ShaderProgram.SetMatrix4x4(
+				m_ObjectShaderProgram.SetMatrix4x4(
 					"uModel",
 					object.transform.ModelMatrix());
 
