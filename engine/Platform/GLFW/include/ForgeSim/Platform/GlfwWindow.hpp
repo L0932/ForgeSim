@@ -8,6 +8,17 @@ struct GLFWwindow;
 
 namespace ForgeSim::Platform
 {
+	struct WindowExtent
+	{
+		int width = 0;
+		int height = 0;
+
+		[[nodiscard]] constexpr bool IsValid() const noexcept
+		{
+			return width > 0 && height > 0;
+		}
+	};
+
 	struct WindowSpecification {
 		int width;
 		int height;
@@ -50,6 +61,8 @@ namespace ForgeSim::Platform
 
 		[[nodiscard]] FramebufferExtent 
 			GetFramebufferExtent() const;
+
+		[[nodiscard]] WindowExtent GetWindowExtent() const;
 
 		[[nodiscard]] const InputState& 
 			GetInputState() const noexcept;

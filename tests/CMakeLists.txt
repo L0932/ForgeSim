@@ -249,14 +249,50 @@ add_test(
 	COMMAND ForgeSimGltfLoaderTests
 )
 
+add_executable(ForgeSimRendererPickingTests)
+
+target_sources(
+	ForgeSimRendererPickingTests
+	PRIVATE
+		PickingTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimRendererPickingTests
+	PRIVATE
+		ForgeSim::Renderer
+)
+
+target_compile_features(
+	ForgeSimRendererPickingTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimRendererPickingTests
+)
+
 set_target_properties(
-	ForgeSimGltfLoaderTests
+	ForgeSimRendererPickingTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Renderer.Picking
+	COMMAND ForgeSimRendererPickingTests
+)
+
+set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
-	ForgeSimPlatformGLFWTests
-	ForgeSimPerspectiveCameraTests
-	ForgeSimInputStateTests
 	ForgeSimFreeCameraControllerTests
+	ForgeSimGltfLoaderTests
+	ForgeSimInputStateTests
+	ForgeSimPerspectiveCameraTests
+	ForgeSimPlatformGLFWTests
+	ForgeSimRendererPickingTests
 	ForgeSimTransformTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"

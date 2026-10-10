@@ -251,6 +251,30 @@ namespace ForgeSim::Renderer::OpenGL
 		glUseProgram(m_Handle);
 	}
 
+	void ShaderProgram::SetFloat(
+		std::string_view name,
+		float value) const
+	{
+		const std::string uniformName{ name };
+
+		const int location =
+			glGetUniformLocation(
+				m_Handle,
+				uniformName.c_str());
+
+		if (location < 0)
+		{
+			throw std::runtime_error(
+				"Shader uniform was not found: " +
+				uniformName);
+		}
+
+		glProgramUniform1f(
+			m_Handle,
+			location,
+			value);
+	}
+
 	void ShaderProgram::SetMatrix4x4(
 		std::string_view name,
 		const glm::mat4& value) const

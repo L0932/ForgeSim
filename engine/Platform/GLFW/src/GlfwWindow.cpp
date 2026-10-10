@@ -43,6 +43,9 @@ namespace ForgeSim::Platform
 		{
 			switch (glfwButton)
 			{
+			case GLFW_MOUSE_BUTTON_LEFT:
+				return MouseButton::Left;
+
 			case GLFW_MOUSE_BUTTON_RIGHT:
 				return MouseButton::Right;
 
@@ -323,6 +326,18 @@ namespace ForgeSim::Platform
 			&extent.width,
 			&extent.height
 		);
+
+		return extent;
+	}
+
+	WindowExtent GlfwWindow::GetWindowExtent() const
+	{
+		WindowExtent extent;
+
+		glfwGetWindowSize(
+			m_Window,
+			&extent.width,
+			&extent.height);
 
 		return extent;
 	}

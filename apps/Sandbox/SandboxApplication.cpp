@@ -1,14 +1,18 @@
 #include "SandboxApplication.hpp"
 #include "SandboxObject.hpp"
 #include "FreeCameraController.hpp"
+#include "ViewportSelectionController.hpp"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -27,6 +31,8 @@
 #include <ForgeSim/Core/Timer.hpp>
 #include <ForgeSim/Platform/InputState.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
+#include <ForgeSim/Renderer/Picking.hpp>
+
 
 #ifndef FORGESIM_SANDBOX_ASSET_DIRECTORY
 #error FORGESIM_SANDBOX_ASSET_DIRECTORY must be defined by CMake
@@ -312,6 +318,7 @@ namespace ForgeSim::Sandbox
 		};
 
 		FreeCameraController cameraController;
+		ViewportSelectionController selectionController;
 
 		std::array<SandboxObject, 3> objects{
 			SandboxObject{
@@ -351,6 +358,8 @@ namespace ForgeSim::Sandbox
 				}
 			}
 		};
+		
+		std::optional<ForgeSim::Sandbox::SandboxObjectId> selectedObjectId;
 
 		ForgeSim::Core::Timer timer;
 		ForgeSim::Core::FrameStatistics frameStats;
@@ -479,6 +488,15 @@ namespace ForgeSim::Sandbox
 			const glm::mat4 projection =
 				camera.ProjectionMatrix(aspectRatio);
 
+			selectionController.Update(
+				input,
+				m_Window.GetWindowExtent(),
+				framebufferExtent,
+				view,
+				projection,
+				objects
+			);
+
 			// Render the reference grid.
 			m_GridShaderProgram.Bind();
 			m_GridShaderProgram.SetMatrix4x4(
@@ -515,6 +533,15 @@ namespace ForgeSim::Sandbox
 
 			for (const SandboxObject& object : objects)
 			{
+				const bool isSelected =
+					selectionController.IsSelected(
+						object.id
+					);
+
+				m_ObjectShaderProgram.SetFloat(
+					"uSelectionAmount",
+					isSelected ? 0.55f : 0.0f);
+
 				m_ObjectShaderProgram.SetMatrix4x4(
 					"uModel",
 					object.transform.ModelMatrix());

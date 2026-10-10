@@ -43,6 +43,8 @@ target_sources(
 		SandboxObject.hpp
 		Transform.hpp
 		Transform.cpp
+		ViewportSelectionController.hpp
+		ViewportSelectionController.cpp
 )
 
 target_compile_features(

@@ -78,6 +78,53 @@ int main()
 		}
 	}
 
+	// Left and right mouse-button states should remain independent.
+	{
+		input.SetMouseButtonState(
+			MouseButton::Left,
+			true);
+
+		const auto left =
+			input.GetMouseButtonState(
+				MouseButton::Left);
+
+		const auto right =
+			input.GetMouseButtonState(
+				MouseButton::Right);
+
+		if (!left.pressed || !left.held)
+		{
+			std::cerr
+				<< "Left mouse-button press was not recorded.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		if (right.pressed || right.held)
+		{
+			std::cerr
+				<< "Left mouse-button input affected "
+				<< "the right mouse button.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		input.SetMouseButtonState(
+			MouseButton::Left,
+			false);
+
+		if (!input.GetMouseButtonState(
+			MouseButton::Left).released)
+		{
+			std::cerr
+				<< "Left mouse-button release was not recorded.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		input.BeginFrame();
+	}
+
 	// Mouse buttons should use the same transition behavior.
 	{
 		input.SetMouseButtonState(

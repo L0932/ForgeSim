@@ -10,11 +10,13 @@ target_sources(
 	ForgeSimRenderer
 	PRIVATE
 		src/PerspectiveCamera.cpp
+		src/Picking.cpp
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS include
 		FILES
 			include/ForgeSim/Renderer/PerspectiveCamera.hpp
+			include/ForgeSim/Renderer/Picking.hpp
 )
 
 target_link_libraries(

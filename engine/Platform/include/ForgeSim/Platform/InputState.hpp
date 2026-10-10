@@ -25,6 +25,7 @@ namespace ForgeSim::Platform
 
 	enum class MouseButton : std::uint8_t
 	{
+		Left,
 		Right,
 		Count
 	};

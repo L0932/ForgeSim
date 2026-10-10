@@ -24,6 +24,10 @@ namespace ForgeSim::Renderer::OpenGL
 
 		void Bind() const noexcept;
 
+		void SetFloat(
+			std::string_view name,
+			float value) const;
+
 		void SetMatrix4x4(
 			std::string_view name,
 			const glm::mat4& value) const;
