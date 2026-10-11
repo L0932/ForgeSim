@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <ForgeSim/Platform/InputState.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
@@ -18,6 +20,10 @@ namespace ForgeSim::Sandbox
 		explicit FreeCameraController(
 			const FreeCameraControllerSpecification&
 			specification = {}) noexcept;
+
+		[[nodiscard]]
+		std::optional<Platform::CursorMode> RequestedCursorMode(
+			const Platform::InputState& input) const noexcept;
 
 		void Update(
 			ForgeSim::Renderer::PerspectiveCamera& camera,

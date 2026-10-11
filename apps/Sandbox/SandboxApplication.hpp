@@ -1,5 +1,8 @@
 #pragma once
 
+#include "SandboxRenderer.hpp"
+#include "SandboxScene.hpp"
+
 #include <ForgeSim/Assets/MeshData.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
@@ -30,18 +33,8 @@ namespace ForgeSim::Sandbox
 
 	private:
 		Platform::GlfwWindow m_Window;
-
-		ForgeSim::Assets::MeshData m_ObjectMesh;
-
-		ForgeSim::Renderer::OpenGL::ShaderProgram m_ObjectShaderProgram;
-		ForgeSim::Renderer::OpenGL::ShaderProgram m_GridShaderProgram;
-
-		ForgeSim::Renderer::OpenGL::Buffer m_VertexBuffer;
-		ForgeSim::Renderer::OpenGL::Buffer m_IndexBuffer;
-		ForgeSim::Renderer::OpenGL::VertexArray m_VertexArray;
-
-		ForgeSim::Renderer::OpenGL::Buffer m_GridVertexBuffer;
-		ForgeSim::Renderer::OpenGL::VertexArray m_GridVertexArray;
+		SandboxScene m_Scene;
+		SandboxRenderer m_Renderer;
 
 		bool m_RunAttempted = false;
 	};

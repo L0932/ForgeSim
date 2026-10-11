@@ -1,295 +1,31 @@
 #include "SandboxApplication.hpp"
-#include "SandboxObject.hpp"
 #include "FreeCameraController.hpp"
 #include "ViewportSelectionController.hpp"
 
-#include <algorithm>
-#include <array>
 #include <chrono>
-#include <cmath>
-#include <cstddef>
 #include <cstdint>
-#include <filesystem>
-#include <fstream>
-#include <limits>
-#include <optional>
-#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
-#include <glad/gl.h>
 #include <glm/mat4x4.hpp>
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/vec3.hpp>
 #include <glm/trigonometric.hpp>
+#include <glm/vec3.hpp>
 
-#include <ForgeSim/Assets/GltfLoader.hpp>
 #include <ForgeSim/Core/FixedStepScheduler.hpp>
 #include <ForgeSim/Core/FrameStatistics.hpp>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/Timer.hpp>
 #include <ForgeSim/Platform/InputState.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
-#include <ForgeSim/Renderer/Picking.hpp>
-
-
-#ifndef FORGESIM_SANDBOX_ASSET_DIRECTORY
-#error FORGESIM_SANDBOX_ASSET_DIRECTORY must be defined by CMake
-#endif
 
 namespace ForgeSim::Sandbox
 {
-	namespace
-	{
-		struct Vertex
-		{
-			float position[3];
-			float color[3];
-		};
-
-		[[nodiscard]] std::string LoadTextFile(
-			const std::filesystem::path& path)
-		{
-			std::ifstream file{
-				path,
-				std::ios::in | std::ios::binary
-			};
-
-			if (!file)
-			{
-				throw std::runtime_error(
-					"Failed to open text file: " +
-					path.string());
-			}
-
-			std::ostringstream contents;
-			contents << file.rdbuf();
-
-			if (file.bad())
-			{
-				throw std::runtime_error(
-					"Failed while reading text file: " +
-					path.string());
-			}
-
-			return contents.str();
-		}
-
-		[[nodiscard]]
-		ForgeSim::Renderer::OpenGL::ShaderProgram CreateShaderProgram(
-			const std::filesystem::path& vertexShaderFilename,
-			const std::filesystem::path& fragmentShaderFilename)
-		{
-			const std::filesystem::path shaderDirectory =
-				std::filesystem::path{
-					FORGESIM_SANDBOX_ASSET_DIRECTORY
-			} / "shaders";
-
-			const std::filesystem::path vertexShaderPath =
-				shaderDirectory / vertexShaderFilename;
-
-			const std::filesystem::path fragmentShaderPath =
-				shaderDirectory / fragmentShaderFilename;
-
-			const std::string vertexShaderSource =
-				LoadTextFile(vertexShaderPath);
-
-			const std::string fragmentShaderSource =
-				LoadTextFile(fragmentShaderPath);
-
-			return ForgeSim::Renderer::OpenGL::ShaderProgram{
-				vertexShaderSource,
-				fragmentShaderSource
-			};
-		}
-
-		[[nodiscard]] std::vector<Vertex> CreateGridVertices()
-		{
-			constexpr int halfLineCount = 10;
-			constexpr float spacing = 1.0f;
-			constexpr float gridHeight = -0.75f;
-
-			constexpr float gridColor = 0.35f;
-
-			const float extent =
-				static_cast<float>(halfLineCount) * spacing;
-
-			std::vector<Vertex> gridVertices;
-
-			gridVertices.reserve(
-				static_cast<std::size_t>(
-					(halfLineCount * 2 + 1) * 4));
-
-			for (int line = -halfLineCount; line <= halfLineCount; ++line)
-			{
-				const float offset =
-					static_cast<float>(line) * spacing;
-
-				// Lines parallel to X. The center line represents the X axis.
-				const float xAxisRed =
-					line == 0 ? 0.9f : gridColor;
-
-				const float xAxisGreen =
-					line == 0 ? 0.2f : gridColor;
-
-				const float xAxisBlue =
-					line == 0 ? 0.2f : gridColor;
-
-				gridVertices.push_back(
-					Vertex{
-						.position = {
-							-extent,
-							gridHeight,
-							offset
-						},
-						.color = {
-							xAxisRed,
-							xAxisGreen,
-							xAxisBlue
-						}
-						});
-
-				gridVertices.push_back(
-					Vertex{
-						.position = {
-							extent,
-							gridHeight,
-							offset
-						},
-						.color = {
-							xAxisRed,
-							xAxisGreen,
-							xAxisBlue
-						}
-					});
-
-				// Lines parallel to Z. The center line represents the Z axis.
-				const float zAxisRed =
-					line == 0 ? 0.2f : gridColor;
-
-				const float zAxisGreen =
-					line == 0 ? 0.4f : gridColor;
-
-				const float zAxisBlue =
-					line == 0 ? 0.9f : gridColor;
-
-				gridVertices.push_back(
-					Vertex{
-						.position = {
-							offset,
-							gridHeight,
-							-extent
-						},
-						.color = {
-							zAxisRed,
-							zAxisGreen,
-							zAxisBlue
-						}
-					});
-
-				gridVertices.push_back(
-					Vertex{
-						.position = {
-							offset,
-							gridHeight,
-							extent
-						},
-						.color = {
-							zAxisRed,
-							zAxisGreen,
-							zAxisBlue
-						}
-					});
-			}
-			return gridVertices;
-		}
-
-		const std::vector<Vertex> gridVertices =
-			CreateGridVertices();
-	}
-
-	[[nodiscard]] ForgeSim::Assets::MeshData LoadObjectMesh(
-		const std::filesystem::path& filename)
-	{
-		const std::filesystem::path modelPath =
-			std::filesystem::path{
-				FORGESIM_SANDBOX_ASSET_DIRECTORY
-		} /
-			"models" /
-			filename;
-
-		return ForgeSim::Assets::LoadGltfMesh(modelPath);
-	}
-
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_ObjectMesh(
-			LoadObjectMesh("BoxVertexColors.glb"))
-		, m_ObjectShaderProgram(
-			CreateShaderProgram(
-				"Object.vert",
-				"Object.frag"))
-		, m_GridShaderProgram(
-			CreateShaderProgram(
-				"Grid.vert",
-				"Grid.frag"))
-		, m_VertexBuffer(
-			m_ObjectMesh.vertices.data(),
-			m_ObjectMesh.vertices.size() *
-			sizeof(ForgeSim::Assets::MeshVertex))
-		, m_IndexBuffer(
-			m_ObjectMesh.indices.data(),
-			m_ObjectMesh.indices.size() *
-			sizeof(std::uint32_t))
-		, m_VertexArray()
-		, m_GridVertexBuffer(
-			gridVertices.data(),
-			gridVertices.size() * sizeof(Vertex))
-		, m_GridVertexArray()
+		, m_Scene()
+		, m_Renderer()
 	{
-		constexpr std::uint32_t vertexBindingIndex = 0;
-
-		m_VertexArray.SetVertexBuffer(
-			m_VertexBuffer,
-			vertexBindingIndex,
-			sizeof(ForgeSim::Assets::MeshVertex));
-
-		m_VertexArray.SetIndexBuffer(m_IndexBuffer);
-
-		m_VertexArray.SetFloatAttribute(
-			0,
-			vertexBindingIndex,
-			3,
-			offsetof(
-				ForgeSim::Assets::MeshVertex,
-				position));
-
-		m_VertexArray.SetFloatAttribute(
-			1,
-			vertexBindingIndex,
-			3,
-			offsetof(
-				ForgeSim::Assets::MeshVertex,
-				color));
-
-		m_GridVertexArray.SetVertexBuffer(
-			m_GridVertexBuffer,
-			vertexBindingIndex,
-			sizeof(Vertex));
-
-		m_GridVertexArray.SetFloatAttribute(
-			0,
-			vertexBindingIndex,
-			3,
-			offsetof(Vertex, position));
-
-		m_GridVertexArray.SetFloatAttribute(
-			1,
-			vertexBindingIndex,
-			3,
-			offsetof(Vertex, color));
 	}
 
 	void SandboxApplication::Run()
@@ -304,10 +40,6 @@ namespace ForgeSim::Sandbox
 
 		m_Window.Show();
 
-		glClearColor(0.05f, 0.15f, 0.30f, 1.0f);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-
 		ForgeSim::Renderer::PerspectiveCamera camera{
 			glm::vec3{ 0.0f, 0.0f, 3.0f },
 			glm::vec3{ 0.0f, 0.0f, 0.0f },
@@ -319,47 +51,6 @@ namespace ForgeSim::Sandbox
 
 		FreeCameraController cameraController;
 		ViewportSelectionController selectionController;
-
-		std::array<SandboxObject, 3> objects{
-			SandboxObject{
-				.id = 1,
-				.transform = Transform{
-					.position = glm::vec3{ -1.25f, 0.0f, 0.0f },
-					.rotationRadians = glm::vec3{
-						glm::radians(25.0f),
-						glm::radians(35.0f),
-						0.0f
-					},
-				.scale = glm::vec3{ 0.75f }
-				}
-			},
-			SandboxObject{
-				.id = 2,
-				.transform = Transform{
-					.position = glm::vec3{ 0.0f, 0.0f, 0.0f },
-					.rotationRadians = glm::vec3{
-						glm::radians(15.0f),
-						glm::radians(-20.0f),
-						0.0f
-					},
-					.scale = glm::vec3{ 1.0f }
-				}
-			},
-			SandboxObject{
-				.id = 3,
-				.transform = Transform{
-					.position = glm::vec3{ 1.25f, 0.0f, 0.0f },
-					.rotationRadians = glm::vec3{
-						glm::radians(-15.0f),
-						glm::radians(30.0f),
-						0.0f
-					},
-					.scale = glm::vec3{ 0.6f }
-				}
-			}
-		};
-		
-		std::optional<ForgeSim::Sandbox::SandboxObjectId> selectedObjectId;
 
 		ForgeSim::Core::Timer timer;
 		ForgeSim::Core::FrameStatistics frameStats;
@@ -393,20 +84,10 @@ namespace ForgeSim::Sandbox
 			const ForgeSim::Platform::InputState& input =
 				m_Window.GetInputState();
 
-			const auto cameraLookState =
-				input.GetMouseButtonState(
-					ForgeSim::Platform::MouseButton::Right);
-
-			if (cameraLookState.pressed)
+			if (const auto requestedCursorMode =
+				cameraController.RequestedCursorMode(input))
 			{
-				m_Window.SetCursorMode(
-					ForgeSim::Platform::CursorMode::Captured);
-			}
-
-			if (cameraLookState.released)
-			{
-				m_Window.SetCursorMode(
-					ForgeSim::Platform::CursorMode::Normal);
+				m_Window.SetCursorMode(requestedCursorMode.value());
 			}
 
 			const auto framebufferExtent =
@@ -427,11 +108,6 @@ namespace ForgeSim::Sandbox
 
 			const float deltaSeconds =
 				std::chrono::duration<float>{ frameDelta }.count();
-
-			constexpr float maximumCameraDeltaSeconds = 0.1f;
-
-			const float cameraDeltaSeconds =
-				std::min(deltaSeconds, maximumCameraDeltaSeconds);
 
 			const auto fixedStepResult =
 				scheduler.AddTime(frameDelta);
@@ -473,14 +149,10 @@ namespace ForgeSim::Sandbox
 				fixedUpdateCount = 0;
 			}
 
-			glClear(
-				GL_COLOR_BUFFER_BIT |
-				GL_DEPTH_BUFFER_BIT);
-
 			cameraController.Update(
 				camera,
 				input,
-				cameraDeltaSeconds);
+				deltaSeconds);
 
 			const glm::mat4 view =
 				camera.ViewMatrix();
@@ -494,64 +166,15 @@ namespace ForgeSim::Sandbox
 				framebufferExtent,
 				view,
 				projection,
-				objects
+				m_Scene.Objects()
 			);
 
-			// Render the reference grid.
-			m_GridShaderProgram.Bind();
-			m_GridShaderProgram.SetMatrix4x4(
-				"uModel",
-				glm::mat4{ 1.0f });
-			m_GridShaderProgram.SetMatrix4x4(
-				"uView",
-				view
-			);
-			m_GridShaderProgram.SetMatrix4x4(
-				"uProjection",
+			m_Renderer.Render(
+				m_Scene.Objects(),
+				selectionController.SelectedObjectId(),
+				view,
 				projection
 			);
-
-			m_GridVertexArray.Bind();
-
-			glDrawArrays(
-				GL_LINES,
-				0,
-				static_cast<GLsizei>(gridVertices.size()));
-
-			// Render Sandbox objects.
-			m_ObjectShaderProgram.Bind();
-			m_ObjectShaderProgram.SetMatrix4x4(
-				"uView",
-				view
-			);
-			m_ObjectShaderProgram.SetMatrix4x4(
-				"uProjection",
-				projection
-			);
-
-			m_VertexArray.Bind();
-
-			for (const SandboxObject& object : objects)
-			{
-				const bool isSelected =
-					selectionController.IsSelected(
-						object.id
-					);
-
-				m_ObjectShaderProgram.SetFloat(
-					"uSelectionAmount",
-					isSelected ? 0.55f : 0.0f);
-
-				m_ObjectShaderProgram.SetMatrix4x4(
-					"uModel",
-					object.transform.ModelMatrix());
-
-				glDrawElements(
-					GL_TRIANGLES,
-					static_cast<GLsizei>(m_ObjectMesh.indices.size()),
-					GL_UNSIGNED_INT,
-					nullptr);
-			}
 
 			m_Window.SwapBuffers();
 		}

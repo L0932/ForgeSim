@@ -38,6 +38,10 @@ target_sources(
 		Main.cpp
 		SandboxApplication.hpp
 		SandboxApplication.cpp
+		SandboxRenderer.hpp
+		SandboxRenderer.cpp
+		SandboxScene.hpp
+		SandboxScene.cpp
 		FreeCameraController.hpp
 		FreeCameraController.cpp
 		SandboxObject.hpp

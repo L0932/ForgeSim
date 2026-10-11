@@ -13,13 +13,40 @@ namespace ForgeSim::Sandbox
 		: m_Specification(specification)
 	{}
 
+	[[nodiscard]]
+	std::optional<Platform::CursorMode> FreeCameraController::RequestedCursorMode(
+		const Platform::InputState& input) const noexcept
+	{
+		const auto lookButtonState =
+			input.GetMouseButtonState(
+				Platform::MouseButton::Right);
+
+		if (lookButtonState.pressed)
+		{
+			return Platform::CursorMode::Captured;
+		}
+
+		if (lookButtonState.released)
+		{
+			return Platform::CursorMode::Normal;
+		}
+
+		return std::nullopt;
+	}
+
 	void FreeCameraController::Update(
 		ForgeSim::Renderer::PerspectiveCamera& camera,
 		const ForgeSim::Platform::InputState& input,
 		float deltaSeconds) const
 	{
+
+		constexpr float maximumCameraDeltaSeconds = 0.1f;
+
+		const float clampedDeltaSeconds =
+			std::min(deltaSeconds, maximumCameraDeltaSeconds);
+
 		const float boundedDeltaSeconds = std::clamp(
-			deltaSeconds,
+			clampedDeltaSeconds,
 			0.0f,
 			m_Specification.maximumDeltaSeconds);
 
