@@ -105,6 +105,68 @@ target_include_directories(
         "${cgltf_SOURCE_DIR}"
 )
 
+# Dear ImGui
+
+FetchContent_Declare(
+	imgui
+	GIT_REPOSITORY https://github.com/ocornut/imgui.git
+	GIT_TAG v1.92.9b
+	GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(imgui)
+
+add_library(ForgeSimImGui STATIC)
+
+add_library(
+    ForgeSim::ImGui
+    ALIAS
+        ForgeSimImGui
+)
+
+target_sources(
+    ForgeSimImGui
+    PRIVATE
+    	"${imgui_SOURCE_DIR}/imgui.cpp"
+		"${imgui_SOURCE_DIR}/imgui_draw.cpp"
+		"${imgui_SOURCE_DIR}/imgui_tables.cpp"
+		"${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+		"${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+		"${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
+)
+
+target_include_directories(
+    ForgeSimImGui
+    SYSTEM
+    PUBLIC
+    	"${imgui_SOURCE_DIR}"
+		"${imgui_SOURCE_DIR}/backends"
+)
+
+target_link_libraries(
+	ForgeSimImGui
+	PRIVATE
+		glfw
+)
+
+target_compile_features(
+	ForgeSimImGui
+	PRIVATE
+		cxx_std_20
+)
+
+target_compile_definitions(
+	ForgeSimImGui
+	PRIVATE
+		GLFW_INCLUDE_NONE
+)
+
+set_target_properties(
+	ForgeSimImGui
+	PROPERTIES
+		FOLDER "ThirdParty"
+)
+
 # ---------------------------------------------------------------------------
 # Engine modules
 # ---------------------------------------------------------------------------

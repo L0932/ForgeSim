@@ -25,6 +25,7 @@ namespace ForgeSim::Sandbox
 		: m_Window(spec.windowSpec)
 		, m_Scene()
 		, m_Renderer()
+		, m_DebugUI(m_Window)
 	{
 	}
 
@@ -84,12 +85,6 @@ namespace ForgeSim::Sandbox
 			const ForgeSim::Platform::InputState& input =
 				m_Window.GetInputState();
 
-			if (const auto requestedCursorMode =
-				cameraController.RequestedCursorMode(input))
-			{
-				m_Window.SetCursorMode(requestedCursorMode.value());
-			}
-
 			const auto framebufferExtent =
 				m_Window.GetFramebufferExtent();
 
@@ -98,6 +93,27 @@ namespace ForgeSim::Sandbox
 				m_Window.WaitEvents();
 				static_cast<void>(timer.Restart());
 				continue;
+			}
+
+			m_DebugUI.BeginFrame();
+
+			const bool uiWantsMouse =
+				m_DebugUI.WantsMouseCapture();
+
+			const bool uiWantsKeyboard =
+				m_DebugUI.WantsKeyboardCapture();
+
+			if (const auto requestedCursorMode =
+				cameraController.RequestedCursorMode(input))
+			{
+				const bool isReleaseRequest =
+					*requestedCursorMode ==
+					ForgeSim::Platform::CursorMode::Normal;
+
+				if (!uiWantsMouse || isReleaseRequest)
+				{
+					m_Window.SetCursorMode(requestedCursorMode.value());
+				}
 			}
 
 			const float aspectRatio =
@@ -149,10 +165,14 @@ namespace ForgeSim::Sandbox
 				fixedUpdateCount = 0;
 			}
 
-			cameraController.Update(
-				camera,
-				input,
-				deltaSeconds);
+			if (!uiWantsMouse &&
+				!uiWantsKeyboard)
+			{
+				cameraController.Update(
+					camera,
+					input,
+					deltaSeconds);
+			}
 
 			const glm::mat4 view =
 				camera.ViewMatrix();
@@ -160,14 +180,17 @@ namespace ForgeSim::Sandbox
 			const glm::mat4 projection =
 				camera.ProjectionMatrix(aspectRatio);
 
-			selectionController.Update(
-				input,
-				m_Window.GetWindowExtent(),
-				framebufferExtent,
-				view,
-				projection,
-				m_Scene.Objects()
-			);
+			if (!uiWantsMouse)
+			{
+				selectionController.Update(
+					input,
+					m_Window.GetWindowExtent(),
+					framebufferExtent,
+					view,
+					projection,
+					m_Scene.Objects()
+				);
+			}
 
 			m_Renderer.Render(
 				m_Scene.Objects(),
@@ -175,6 +198,9 @@ namespace ForgeSim::Sandbox
 				view,
 				projection
 			);
+
+			m_DebugUI.Draw();
+			m_DebugUI.EndFrame();
 
 			m_Window.SwapBuffers();
 		}

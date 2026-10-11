@@ -38,6 +38,8 @@ target_sources(
 		Main.cpp
 		SandboxApplication.hpp
 		SandboxApplication.cpp
+		SandboxDebugUI.hpp
+		SandboxDebugUI.cpp
 		SandboxRenderer.hpp
 		SandboxRenderer.cpp
 		SandboxScene.hpp
@@ -66,6 +68,7 @@ target_link_libraries(
 		ForgeSim::Renderer
 		ForgeSim::RendererOpenGL
 		ForgeSim::Glad
+		ForgeSim::ImGui
 		glm::glm-header-only
 )
 

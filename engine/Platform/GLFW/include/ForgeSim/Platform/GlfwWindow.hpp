@@ -55,8 +55,6 @@ namespace ForgeSim::Platform
 		void PollEvents();
 		void SwapBuffers();
 
-		void SetCursorMode(CursorMode mode);
-
 		[[nodiscard]] bool ShouldClose() const;
 
 		[[nodiscard]] FramebufferExtent 
@@ -66,6 +64,10 @@ namespace ForgeSim::Platform
 
 		[[nodiscard]] const InputState& 
 			GetInputState() const noexcept;
+
+		[[nodiscard]] GLFWwindow* NativeHandle() noexcept;
+
+		void SetCursorMode(CursorMode mode);
 
 		void WaitEvents();
 		

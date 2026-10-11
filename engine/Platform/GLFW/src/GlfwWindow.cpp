@@ -342,6 +342,11 @@ namespace ForgeSim::Platform
 		return extent;
 	}
 
+	GLFWwindow* GlfwWindow::NativeHandle() noexcept
+	{
+		return m_Window;
+	}
+
 	void GlfwWindow::WaitEvents()
 	{
 		glfwWaitEvents();

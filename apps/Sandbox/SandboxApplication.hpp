@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxDebugUI.hpp"
 #include "SandboxRenderer.hpp"
 #include "SandboxScene.hpp"
 
@@ -35,6 +36,7 @@ namespace ForgeSim::Sandbox
 		Platform::GlfwWindow m_Window;
 		SandboxScene m_Scene;
 		SandboxRenderer m_Renderer;
+		SandboxDebugUI m_DebugUI;
 
 		bool m_RunAttempted = false;
 	};
