@@ -105,6 +105,125 @@ int main()
 
 				return EXIT_FAILURE;
 			}
+
+			if (!mesh.availableAttributes.colors)
+			{
+				std::cerr
+					<< "Expected COLOR_0 to be reported as available\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (mesh.availableAttributes.normals ||
+				mesh.availableAttributes.textureCoordinates ||
+				mesh.availableAttributes.tangents)
+			{
+				std::cerr
+					<< "Unexpected optional attributes were reported\n";
+
+				return EXIT_FAILURE;
+			}
+		}
+
+		// Interleaved vertex data should preserve normals,
+		// texture coordinates, tangents, colors, and indices.
+		{
+			const std::filesystem::path assetPath =
+				assetDirectory /
+				"TriangleWithAttributes.gltf";
+
+			const ForgeSim::Assets::MeshData mesh =
+				ForgeSim::Assets::LoadGltfMesh(
+					assetPath);
+
+			if (mesh.vertices.size() != 3 ||
+				mesh.indices.size() != 3)
+			{
+				std::cerr
+					<< "Expected an indexed triangle with "
+					<< "three vertices\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (!mesh.availableAttributes.normals ||
+				!mesh.availableAttributes.textureCoordinates ||
+				!mesh.availableAttributes.tangents ||
+				!mesh.availableAttributes.colors)
+			{
+				std::cerr
+					<< "Expected all optional vertex attributes "
+					<< "to be reported as available\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (mesh.indices[0] != 0 ||
+				mesh.indices[1] != 1 ||
+				mesh.indices[2] != 2)
+			{
+				std::cerr
+					<< "Unexpected interleaved triangle indices\n";
+
+				return EXIT_FAILURE;
+			}
+
+			for (const auto& vertex : mesh.vertices)
+			{
+				if (vertex.normal[0] != 0.0f ||
+					vertex.normal[1] != 0.0f ||
+					vertex.normal[2] != 1.0f)
+				{
+					std::cerr
+						<< "Unexpected imported normal\n";
+
+					return EXIT_FAILURE;
+				}
+
+				if (vertex.tangent[0] != 1.0f ||
+					vertex.tangent[1] != 0.0f ||
+					vertex.tangent[2] != 0.0f ||
+					vertex.tangent[3] != 1.0f)
+				{
+					std::cerr
+						<< "Unexpected imported tangent\n";
+
+					return EXIT_FAILURE;
+				}
+			}
+
+			const auto& firstVertex = mesh.vertices[0];
+			const auto& secondVertex = mesh.vertices[1];
+			const auto& thirdVertex = mesh.vertices[2];
+
+			if (firstVertex.textureCoordinates[0] != 0.0f ||
+				firstVertex.textureCoordinates[1] != 0.0f ||
+				secondVertex.textureCoordinates[0] != 1.0f ||
+				secondVertex.textureCoordinates[1] != 0.0f ||
+				thirdVertex.textureCoordinates[0] != 0.5f ||
+				thirdVertex.textureCoordinates[1] != 1.0f)
+			{
+				std::cerr
+					<< "Unexpected imported texture coordinates\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (firstVertex.color[0] != 1.0f ||
+				firstVertex.color[1] != 0.0f ||
+				firstVertex.color[2] != 0.0f ||
+				secondVertex.color[0] != 0.0f ||
+				secondVertex.color[1] != 1.0f ||
+				secondVertex.color[2] != 0.0f ||
+				thirdVertex.color[0] != 0.0f ||
+				thirdVertex.color[1] != 0.0f ||
+				thirdVertex.color[2] != 1.0f)
+			{
+				std::cerr
+					<< "Unexpected imported vertex colors\n";
+
+				return EXIT_FAILURE;
+			}
 		}
 
 		// Non-indexed geometry should receive sequential indices,
@@ -137,8 +256,67 @@ int main()
 				return EXIT_FAILURE;
 			}
 
+			if (mesh.availableAttributes.normals ||
+				mesh.availableAttributes.textureCoordinates ||
+				mesh.availableAttributes.tangents ||
+				mesh.availableAttributes.colors)
+			{
+				std::cerr
+					<< "Missing optional attributes were incorrectly "
+					<< "reported as available\n";
+
+				return EXIT_FAILURE;
+			}
+
 			for (const auto& vertex : mesh.vertices)
 			{
+				if (vertex.color[0] != 1.0f ||
+					vertex.color[1] != 1.0f ||
+					vertex.color[2] != 1.0f)
+				{
+					std::cerr
+						<< "Expected missing vertex colors "
+						<< "to default to white\n";
+
+					return EXIT_FAILURE;
+				}
+			}
+
+			for (const auto& vertex : mesh.vertices)
+			{
+				if (vertex.normal[0] != 0.0f ||
+					vertex.normal[1] != 0.0f ||
+					vertex.normal[2] != 1.0f)
+				{
+					std::cerr
+						<< "Expected missing normals to default "
+						<< "to positive Z\n";
+
+					return EXIT_FAILURE;
+				}
+
+				if (vertex.textureCoordinates[0] != 0.0f ||
+					vertex.textureCoordinates[1] != 0.0f)
+				{
+					std::cerr
+						<< "Expected missing texture coordinates "
+						<< "to default to zero\n";
+
+					return EXIT_FAILURE;
+				}
+
+				if (vertex.tangent[0] != 1.0f ||
+					vertex.tangent[1] != 0.0f ||
+					vertex.tangent[2] != 0.0f ||
+					vertex.tangent[3] != 1.0f)
+				{
+					std::cerr
+						<< "Expected missing tangents to use "
+						<< "the fallback tangent\n";
+
+					return EXIT_FAILURE;
+				}
+
 				if (vertex.color[0] != 1.0f ||
 					vertex.color[1] != 1.0f ||
 					vertex.color[2] != 1.0f)

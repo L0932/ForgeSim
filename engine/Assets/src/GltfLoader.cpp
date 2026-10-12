@@ -1,5 +1,9 @@
 #include <ForgeSim/Assets/GltfLoader.hpp>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -12,6 +16,30 @@ namespace ForgeSim::Assets
 {
 	namespace
 	{
+		[[nodiscard]] bool UsesFloatComponents(
+			const cgltf_accessor& accessor) noexcept
+		{
+			return accessor.component_type ==
+				cgltf_component_type_r_32f;
+		}
+
+		[[nodiscard]] bool UsesSupportedNormalizedComponents(
+			const cgltf_accessor& accessor) noexcept
+		{
+			switch (accessor.component_type)
+			{
+			case cgltf_component_type_r_32f:
+				return !accessor.normalized;
+
+			case cgltf_component_type_r_8u:
+			case cgltf_component_type_r_16u:
+				return accessor.normalized;
+
+			default:
+				return false;
+			}
+		}
+
 		[[nodiscard]] std::string_view CgltfResultDescription(
 			cgltf_result result) noexcept
 		{
@@ -172,6 +200,9 @@ namespace ForgeSim::Assets
 		}
 
 		const cgltf_accessor* positionAccessor = nullptr;
+		const cgltf_accessor* normalAccessor = nullptr;
+		const cgltf_accessor* textureCoordinateAccessor = nullptr;
+		const cgltf_accessor* tangentAccessor = nullptr;
 		const cgltf_accessor* colorAccessor = nullptr;
 
 		for (cgltf_size attributeIndex = 0;
@@ -181,15 +212,36 @@ namespace ForgeSim::Assets
 			const cgltf_attribute& attribute =
 				primitive.attributes[attributeIndex];
 
-			if (attribute.type == cgltf_attribute_type_position)
+			switch (attribute.type)
 			{
+			case cgltf_attribute_type_position:
 				positionAccessor = attribute.data;
-			}
-			else if (
-				attribute.type == cgltf_attribute_type_color &&
-				attribute.index == 0)
-			{
-				colorAccessor = attribute.data;
+				break;
+
+			case cgltf_attribute_type_normal:
+				normalAccessor = attribute.data;
+				break;
+
+			case cgltf_attribute_type_texcoord:
+				if (attribute.index == 0)
+				{
+					textureCoordinateAccessor = attribute.data;
+				}
+				break;
+
+			case cgltf_attribute_type_tangent:
+				tangentAccessor = attribute.data;
+				break;
+
+			case cgltf_attribute_type_color:
+				if (attribute.index == 0)
+				{
+					colorAccessor = attribute.data;
+				}
+				break;
+
+			default:
+				break;
 			}
 		}
 
@@ -215,6 +267,50 @@ namespace ForgeSim::Assets
 				path.string());
 		}
 
+		const cgltf_size vertexCount =
+			positionAccessor->count;
+
+		const auto validateOptionalAttribute =
+			[vertexCount](
+				const cgltf_accessor* accessor,
+				cgltf_type expectedType,
+				std::string_view attributeName)
+			{
+				if (accessor == nullptr)
+				{
+					return;
+				}
+
+				if (accessor->count != vertexCount)
+				{
+					throw std::runtime_error(
+						std::string(attributeName) +
+						" vertex count does not match POSITION.");
+				}
+
+				if (accessor->type != expectedType)
+				{
+					throw std::runtime_error(
+						std::string(attributeName) +
+						" has an unsupported element type.");
+				}
+			};
+
+		validateOptionalAttribute(
+			normalAccessor,
+			cgltf_type_vec3,
+			"NORMAL");
+
+		validateOptionalAttribute(
+			textureCoordinateAccessor,
+			cgltf_type_vec2,
+			"TEXCOORD_0");
+
+		validateOptionalAttribute(
+			tangentAccessor,
+			cgltf_type_vec4,
+			"TANGENT");
+
 		if (colorAccessor != nullptr)
 		{
 			if (colorAccessor->count != positionAccessor->count)
@@ -233,59 +329,145 @@ namespace ForgeSim::Assets
 			}
 		}
 
+		if (!UsesFloatComponents(*positionAccessor))
+		{
+			throw std::runtime_error(
+				"POSITION must use floating-point components.");
+		}
+
+		if (normalAccessor != nullptr &&
+			!UsesFloatComponents(*normalAccessor))
+		{
+			throw std::runtime_error(
+				"NORMAL must use floating-point components.");
+		}
+
+		if (tangentAccessor != nullptr &&
+			!UsesFloatComponents(*tangentAccessor))
+		{
+			throw std::runtime_error(
+				"TANGENT must use floating-point components.");
+		}
+
+		if (textureCoordinateAccessor != nullptr &&
+			!UsesSupportedNormalizedComponents(
+				*textureCoordinateAccessor))
+		{
+			throw std::runtime_error(
+				"TEXCOORD_0 must use floating-point or "
+				"normalized unsigned integer components.");
+		}
+
+		if (colorAccessor != nullptr &&
+			!UsesSupportedNormalizedComponents(*colorAccessor))
+		{
+			throw std::runtime_error(
+				"COLOR_0 must use floating-point or "
+				"normalized unsigned integer components.");
+		}
+
 		MeshData meshData;
-		meshData.vertices.reserve(positionAccessor->count);
+
+		meshData.availableAttributes = {
+			.normals = normalAccessor != nullptr,
+			.textureCoordinates =
+				textureCoordinateAccessor != nullptr,
+			.tangents = tangentAccessor != nullptr,
+			.colors = colorAccessor != nullptr
+		};
+
+		meshData.vertices.reserve(
+			static_cast<std::size_t>(vertexCount));
 
 		for (cgltf_size vertexIndex = 0;
-			vertexIndex < positionAccessor->count;
+			vertexIndex < vertexCount;
 			++vertexIndex)
 		{
-			float position[3]{};
+			std::array<float, 3> position{};
 
-			if (!cgltf_accessor_read_float(
-				positionAccessor,
-				vertexIndex,
-				position,
-				3))
-			{
-				throw std::runtime_error(
-					"Failed to read glTF vertex position: " +
-					path.string());
-			}
+			std::array<float, 3> normal{
+				0.0f,
+				0.0f,
+				1.0f
+			};
 
-			float color[4]{
+			std::array<float, 2> textureCoordinates{};
+
+			std::array<float, 4> tangent{
+				1.0f,
+				0.0f,
+				0.0f,
+				1.0f
+			};
+
+			std::array<float, 4> color{
 				1.0f,
 				1.0f,
 				1.0f,
 				1.0f
 			};
 
-			if (colorAccessor != nullptr)
+			if (!cgltf_accessor_read_float(
+				positionAccessor,
+				vertexIndex,
+				position.data(),
+				position.size()))
 			{
-				const cgltf_size colorComponentCount =
-					colorAccessor->type == cgltf_type_vec4
-					? 4
-					: 3;
+				throw std::runtime_error(
+					"Failed to read POSITION vertex attribute.");
+			}
 
-				if (!cgltf_accessor_read_float(
+			if (normalAccessor != nullptr &&
+				!cgltf_accessor_read_float(
+					normalAccessor,
+					vertexIndex,
+					normal.data(),
+					normal.size()))
+			{
+				throw std::runtime_error(
+					"Failed to read NORMAL vertex attribute.");
+			}
+
+			if (textureCoordinateAccessor != nullptr &&
+				!cgltf_accessor_read_float(
+					textureCoordinateAccessor,
+					vertexIndex,
+					textureCoordinates.data(),
+					textureCoordinates.size()))
+			{
+				throw std::runtime_error(
+					"Failed to read TEXCOORD_0 vertex attribute.");
+			}
+
+			if (tangentAccessor != nullptr &&
+				!cgltf_accessor_read_float(
+					tangentAccessor,
+					vertexIndex,
+					tangent.data(),
+					tangent.size()))
+			{
+				throw std::runtime_error(
+					"Failed to read TANGENT vertex attribute.");
+			}
+
+			if (colorAccessor != nullptr &&
+				!cgltf_accessor_read_float(
 					colorAccessor,
 					vertexIndex,
-					color,
-					colorComponentCount))
-				{
-					throw std::runtime_error(
-						"Failed to read glTF vertex color: " +
-						path.string());
-				}
+					color.data(),
+					color.size()))
+			{
+				throw std::runtime_error(
+					"Failed to read COLOR_0 vertex attribute.");
 			}
 
 			meshData.vertices.push_back(
 				MeshVertex{
-					.position = {
-						position[0],
-						position[1],
-						position[2]
-					},
+					.position = position,
+					.normal = normal,
+					.textureCoordinates =
+						textureCoordinates,
+					.tangent = tangent,
 					.color = {
 						color[0],
 						color[1],
