@@ -188,6 +188,7 @@ namespace ForgeSim::Sandbox
 					framebufferExtent,
 					view,
 					projection,
+					m_Renderer.ObjectLocalBounds(),
 					m_Scene.Objects()
 				);
 			}
@@ -196,7 +197,9 @@ namespace ForgeSim::Sandbox
 				m_Scene.Objects(),
 				selectionController.SelectedObjectId(),
 				view,
-				projection
+				projection,
+				m_DebugUI.ShowGrid(),
+				m_DebugUI.ShowObjectBounds()
 			);
 
 			SandboxObject* selectedObject = nullptr;

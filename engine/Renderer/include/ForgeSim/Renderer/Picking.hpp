@@ -5,6 +5,8 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
+#include <ForgeSim/Renderer/Bounds.hpp>
+
 namespace ForgeSim::Renderer
 {
 	struct Ray
@@ -17,12 +19,6 @@ namespace ForgeSim::Renderer
 	{
 		glm::vec3 center;
 		float radius;
-	};
-
-	struct AxisAlignedBoundingBox
-	{
-		glm::vec3 minimum;
-		glm::vec3 maximum;
 	};
 
 	[[nodiscard]] std::optional<float>

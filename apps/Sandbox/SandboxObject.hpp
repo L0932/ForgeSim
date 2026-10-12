@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include <ForgeSim/Renderer/Bounds.hpp>
+
 namespace ForgeSim::Sandbox
 {
 	using SandboxObjectId = std::uint64_t;

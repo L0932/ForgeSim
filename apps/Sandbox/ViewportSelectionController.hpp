@@ -9,6 +9,7 @@
 
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Platform/InputState.hpp>
+#include <ForgeSim/Renderer/Bounds.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -21,6 +22,7 @@ namespace ForgeSim::Sandbox
 			Platform::FramebufferExtent framebufferExtent,
 			const glm::mat4& view,
 			const glm::mat4& projection,
+			const Renderer::AxisAlignedBoundingBox& localBounds,
 			std::span<const SandboxObject> objects);
 
 		[[nodiscard]] std::optional<SandboxObjectId>

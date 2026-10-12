@@ -8,20 +8,13 @@
 
 namespace ForgeSim::Sandbox
 {
-	namespace
-	{
-		constexpr Renderer::AxisAlignedBoundingBox unitCubeBounds{
-			.minimum = glm::vec3{ -0.5f },
-			.maximum = glm::vec3{ 0.5f }
-		};
-	}
-
 	void ViewportSelectionController::Update(
 		const Platform::InputState& input,
 		Platform::WindowExtent windowExtent,
 		Platform::FramebufferExtent framebufferExtent,
 		const glm::mat4& view,
 		const glm::mat4& projection,
+		const Renderer::AxisAlignedBoundingBox& localBounds,
 		std::span<const SandboxObject> objects)
 	{
 		const auto leftMouseState =
@@ -79,7 +72,7 @@ namespace ForgeSim::Sandbox
 			const auto hitDistance =
 				IntersectRayTransformedBox(
 					pickingRay,
-					unitCubeBounds,
+					localBounds,
 					object.transform.ModelMatrix());
 
 			if (hitDistance &&

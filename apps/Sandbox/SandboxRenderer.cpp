@@ -7,9 +7,10 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 #include <glad/gl.h>
+#include <glm/common.hpp>
+#include <glm/vec3.hpp>
 
 #include <ForgeSim/Assets/GltfLoader.hpp>
 
@@ -21,12 +22,6 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
-		struct GridVertex
-		{
-			float position[3];
-			float color[3];
-		};
-
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
 		{
@@ -55,137 +50,35 @@ namespace ForgeSim::Sandbox
 			return contents.str();
 		}
 
+		[[nodiscard]] std::string LoadShaderSource(
+			const std::filesystem::path& filename)
+		{
+			const std::filesystem::path shaderPath =
+				std::filesystem::path{
+					FORGESIM_SANDBOX_ASSET_DIRECTORY
+			} /
+				"shaders" /
+				filename;
+
+			return LoadTextFile(shaderPath);
+		}
+
 		[[nodiscard]]
 		ForgeSim::Renderer::OpenGL::ShaderProgram CreateShaderProgram(
 			const std::filesystem::path& vertexShaderFilename,
 			const std::filesystem::path& fragmentShaderFilename)
 		{
-			const std::filesystem::path shaderDirectory =
-				std::filesystem::path{
-					FORGESIM_SANDBOX_ASSET_DIRECTORY
-			} / "shaders";
-
-			const std::filesystem::path vertexShaderPath =
-				shaderDirectory / vertexShaderFilename;
-
-			const std::filesystem::path fragmentShaderPath =
-				shaderDirectory / fragmentShaderFilename;
-
 			const std::string vertexShaderSource =
-				LoadTextFile(vertexShaderPath);
+				LoadShaderSource(vertexShaderFilename);
 
 			const std::string fragmentShaderSource =
-				LoadTextFile(fragmentShaderPath);
+				LoadShaderSource(fragmentShaderFilename);
 
 			return ForgeSim::Renderer::OpenGL::ShaderProgram{
 				vertexShaderSource,
 				fragmentShaderSource
 			};
 		}
-
-		[[nodiscard]] std::vector<GridVertex> CreateGridVertices()
-		{
-			constexpr int halfLineCount = 10;
-			constexpr float spacing = 1.0f;
-			constexpr float gridHeight = -0.75f;
-
-			constexpr float gridColor = 0.35f;
-
-			const float extent =
-				static_cast<float>(halfLineCount) * spacing;
-
-			std::vector<GridVertex> gridVertices;
-
-			gridVertices.reserve(
-				static_cast<std::size_t>(
-					(halfLineCount * 2 + 1) * 4));
-
-			for (int line = -halfLineCount; line <= halfLineCount; ++line)
-			{
-				const float offset =
-					static_cast<float>(line) * spacing;
-
-				// Lines parallel to X. The center line represents the X axis.
-				const float xAxisRed =
-					line == 0 ? 0.9f : gridColor;
-
-				const float xAxisGreen =
-					line == 0 ? 0.2f : gridColor;
-
-				const float xAxisBlue =
-					line == 0 ? 0.2f : gridColor;
-
-				gridVertices.push_back(
-					GridVertex{
-						.position = {
-							-extent,
-							gridHeight,
-							offset
-						},
-						.color = {
-							xAxisRed,
-							xAxisGreen,
-							xAxisBlue
-						}
-					});
-
-				gridVertices.push_back(
-					GridVertex{
-						.position = {
-							extent,
-							gridHeight,
-							offset
-						},
-						.color = {
-							xAxisRed,
-							xAxisGreen,
-							xAxisBlue
-						}
-					});
-
-				// Lines parallel to Z. The center line represents the Z axis.
-				const float zAxisRed =
-					line == 0 ? 0.2f : gridColor;
-
-				const float zAxisGreen =
-					line == 0 ? 0.4f : gridColor;
-
-				const float zAxisBlue =
-					line == 0 ? 0.9f : gridColor;
-
-				gridVertices.push_back(
-					GridVertex{
-						.position = {
-							offset,
-							gridHeight,
-							-extent
-						},
-						.color = {
-							zAxisRed,
-							zAxisGreen,
-							zAxisBlue
-						}
-					});
-
-				gridVertices.push_back(
-					GridVertex{
-						.position = {
-							offset,
-							gridHeight,
-							extent
-						},
-						.color = {
-							zAxisRed,
-							zAxisGreen,
-							zAxisBlue
-						}
-					});
-			}
-			return gridVertices;
-		}
-
-		const std::vector<GridVertex> gridVertices =
-			CreateGridVertices();
 
 		[[nodiscard]] ForgeSim::Assets::MeshData LoadObjectMesh(
 			const std::filesystem::path& filename)
@@ -199,19 +92,56 @@ namespace ForgeSim::Sandbox
 
 			return ForgeSim::Assets::LoadGltfMesh(modelPath);
 		}
+
+		[[nodiscard]]
+		Renderer::AxisAlignedBoundingBox CalculateMeshBounds(
+			const Assets::MeshData& mesh)
+		{
+			if (mesh.vertices.empty())
+			{
+				throw std::runtime_error(
+					"Cannot calculate bounds for an empty mesh.");
+			}
+
+			const Assets::MeshVertex& firstVertex =
+				mesh.vertices.front();
+
+			glm::vec3 minimum{
+				firstVertex.position[0],
+				firstVertex.position[1],
+				firstVertex.position[2]
+			};
+
+			glm::vec3 maximum = minimum;
+
+			for (const Assets::MeshVertex& vertex : mesh.vertices)
+			{
+				const glm::vec3 position{
+					vertex.position[0],
+					vertex.position[1],
+					vertex.position[2]
+				};
+
+				minimum = glm::min(minimum, position);
+				maximum = glm::max(maximum, position);
+			}
+
+			return Renderer::AxisAlignedBoundingBox{
+				.minimum = minimum,
+				.maximum = maximum
+			};
+		}
 	}
 
 	SandboxRenderer::SandboxRenderer()
 		: m_ObjectMesh(
 			LoadObjectMesh("BoxVertexColors.glb"))
+		, m_ObjectLocalBounds(
+			CalculateMeshBounds(m_ObjectMesh))
 		, m_ObjectShaderProgram(
 			CreateShaderProgram(
 				"Object.vert",
 				"Object.frag"))
-		, m_GridShaderProgram(
-			CreateShaderProgram(
-				"Grid.vert",
-				"Grid.frag"))
 		, m_VertexBuffer(
 			m_ObjectMesh.vertices.data(),
 			m_ObjectMesh.vertices.size() *
@@ -221,14 +151,14 @@ namespace ForgeSim::Sandbox
 			m_ObjectMesh.indices.size() *
 			sizeof(std::uint32_t))
 		, m_VertexArray()
-		, m_GridVertexBuffer(
-			gridVertices.data(),
-			gridVertices.size() *
-			sizeof(GridVertex))
-		, m_GridVertexArray()
-		, m_GridVertexCount(gridVertices.size())
-		// Vertex-array configuration and OpenGL state initialization.
+		, m_GridVertices(
+			ForgeSim::Renderer::CreateReferenceGridLines(
+				ForgeSim::Renderer::ReferenceGridSpecification{}))
+		, m_DebugLineRenderer(
+			LoadShaderSource("Grid.vert"),
+			LoadShaderSource("Grid.frag"))	
 	{
+		// Configure object vertex data and persistent OpenGL state.
 		constexpr std::uint32_t vertexBindingIndex = 0;
 
 		m_VertexArray.SetVertexBuffer(
@@ -254,23 +184,6 @@ namespace ForgeSim::Sandbox
 				Assets::MeshVertex,
 				color));
 
-		m_GridVertexArray.SetVertexBuffer(
-			m_GridVertexBuffer,
-			vertexBindingIndex,
-			sizeof(GridVertex));
-
-		m_GridVertexArray.SetFloatAttribute(
-			0,
-			vertexBindingIndex,
-			3,
-			offsetof(GridVertex, position));
-
-		m_GridVertexArray.SetFloatAttribute(
-			1,
-			vertexBindingIndex,
-			3,
-			offsetof(GridVertex, color));
-
 		glClearColor(
 			0.05f,
 			0.15f,
@@ -285,34 +198,22 @@ namespace ForgeSim::Sandbox
 		std::span<const SandboxObject> objects,
 		std::optional<SandboxObjectId> selectedObjectId,
 		const glm::mat4& view,
-		const glm::mat4& projection)
+		const glm::mat4& projection,
+		bool showGrid,
+		bool showObjectBounds)
 	{
 		glClear(
 			GL_COLOR_BUFFER_BIT |
 			GL_DEPTH_BUFFER_BIT);
 
-		// Render the reference grid.
-		m_GridShaderProgram.Bind();
-
-		m_GridShaderProgram.SetMatrix4x4(
-			"uModel",
-			glm::mat4{ 1.0f });
-
-		m_GridShaderProgram.SetMatrix4x4(
-			"uView",
-			view);
-
-		m_GridShaderProgram.SetMatrix4x4(
-			"uProjection",
-			projection);
-
-		m_GridVertexArray.Bind();
-
-		glDrawArrays(
-			GL_LINES,
-			0,
-			static_cast<GLsizei>(
-				m_GridVertexCount));
+		if (showGrid)
+		{
+			// Render the reference grid.
+			m_DebugLineRenderer.Render(
+				m_GridVertices,
+				view,
+				projection);
+		}
 
 		// Render Sandbox objects.
 		m_ObjectShaderProgram.Bind();
@@ -326,6 +227,13 @@ namespace ForgeSim::Sandbox
 			projection);
 
 		m_VertexArray.Bind();
+
+		m_BoundsVertices.clear();
+
+		if (showObjectBounds)
+		{
+			m_BoundsVertices.reserve(objects.size() * 24);
+		}
 
 		for (const SandboxObject& object : objects)
 		{
@@ -347,6 +255,49 @@ namespace ForgeSim::Sandbox
 					m_ObjectMesh.indices.size()),
 				GL_UNSIGNED_INT,
 				nullptr);
+
+			if (showObjectBounds)
+			{
+				const glm::vec3 boundsColor =
+					isSelected
+					? glm::vec3{ 1.0f, 0.85f, 0.1f }
+				: glm::vec3{ 0.1f, 0.9f, 1.0f };
+
+				const auto boundsVertices =
+					Renderer::CreateWireframeBoxLines(
+						m_ObjectLocalBounds,
+						object.transform.ModelMatrix(),
+						boundsColor);
+
+				m_BoundsVertices.insert(
+					m_BoundsVertices.end(),
+					boundsVertices.begin(),
+					boundsVertices.end());
+			}
 		}
+
+		if (showObjectBounds && !m_BoundsVertices.empty())
+		{
+			const GLboolean depthTestWasEnabled =
+				glIsEnabled(GL_DEPTH_TEST);
+
+			glDisable(GL_DEPTH_TEST);
+
+			m_DebugLineRenderer.Render(
+				m_BoundsVertices,
+				view,
+				projection);
+			
+			if (depthTestWasEnabled == GL_TRUE)
+			{
+				glEnable(GL_DEPTH_TEST);
+			}
+		}
+	}
+
+	const Renderer::AxisAlignedBoundingBox&
+		SandboxRenderer::ObjectLocalBounds() const noexcept
+	{
+		return m_ObjectLocalBounds;
 	}
 }

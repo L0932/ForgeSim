@@ -11,13 +11,15 @@ target_sources(
 		ForgeSimRendererOpenGL
 	PRIVATE
 		src/Buffer.cpp
+		src/DebugLineRenderer.cpp
 		src/ShaderProgram.cpp
 		src/VertexArray.cpp
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS include
 		FILES
-			include/ForgeSim/Renderer/OpenGL/Buffer.hpp 
+			include/ForgeSim/Renderer/OpenGL/Buffer.hpp
+			include/ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/ShaderProgram.hpp
 			include/ForgeSim/Renderer/OpenGL/VertexArray.hpp
 )
@@ -31,6 +33,7 @@ target_include_directories(
 target_link_libraries(
 	ForgeSimRendererOpenGL
 	PUBLIC
+		ForgeSim::Renderer
 		glm::glm-header-only
 	PRIVATE
 		ForgeSim::Glad

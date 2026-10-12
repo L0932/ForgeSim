@@ -9,12 +9,15 @@ add_library(
 target_sources(
 	ForgeSimRenderer
 	PRIVATE
+		src/DebugGeometry.cpp
 		src/PerspectiveCamera.cpp
 		src/Picking.cpp
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS include
 		FILES
+			include/ForgeSim/Renderer/Bounds.hpp
+			include/ForgeSim/Renderer/DebugGeometry.hpp
 			include/ForgeSim/Renderer/PerspectiveCamera.hpp
 			include/ForgeSim/Renderer/Picking.hpp
 )

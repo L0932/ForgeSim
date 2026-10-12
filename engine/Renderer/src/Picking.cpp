@@ -1,3 +1,4 @@
+#include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/Picking.hpp>
 
 #include <algorithm>

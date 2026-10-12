@@ -82,6 +82,14 @@ namespace ForgeSim::Sandbox
 
 		ImGui::Separator();
 
+		ImGui::Checkbox(
+			"Show reference grid",
+			&m_ShowGrid);
+
+		ImGui::Checkbox(
+			"Show object bounds",
+			&m_ShowObjectBounds);
+
 		if (selectedObject == nullptr)
 		{
 			ImGui::TextUnformatted("No object selected.");
@@ -89,7 +97,7 @@ namespace ForgeSim::Sandbox
 		else
 		{
 			ImGui::Text(
-				"Selected object: %llu",
+				"Selected objectID: %llu",
 				static_cast<unsigned long long>(
 					selectedObject->id));
 
@@ -141,5 +149,15 @@ namespace ForgeSim::Sandbox
 		const noexcept
 	{
 		return ImGui::GetIO().WantCaptureKeyboard;
+	}
+
+	bool SandboxDebugUI::ShowGrid() const noexcept
+	{
+		return m_ShowGrid;
+	}
+
+	bool SandboxDebugUI::ShowObjectBounds() const noexcept
+	{
+		return m_ShowObjectBounds;
 	}
 }

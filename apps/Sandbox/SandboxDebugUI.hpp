@@ -36,7 +36,12 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool WantsKeyboardCapture()
 			const noexcept;
 
+		[[nodiscard]] bool ShowGrid() const noexcept;
+		[[nodiscard]] bool ShowObjectBounds() const noexcept;
+
 	private:
 		bool m_IsVisible = true;
+		bool m_ShowGrid = true;
+		bool m_ShowObjectBounds = false;
 	};
 }

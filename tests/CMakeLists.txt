@@ -193,6 +193,7 @@ target_include_directories(
 target_link_libraries(
 	ForgeSimTransformTests
 	PRIVATE
+		ForgeSim::Renderer
 		glm::glm
 )
 
@@ -283,6 +284,39 @@ set_target_properties(
 add_test(
 	NAME ForgeSim.Renderer.Picking
 	COMMAND ForgeSimRendererPickingTests
+)
+
+add_executable(ForgeSimDebugGeometryTests)
+
+target_sources(
+	ForgeSimDebugGeometryTests
+	PRIVATE
+		DebugGeometryTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimDebugGeometryTests
+	PRIVATE
+		ForgeSim::Renderer
+)
+
+target_compile_features(
+	ForgeSimDebugGeometryTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimDebugGeometryTests)
+
+set_target_properties(
+	ForgeSimDebugGeometryTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Renderer.DebugGeometry
+	COMMAND ForgeSimDebugGeometryTests
 )
 
 set_target_properties(
