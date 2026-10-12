@@ -3,6 +3,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <glad/gl.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -244,6 +245,36 @@ namespace ForgeSim::Renderer::OpenGL
 			glDeleteProgram(m_Handle);
 			m_Handle = 0;
 		}
+	}
+
+	ShaderProgram::ShaderProgram(
+	ShaderProgram&& other) noexcept
+	: m_Handle(
+		std::exchange(
+			other.m_Handle,
+			0))
+	{
+	}
+
+	ShaderProgram& ShaderProgram::operator=(
+		ShaderProgram&& other) noexcept
+	{
+		if (this == &other)
+		{
+			return *this;
+		}
+
+		if (m_Handle != 0)
+		{
+			glDeleteProgram(m_Handle);
+		}
+
+		m_Handle =
+			std::exchange(
+				other.m_Handle,
+				0);
+
+		return *this;
 	}
 
 	void ShaderProgram::Bind() const noexcept

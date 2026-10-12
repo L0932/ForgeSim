@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 #include <glad/gl.h>
 
@@ -70,5 +71,18 @@ namespace ForgeSim::Renderer::OpenGL
 			0,
 			static_cast<GLsizei>(
 				vertices.size()));
+	}
+
+	void DebugLineRenderer::ReloadShaders(
+		std::string_view vertexShaderSource,
+		std::string_view fragmentShaderSource)
+	{
+		ShaderProgram replacement{
+			vertexShaderSource,
+			fragmentShaderSource
+		};
+
+		m_ShaderProgram =
+			std::move(replacement);
 	}
 }

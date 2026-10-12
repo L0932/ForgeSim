@@ -82,6 +82,8 @@ namespace ForgeSim::Sandbox
 				break;
 			}
 
+			m_Renderer.ReloadChangedShaders();
+
 			const ForgeSim::Platform::InputState& input =
 				m_Window.GetInputState();
 

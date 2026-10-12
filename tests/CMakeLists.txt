@@ -319,6 +319,42 @@ add_test(
 	COMMAND ForgeSimDebugGeometryTests
 )
 
+add_executable(ForgeSimShaderFileMonitorTests)
+
+target_sources(
+	ForgeSimShaderFileMonitorTests
+	PRIVATE
+		ShaderFileMonitorTest.cpp
+		${PROJECT_SOURCE_DIR}/apps/Sandbox/ShaderFileMonitor.cpp
+)
+
+target_include_directories(
+	ForgeSimShaderFileMonitorTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_compile_features(
+	ForgeSimShaderFileMonitorTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimShaderFileMonitorTests
+)
+
+set_target_properties(
+	ForgeSimShaderFileMonitorTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.ShaderFileMonitor
+	COMMAND ForgeSimShaderFileMonitorTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -329,6 +365,8 @@ set_target_properties(
 	ForgeSimPlatformGLFWTests
 	ForgeSimRendererPickingTests
 	ForgeSimTransformTests
+	ForgeSimDebugGeometryTests
+	ForgeSimShaderFileMonitorTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

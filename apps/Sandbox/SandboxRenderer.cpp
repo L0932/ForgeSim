@@ -2,17 +2,24 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <glad/gl.h>
 #include <glm/common.hpp>
 #include <glm/vec3.hpp>
 
 #include <ForgeSim/Assets/GltfLoader.hpp>
+#include <ForgeSim/Core/Log.hpp>
+
+#ifndef FORGESIM_SANDBOX_SHADER_DIRECTORY
+#error FORGESIM_SANDBOX_SHADER_DIRECTORY must be defined by CMake
+#endif
 
 #ifndef FORGESIM_SANDBOX_ASSET_DIRECTORY
 #error FORGESIM_SANDBOX_ASSET_DIRECTORY must be defined by CMake
@@ -50,17 +57,19 @@ namespace ForgeSim::Sandbox
 			return contents.str();
 		}
 
+		[[nodiscard]] std::filesystem::path ShaderPath(
+			const std::filesystem::path& filename)
+		{
+			return std::filesystem::path{
+				FORGESIM_SANDBOX_SHADER_DIRECTORY
+			} / filename;
+		}
+
 		[[nodiscard]] std::string LoadShaderSource(
 			const std::filesystem::path& filename)
 		{
-			const std::filesystem::path shaderPath =
-				std::filesystem::path{
-					FORGESIM_SANDBOX_ASSET_DIRECTORY
-			} /
-				"shaders" /
-				filename;
-
-			return LoadTextFile(shaderPath);
+			return LoadTextFile(
+				ShaderPath(filename));
 		}
 
 		[[nodiscard]]
@@ -138,10 +147,14 @@ namespace ForgeSim::Sandbox
 			LoadObjectMesh("BoxVertexColors.glb"))
 		, m_ObjectLocalBounds(
 			CalculateMeshBounds(m_ObjectMesh))
+		, m_ObjectShaderMonitor(
+			ShaderPath("Object.vert"),
+			ShaderPath("Object.frag")
+		)
 		, m_ObjectShaderProgram(
 			CreateShaderProgram(
-				"Object.vert",
-				"Object.frag"))
+				m_ObjectShaderMonitor.VertexShaderPath(),
+				m_ObjectShaderMonitor.FragmentShaderPath()))
 		, m_VertexBuffer(
 			m_ObjectMesh.vertices.data(),
 			m_ObjectMesh.vertices.size() *
@@ -154,9 +167,14 @@ namespace ForgeSim::Sandbox
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
 				ForgeSim::Renderer::ReferenceGridSpecification{}))
+		, m_GridShaderMonitor(
+			ShaderPath("Grid.vert"),
+			ShaderPath("Grid.frag"))
 		, m_DebugLineRenderer(
-			LoadShaderSource("Grid.vert"),
-			LoadShaderSource("Grid.frag"))	
+			LoadTextFile(
+				m_GridShaderMonitor.VertexShaderPath()),
+			LoadTextFile(
+				m_GridShaderMonitor.FragmentShaderPath()))
 	{
 		// Configure object vertex data and persistent OpenGL state.
 		constexpr std::uint32_t vertexBindingIndex = 0;
@@ -294,6 +312,60 @@ namespace ForgeSim::Sandbox
 			}
 		}
 	}
+
+	void SandboxRenderer::ReloadChangedShaders()
+	{
+		if (m_ObjectShaderMonitor.PollForChanges())
+		{
+			try
+			{
+				auto replacement =
+					CreateShaderProgram(
+						m_ObjectShaderMonitor.VertexShaderPath(),
+						m_ObjectShaderMonitor.FragmentShaderPath());
+
+				m_ObjectShaderProgram =
+					std::move(replacement);
+
+				ForgeSim::Core::LogInfo(
+					"Reloaded object shader program.");
+			}
+			catch (const std::exception& exception)
+			{
+				ForgeSim::Core::LogError(
+					"Failed to reload object shader program: " +
+					std::string{ exception.what() });
+			}
+		}
+
+		if (m_GridShaderMonitor.PollForChanges())
+		{
+			try
+			{
+				const std::string vertexShaderSource =
+					LoadTextFile(
+						m_GridShaderMonitor.VertexShaderPath());
+
+				const std::string fragmentShaderSource =
+					LoadTextFile(
+						m_GridShaderMonitor.FragmentShaderPath());
+
+				m_DebugLineRenderer.ReloadShaders(
+					vertexShaderSource,
+					fragmentShaderSource);
+
+				ForgeSim::Core::LogInfo(
+					"Reloaded grid shader program.");
+			}
+			catch (const std::exception& exception)
+			{
+				ForgeSim::Core::LogError(
+					"Failed to reload grid shader program: " +
+					std::string{ exception.what() });
+			}
+		}
+	}
+
 
 	const Renderer::AxisAlignedBoundingBox&
 		SandboxRenderer::ObjectLocalBounds() const noexcept

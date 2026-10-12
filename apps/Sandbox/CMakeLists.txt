@@ -29,7 +29,8 @@ add_dependencies(
 target_compile_definitions(
 	ForgeSimSandbox
 	PRIVATE
-		FORGESIM_SANDBOX_ASSET_DIRECTORY="$<TARGET_FILE_DIR:ForgeSimSandbox>/assets"
+		FORGESIM_SANDBOX_ASSET_DIRECTORY="${CMAKE_CURRENT_BINARY_DIR}/assets"
+		FORGESIM_SANDBOX_SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
 )
 
 target_sources(
@@ -44,6 +45,8 @@ target_sources(
 		SandboxRenderer.cpp
 		SandboxScene.hpp
 		SandboxScene.cpp
+		ShaderFileMonitor.hpp
+		ShaderFileMonitor.cpp
 		FreeCameraController.hpp
 		FreeCameraController.cpp
 		SandboxObject.hpp
