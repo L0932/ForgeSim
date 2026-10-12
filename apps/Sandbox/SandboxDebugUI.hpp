@@ -5,6 +5,11 @@ namespace ForgeSim::Platform
 	class GlfwWindow;
 }
 
+namespace ForgeSim::Core
+{
+	struct RuntimeDiagnosticsSnapshot;
+}
+
 namespace ForgeSim::Sandbox
 {
 	struct SandboxObject;
@@ -27,7 +32,10 @@ namespace ForgeSim::Sandbox
 			SandboxDebugUI&&) = delete;
 
 		void BeginFrame();
-		void Draw(SandboxObject* selectedObject);
+		void Draw(
+			SandboxObject* selectedObject,
+			const Core::RuntimeDiagnosticsSnapshot*
+			diagnosticsSnapshot);
 		void EndFrame();
 
 		[[nodiscard]] bool WantsMouseCapture()
@@ -39,9 +47,13 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool ShowGrid() const noexcept;
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
 
+		[[nodiscard]] bool RuntimeDiagnosticsEnabled()
+			const noexcept;
+
 	private:
 		bool m_IsVisible = true;
 		bool m_ShowGrid = true;
 		bool m_ShowObjectBounds = false;
+		bool m_RuntimeDiagnosticsEnabled = true;
 	};
 }

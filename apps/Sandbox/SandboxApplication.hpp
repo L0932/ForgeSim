@@ -4,6 +4,8 @@
 #include "SandboxRenderer.hpp"
 #include "SandboxScene.hpp"
 
+#include <optional>
+
 #include <ForgeSim/Assets/MeshData.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>

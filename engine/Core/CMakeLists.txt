@@ -10,6 +10,7 @@ target_sources(
         src/FixedStepScheduler.cpp
         src/FrameStatistics.cpp
         src/Log.cpp
+        src/RuntimeDiagnostics.cpp
         src/Timer.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -21,6 +22,7 @@ target_sources(
             include/ForgeSim/Core/FixedStepScheduler.hpp
             include/ForgeSim/Core/FrameStatistics.hpp
             include/ForgeSim/Core/Log.hpp
+            include/ForgeSim/Core/RuntimeDiagnostics.hpp
             include/ForgeSim/Core/Timer.hpp
 )
 

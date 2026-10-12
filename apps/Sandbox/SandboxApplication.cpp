@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -12,7 +13,7 @@
 #include <glm/vec3.hpp>
 
 #include <ForgeSim/Core/FixedStepScheduler.hpp>
-#include <ForgeSim/Core/FrameStatistics.hpp>
+#include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/Timer.hpp>
 #include <ForgeSim/Platform/InputState.hpp>
@@ -54,7 +55,11 @@ namespace ForgeSim::Sandbox
 		ViewportSelectionController selectionController;
 
 		ForgeSim::Core::Timer timer;
-		ForgeSim::Core::FrameStatistics frameStats;
+		ForgeSim::Core::RuntimeDiagnostics runtimeDiagnostics;
+
+		std::optional<
+			ForgeSim::Core::RuntimeDiagnosticsSnapshot>
+			latestDiagnosticsSnapshot;
 
 		using FixedStepScheduler =
 			ForgeSim::Core::FixedStepScheduler;
@@ -70,8 +75,6 @@ namespace ForgeSim::Sandbox
 			fixedStep,
 			maximumStepsPerFrame
 		};
-
-		std::uint64_t fixedUpdateCount = 0;
 
 		while (!m_Window.ShouldClose())
 		{
@@ -98,6 +101,14 @@ namespace ForgeSim::Sandbox
 			}
 
 			m_DebugUI.BeginFrame();
+
+			runtimeDiagnostics.SetEnabled(
+				m_DebugUI.RuntimeDiagnosticsEnabled());
+
+			if (!runtimeDiagnostics.IsEnabled())
+			{
+				latestDiagnosticsSnapshot.reset();
+			}
 
 			const bool uiWantsMouse =
 				m_DebugUI.WantsMouseCapture();
@@ -135,36 +146,48 @@ namespace ForgeSim::Sandbox
 				++step)
 			{
 				// Perform fixed-step update logic here.
-				++fixedUpdateCount;
 			}
 
-			if (fixedStepResult.droppedTime >
-				FixedStepScheduler::Duration::zero())
+			if (const auto diagnosticsSnapshot =
+				runtimeDiagnostics.AddFrame(
+					frameDelta,
+					fixedStepResult))
 			{
+				latestDiagnosticsSnapshot =
+					*diagnosticsSnapshot;
+
 				const double droppedMilliseconds =
 					std::chrono::duration<double, std::milli>{
-						fixedStepResult.droppedTime
+						diagnosticsSnapshot->droppedSimulationTime
 				}.count();
 
 				ForgeSim::Core::LogInfo(
-					"Dropped simulation time: " +
-					std::to_string(droppedMilliseconds) +
-					"ms");
-			}
-
-			if (const auto snapshot =
-				frameStats.AddFrame(frameDelta))
-			{
-				ForgeSim::Core::LogInfo(
 					"FPS: " +
-					std::to_string(snapshot->framesPerSecond) +
+					std::to_string(
+						diagnosticsSnapshot
+						->frameStatistics
+						.framesPerSecond) +
+
 					", Average Frame Time: " +
 					std::to_string(
-						snapshot->averageFrameTimeMilliseconds) +
-					" ms | Fixed updates: " +
-					std::to_string(fixedUpdateCount));
+						diagnosticsSnapshot
+						->frameStatistics
+						.averageFrameTimeMilliseconds) +
+					" ms" +
 
-				fixedUpdateCount = 0;
+					" | Fixed updates: " +
+					std::to_string(
+						diagnosticsSnapshot
+						->fixedUpdateCount) +
+
+					" | Catch-up limit events: " +
+					std::to_string(
+						diagnosticsSnapshot
+						->catchUpLimitedFrameCount) +
+
+					" | Dropped simulation time: " +
+					std::to_string(droppedMilliseconds) +
+					" ms");
 			}
 
 			if (!uiWantsMouse &&
@@ -213,7 +236,12 @@ namespace ForgeSim::Sandbox
 					m_Scene.FindObject(*selectedObjectID);
 			}
 
-			m_DebugUI.Draw(selectedObject);
+			m_DebugUI.Draw(
+				selectedObject,
+				latestDiagnosticsSnapshot
+				? &*latestDiagnosticsSnapshot
+				: nullptr);
+
 			m_DebugUI.EndFrame();
 
 			m_Window.SwapBuffers();

@@ -1,6 +1,7 @@
 #include "SandboxDebugUI.hpp"
 #include "SandboxObject.hpp"
 
+#include <chrono>
 #include <stdexcept>
 
 #include <imgui.h>
@@ -8,6 +9,7 @@
 #include <imgui_impl_opengl3.h>
 #include <glm/trigonometric.hpp>
 
+#include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 
 namespace ForgeSim::Sandbox
@@ -63,7 +65,10 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	void SandboxDebugUI::Draw(SandboxObject* selectedObject)
+	void SandboxDebugUI::Draw(
+		SandboxObject* selectedObject, 
+		const Core::RuntimeDiagnosticsSnapshot*
+		diagnosticsSnapshot)
 	{
 		if (!m_IsVisible)
 		{
@@ -89,6 +94,67 @@ namespace ForgeSim::Sandbox
 		ImGui::Checkbox(
 			"Show object bounds",
 			&m_ShowObjectBounds);
+
+		ImGui::SeparatorText("Runtime Diagnostics");
+
+		ImGui::Checkbox(
+			"Enable runtime diagnostics",
+			&m_RuntimeDiagnosticsEnabled);
+
+		if (!m_RuntimeDiagnosticsEnabled)
+		{
+			ImGui::TextDisabled(
+				"Runtime diagnostics are disabled.");
+		}
+		else if (diagnosticsSnapshot == nullptr)
+		{
+			ImGui::TextDisabled(
+				"Collecting runtime diagnostics...");
+		}
+		else
+		{
+			const double droppedMilliseconds =
+				std::chrono::duration<double, std::milli>{
+					diagnosticsSnapshot->droppedSimulationTime
+			}.count();
+
+			ImGui::Text(
+				"Frame rate: %.1f FPS",
+				diagnosticsSnapshot
+				->frameStatistics
+				.framesPerSecond);
+
+			ImGui::Text(
+				"Average frame time: %.3f ms",
+				diagnosticsSnapshot
+				->frameStatistics
+				.averageFrameTimeMilliseconds);
+
+			ImGui::Text(
+				"Frames sampled: %llu",
+				static_cast<unsigned long long>(
+					diagnosticsSnapshot
+					->frameStatistics
+					.frameCount));
+
+			ImGui::Text(
+				"Fixed updates: %llu",
+				static_cast<unsigned long long>(
+					diagnosticsSnapshot
+					->fixedUpdateCount));
+
+			ImGui::Text(
+				"Catch-up limit events: %llu",
+				static_cast<unsigned long long>(
+					diagnosticsSnapshot
+					->catchUpLimitedFrameCount));
+
+			ImGui::Text(
+				"Dropped simulation time: %.3f ms",
+				droppedMilliseconds);
+		}
+
+		ImGui::SeparatorText("Selected Object");
 
 		if (selectedObject == nullptr)
 		{
@@ -159,5 +225,11 @@ namespace ForgeSim::Sandbox
 	bool SandboxDebugUI::ShowObjectBounds() const noexcept
 	{
 		return m_ShowObjectBounds;
+	}
+
+	bool SandboxDebugUI::RuntimeDiagnosticsEnabled()
+		const noexcept
+	{
+		return m_RuntimeDiagnosticsEnabled;
 	}
 }

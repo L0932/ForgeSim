@@ -355,6 +355,41 @@ add_test(
 	COMMAND ForgeSimShaderFileMonitorTests
 )
 
+add_executable(ForgeSimRuntimeDiagnosticsTests)
+
+target_sources(
+	ForgeSimRuntimeDiagnosticsTests
+	PRIVATE
+		RuntimeDiagnosticsTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimRuntimeDiagnosticsTests
+	PRIVATE
+		ForgeSim::Core
+)
+
+target_compile_features(
+	ForgeSimRuntimeDiagnosticsTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimRuntimeDiagnosticsTests
+)
+
+set_target_properties(
+	ForgeSimRuntimeDiagnosticsTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Core.RuntimeDiagnostics
+	COMMAND ForgeSimRuntimeDiagnosticsTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -367,6 +402,7 @@ set_target_properties(
 	ForgeSimTransformTests
 	ForgeSimDebugGeometryTests
 	ForgeSimShaderFileMonitorTests
+	ForgeSimRuntimeDiagnosticsTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )
