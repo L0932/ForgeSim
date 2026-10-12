@@ -1,4 +1,6 @@
+#include "SandboxScene.hpp"
 #include "Transform.hpp"
+
 
 #include <cmath>
 #include <cstdlib>
@@ -9,6 +11,10 @@
 
 namespace
 {
+	using ForgeSim::Sandbox::SandboxObject;
+	using ForgeSim::Sandbox::SandboxObjectId;
+	using ForgeSim::Sandbox::SandboxScene;
+
 	constexpr float tolerance = 1e-5f;
 
 	[[nodiscard]] bool NearlyEqual(
@@ -105,6 +111,61 @@ int main()
 		{
 			std::cerr <<
 				"Transform Y rotation produced an unexpected point.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// Finding an object by ID should provide mutable access to
+	// that object without modifying other objects.
+	{
+		SandboxScene scene;
+
+		const auto objects = scene.Objects();
+
+		if (objects.size() < 2)
+		{
+			std::cerr <<
+				"Sandbox scene did not contain enough test objects.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		const SandboxObjectId selectedId =
+			objects[0].id;
+
+		const glm::vec3 unchangedPosition =
+			objects[1].transform.position;
+
+		SandboxObject* selectedObject =
+			scene.FindObject(selectedId);
+
+		if (selectedObject == nullptr)
+		{
+			std::cerr <<
+				"Could not find an existing Sandbox object.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		selectedObject->transform.position =
+			glm::vec3{ 2.0f, 3.0f, 4.0f };
+
+		if (scene.FindObject(selectedId)->
+			transform.position !=
+			glm::vec3{ 2.0f, 3.0f, 4.0f })
+		{
+			std::cerr <<
+				"Transform changes were not retained by the scene.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		if (scene.Objects()[1].transform.position !=
+			unchangedPosition)
+		{
+			std::cerr <<
+				"Editing one object modified another object.\n";
 
 			return EXIT_FAILURE;
 		}

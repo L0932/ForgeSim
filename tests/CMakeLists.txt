@@ -181,6 +181,7 @@ target_sources(
 	PRIVATE
 		TransformTest.cpp
 		${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+		${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
 )
 
 target_include_directories(

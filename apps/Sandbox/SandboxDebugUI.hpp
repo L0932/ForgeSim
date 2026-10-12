@@ -7,6 +7,8 @@ namespace ForgeSim::Platform
 
 namespace ForgeSim::Sandbox
 {
+	struct SandboxObject;
+
 	class SandboxDebugUI final
 	{
 	public:
@@ -25,7 +27,7 @@ namespace ForgeSim::Sandbox
 			SandboxDebugUI&&) = delete;
 
 		void BeginFrame();
-		void Draw();
+		void Draw(SandboxObject* selectedObject);
 		void EndFrame();
 
 		[[nodiscard]] bool WantsMouseCapture()

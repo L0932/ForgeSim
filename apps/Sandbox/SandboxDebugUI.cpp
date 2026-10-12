@@ -1,10 +1,12 @@
 #include "SandboxDebugUI.hpp"
+#include "SandboxObject.hpp"
 
 #include <stdexcept>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <glm/trigonometric.hpp>
 
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 
@@ -61,7 +63,7 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	void SandboxDebugUI::Draw()
+	void SandboxDebugUI::Draw(SandboxObject* selectedObject)
 	{
 		if (!m_IsVisible)
 		{
@@ -77,6 +79,46 @@ namespace ForgeSim::Sandbox
 
 		ImGui::TextUnformatted(
 			"Press F1 to show or hide this panel.");
+
+		ImGui::Separator();
+
+		if (selectedObject == nullptr)
+		{
+			ImGui::TextUnformatted("No object selected.");
+		}
+		else
+		{
+			ImGui::Text(
+				"Selected object: %llu",
+				static_cast<unsigned long long>(
+					selectedObject->id));
+
+			ImGui::SeparatorText("Transform");
+
+			ImGui::DragFloat3(
+				"Position",
+				&selectedObject->transform.position.x,
+				0.05f,
+				0.0f,
+				0.0f,
+				"%.2f");
+
+			glm::vec3 rotationDegrees =
+				glm::degrees(
+					selectedObject->transform.rotationRadians);
+
+			if (ImGui::DragFloat3(
+				"Rotation",
+				&rotationDegrees.x,
+				1.0f,
+				0.0f,
+				0.0f,
+				"%.1f deg"))
+			{
+				selectedObject->transform.rotationRadians =
+					glm::radians(rotationDegrees);
+			}
+		}
 
 		ImGui::End();
 	}

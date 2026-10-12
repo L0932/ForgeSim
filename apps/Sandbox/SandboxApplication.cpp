@@ -199,7 +199,16 @@ namespace ForgeSim::Sandbox
 				projection
 			);
 
-			m_DebugUI.Draw();
+			SandboxObject* selectedObject = nullptr;
+
+			if (const auto selectedObjectID =
+				selectionController.SelectedObjectId())
+			{
+				selectedObject =
+					m_Scene.FindObject(*selectedObjectID);
+			}
+
+			m_DebugUI.Draw(selectedObject);
 			m_DebugUI.EndFrame();
 
 			m_Window.SwapBuffers();

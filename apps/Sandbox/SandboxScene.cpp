@@ -1,5 +1,7 @@
 #include "SandboxScene.hpp"
 
+#include <algorithm>
+
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
 
@@ -64,28 +66,32 @@ namespace ForgeSim::Sandbox
 	SandboxObject* SandboxScene::FindObject(
 		SandboxObjectId objectId) noexcept
 	{
-		for (SandboxObject& object : m_Objects)
-		{
-			if (object.id == objectId)
+		const auto iterator = std::find_if(
+			m_Objects.begin(),
+			m_Objects.end(),
+			[objectId](const SandboxObject& object)
 			{
-				return &object;
-			}
-		}
+				return object.id == objectId;
+			});
 
-		return nullptr;
+		return iterator != m_Objects.end()
+			? &*iterator
+			: nullptr;
 	}
 
 	const SandboxObject* SandboxScene::FindObject(
 		SandboxObjectId objectId) const noexcept
 	{
-		for (const SandboxObject& object : m_Objects)
-		{
-			if (object.id == objectId)
+		const auto iterator = std::find_if(
+			m_Objects.begin(),
+			m_Objects.end(),
+			[objectId](const SandboxObject& object)
 			{
-				return &object;
-			}
-		}
+				return object.id == objectId;
+			});
 
-		return nullptr;
+		return iterator != m_Objects.end()
+			? &*iterator
+			: nullptr;
 	}
 }
