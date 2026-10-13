@@ -3,6 +3,7 @@
 in vec3 vColor;
 in vec2 vTextureCoordinates;
 
+uniform vec4 uBaseColorFactor;
 uniform sampler2D uBaseColorTexture;
 uniform float uSelectionAmount;
 
@@ -15,21 +16,22 @@ void main()
 			uBaseColorTexture,
 			vTextureCoordinates);
 
-	vec3 baseColor =
-		sampledColor.rgb *
-		vColor;
+	vec4 baseColor =
+		sampledColor *
+		uBaseColorFactor *
+		vec4(vColor, 1.0);
 
-	vec3 selectionColor =
+	const vec3 selectionColor =
 		vec3(1.0, 0.65, 0.1);
 
 	vec3 finalColor =
 		mix(
-			baseColor,
+			baseColor.rgb,
 			selectionColor,
 			uSelectionAmount);
 
 	fragColor =
 		vec4(
 			finalColor,
-			sampledColor.a);
+			baseColor.a);
 }

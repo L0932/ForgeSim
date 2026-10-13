@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <stdexcept>
+#include <utility>
 
 #include <glad/gl.h>
 
@@ -27,6 +28,37 @@ namespace ForgeSim::Renderer::OpenGL
 			glDeleteVertexArrays(1, &m_Handle);
 			m_Handle = 0;
 		}
+	}
+
+	VertexArray::VertexArray(
+		VertexArray&& other) noexcept
+		: m_Handle(
+			std::exchange(
+				other.m_Handle,
+				0))
+	{}
+
+	VertexArray& VertexArray::operator=(
+		VertexArray&& other) noexcept
+	{
+		if (this == &other)
+		{
+			return *this;
+		}
+
+		if (m_Handle != 0)
+		{
+			glDeleteVertexArrays(
+				1,
+				&m_Handle);
+		}
+
+		m_Handle =
+			std::exchange(
+				other.m_Handle,
+				0);
+
+		return *this;
 	}
 
 	void VertexArray::SetVertexBuffer(

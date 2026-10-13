@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <stdexcept>
+#include <utility>
 
 #include <glad/gl.h>
 
@@ -56,6 +57,36 @@ namespace ForgeSim::Renderer::OpenGL
 			glDeleteBuffers(1, &m_Handle);
 			m_Handle = 0;
 		}
+	}
+
+	Buffer::Buffer(Buffer&& other) noexcept
+		: m_Handle(
+			std::exchange(
+				other.m_Handle,
+				0))
+	{}
+
+	Buffer& Buffer::operator=(
+		Buffer&& other) noexcept
+	{
+		if (this == &other)
+		{
+			return *this;
+		}
+
+		if (m_Handle != 0)
+		{
+			glDeleteBuffers(
+				1,
+				&m_Handle);
+		}
+
+		m_Handle =
+			std::exchange(
+				other.m_Handle,
+				0);
+
+		return *this;
 	}
 
 	unsigned int Buffer::Handle() const noexcept

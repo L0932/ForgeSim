@@ -14,9 +14,10 @@
 #include <glad/gl.h>
 #include <glm/common.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include <ForgeSim/Assets/GltfLoader.hpp>
-#include <ForgeSim/Assets/ImageLoader.hpp>
+#include <ForgeSim/Assets/SceneAsset.hpp>
 #include <ForgeSim/Core/Log.hpp>
 
 #ifndef FORGESIM_SANDBOX_SHADER_DIRECTORY
@@ -101,7 +102,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] ForgeSim::Assets::MeshData LoadObjectMesh(
+		[[nodiscard]] ForgeSim::Assets::SceneAsset LoadObjectScene(
 			const std::filesystem::path& filename)
 		{
 			const std::filesystem::path modelPath =
@@ -111,7 +112,7 @@ namespace ForgeSim::Sandbox
 				"models" /
 				filename;
 
-			return ForgeSim::Assets::LoadGltfMesh(modelPath);
+			return ForgeSim::Assets::LoadGltfScene(modelPath);
 		}
 
 		[[nodiscard]]
@@ -153,37 +154,36 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] std::filesystem::path TexturePath(
-			const std::filesystem::path& filename)
+		[[nodiscard]] const Assets::MeshPrimitiveData&
+			FirstPrimitive(
+				const Assets::SceneAsset& scene)
 		{
-			return
-				std::filesystem::path{
-					FORGESIM_SANDBOX_ASSET_DIRECTORY
-			} /
-				"textures" /
-				filename;
-		}
+			if (scene.meshes.empty())
+			{
+				throw std::runtime_error(
+					"Cannot render a scene without meshes.");
+			}
 
-		[[nodiscard]]
-		Renderer::OpenGL::Texture2D LoadTexture2D(
-			const std::filesystem::path& path)
-		{
-			const Assets::ImageData image =
-				Assets::LoadImage(path);
+			const Assets::SceneMeshData& mesh =
+				scene.meshes.front();
 
-			return Renderer::OpenGL::Texture2D{
-				image.width,
-				image.height,
-				image.pixels
-			};
+			if (mesh.primitives.empty())
+			{
+				throw std::runtime_error(
+					"Cannot render a mesh without primitives.");
+			}
+
+			return mesh.primitives.front();
 		}
 	}
 
 	SandboxRenderer::SandboxRenderer()
-		: m_ObjectMesh(
-			LoadObjectMesh("BoxTextured.glb"))
+		: m_ObjectSceneAsset(
+			LoadObjectScene("BoxTextured.glb"))
 		, m_ObjectLocalBounds(
-			CalculateMeshBounds(m_ObjectMesh))
+			CalculateMeshBounds(
+				FirstPrimitive(
+					m_ObjectSceneAsset).geometry))
 		, m_ObjectShaderMonitor(
 			ShaderPath("Object.vert"),
 			ShaderPath("Object.frag")
@@ -192,22 +192,10 @@ namespace ForgeSim::Sandbox
 			CreateShaderProgram(
 				m_ObjectShaderMonitor.VertexShaderPath(),
 				m_ObjectShaderMonitor.FragmentShaderPath()))
-		, m_VertexBuffer(
-			m_ObjectMesh.vertices.data(),
-			m_ObjectMesh.vertices.size() *
-			sizeof(Assets::MeshVertex))
-		, m_IndexBuffer(
-			m_ObjectMesh.indices.data(),
-			m_ObjectMesh.indices.size() *
-			sizeof(std::uint32_t))
-		, m_VertexArray()
 		, m_FallbackWhiteTexture(
 			1,
 			1,
 			fallbackWhiteTexturePixels)
-		, m_DemonstrationTexture(
-			LoadTexture2D(
-				TexturePath("Checkerboard.png")))
 		, m_DefaultSampler()
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
@@ -220,41 +208,79 @@ namespace ForgeSim::Sandbox
 				m_GridShaderMonitor.VertexShaderPath()),
 			LoadTextFile(
 				m_GridShaderMonitor.FragmentShaderPath()))
-	{
-		// Configure object vertex data and persistent OpenGL state.
-		constexpr std::uint32_t vertexBindingIndex = 0;
+	{	
+		// Upload imported mesh primitives once.
+		std::size_t primitiveCount = 0;
 
-		m_VertexArray.SetVertexBuffer(
-			m_VertexBuffer,
-			vertexBindingIndex,
-			sizeof(Assets::MeshVertex));
+		for (const Assets::SceneMeshData& mesh :
+			m_ObjectSceneAsset.meshes)
+		{
+			primitiveCount += mesh.primitives.size();
+		}
 
-		m_VertexArray.SetIndexBuffer(m_IndexBuffer);
+		m_GpuPrimitiveResources.reserve(primitiveCount);
 
-		m_VertexArray.SetFloatAttribute(
-			0,
-			vertexBindingIndex,
-			3,
-			offsetof(
-				Assets::MeshVertex,
-				position));
+		for (Assets::SceneMeshIndex meshIndex = 0;
+			meshIndex < m_ObjectSceneAsset.meshes.size();
+			++meshIndex)
+		{
+			const Assets::SceneMeshData& sceneMesh =
+				m_ObjectSceneAsset.meshes[meshIndex];
 
-		m_VertexArray.SetFloatAttribute(
-			1,
-			vertexBindingIndex,
-			3,
-			offsetof(
-				Assets::MeshVertex,
-				color));
+			for (const Assets::MeshPrimitiveData& primitive :
+				sceneMesh.primitives)
+			{
+				m_GpuPrimitiveResources.push_back(
+					GpuPrimitiveResource{
+						.mesh =
+							Renderer::OpenGL::GpuMesh{
+								primitive.geometry
+							},
+						.sceneMeshIndex = meshIndex,
+						.materialIndex =
+							primitive.materialIndex
+					});
+			}
+		}
 
-		m_VertexArray.SetFloatAttribute(
-			2,
-			vertexBindingIndex,
-			2,
-			offsetof(
-				Assets::MeshVertex,
-				textureCoordinates));
+		if (m_GpuPrimitiveResources.empty())
+		{
+			throw std::runtime_error(
+				"Cannot render a scene without mesh primitives.");
+		}
 
+		const Assets::TextureResources& textureResources =
+			m_ObjectSceneAsset.textureResources;
+
+		m_GpuTextures.reserve(
+			textureResources.textures.size());
+
+		for (const Assets::TextureData& texture :
+			textureResources.textures)
+		{
+			if (texture.imageIndex >=
+				textureResources.images.size())
+			{
+				throw std::runtime_error(
+					"Texture references an invalid image index.");
+			}
+
+			const Assets::ImageData& image =
+				textureResources.images[texture.imageIndex];
+
+			if (!image.IsValid())
+			{
+				throw std::runtime_error(
+					"Cannot upload an invalid texture image.");
+			}
+
+			m_GpuTextures.emplace_back(
+				image.width,
+				image.height,
+				image.pixels);
+		}
+		
+		// Configure persistent OpenGL state.
 		glClearColor(
 			0.05f,
 			0.15f,
@@ -297,31 +323,6 @@ namespace ForgeSim::Sandbox
 			"uProjection",
 			projection);
 
-		// Temporary integration path until glTF material-to-texture
-		// associations are imported.
-		const Renderer::OpenGL::Texture2D& baseColorTexture =
-			m_ObjectMesh.availableAttributes.textureCoordinates
-			? m_DemonstrationTexture
-			: m_FallbackWhiteTexture;
-
-		baseColorTexture.Bind(baseColorTextureUnit);
-
-		m_DefaultSampler.Bind(baseColorTextureUnit);
-
-		m_ObjectShaderProgram.SetInt(
-			"uBaseColorTexture",
-			static_cast<int>(baseColorTextureUnit));
-
-		m_DefaultSampler.Bind(
-			baseColorTextureUnit);
-
-		m_ObjectShaderProgram.SetInt(
-			"uBaseColorTexture",
-			static_cast<int>(
-				baseColorTextureUnit));
-
-		m_VertexArray.Bind();
-
 		m_BoundsVertices.clear();
 
 		if (showObjectBounds)
@@ -329,26 +330,37 @@ namespace ForgeSim::Sandbox
 			m_BoundsVertices.reserve(objects.size() * 24);
 		}
 
+		m_RenderSubmissions.clear();
+		m_RenderSubmissions.reserve(
+			objects.size() *
+			m_GpuPrimitiveResources.size());
+
 		for (const SandboxObject& object : objects)
 		{
 			const bool isSelected =
 				selectedObjectId &&
 				*selectedObjectId == object.id;
 
-			m_ObjectShaderProgram.SetFloat(
-				"uSelectionAmount",
-				isSelected ? 0.55f : 0.0f);
+			for (const GpuPrimitiveResource& resource :
+				m_GpuPrimitiveResources)
+			{
+				// Sandbox objects currently represent mesh zero.
+				// Scene-node rendering will provide the mesh index later.
+				if (resource.sceneMeshIndex != 0)
+				{
+					continue;
+				}
 
-			m_ObjectShaderProgram.SetMatrix4x4(
-				"uModel",
-				object.transform.ModelMatrix());
-
-			glDrawElements(
-				GL_TRIANGLES,
-				static_cast<GLsizei>(
-					m_ObjectMesh.indices.size()),
-				GL_UNSIGNED_INT,
-				nullptr);
+				m_RenderSubmissions.push_back(
+					RenderSubmission{
+						.mesh = &resource.mesh,
+						.materialIndex =
+							resource.materialIndex,
+						.modelTransform =
+							object.transform.ModelMatrix(),
+						.isSelected = isSelected
+					});
+			}
 
 			if (showObjectBounds)
 			{
@@ -368,6 +380,34 @@ namespace ForgeSim::Sandbox
 					boundsVertices.begin(),
 					boundsVertices.end());
 			}
+		}
+
+		for (const RenderSubmission& submission :
+			m_RenderSubmissions)
+		{
+			if (submission.mesh == nullptr)
+			{
+				continue;
+			}
+
+			BindMaterial(submission.materialIndex);
+
+			m_ObjectShaderProgram.SetFloat(
+				"uSelectionAmount",
+				submission.isSelected ? 0.55f : 0.0f);
+
+			m_ObjectShaderProgram.SetMatrix4x4(
+				"uModel",
+				submission.modelTransform);
+
+			submission.mesh->Bind();
+
+			glDrawElements(
+				GL_TRIANGLES,
+				static_cast<GLsizei>(
+					submission.mesh->IndexCount()),
+				GL_UNSIGNED_INT,
+				nullptr);
 		}
 
 		if (showObjectBounds && !m_BoundsVertices.empty())
@@ -447,5 +487,65 @@ namespace ForgeSim::Sandbox
 		SandboxRenderer::ObjectLocalBounds() const noexcept
 	{
 		return m_ObjectLocalBounds;
+	}
+
+	void SandboxRenderer::BindMaterial(
+		std::optional<Assets::MaterialIndex> materialIndex)
+	{
+		const Renderer::OpenGL::Texture2D* baseColorTexture =
+			&m_FallbackWhiteTexture;
+
+		glm::vec4 baseColorFactor{ 1.0f };
+
+		if (materialIndex)
+		{
+			if (*materialIndex >=
+				m_ObjectSceneAsset.materials.size())
+			{
+				throw std::runtime_error(
+					"Render submission references an invalid material.");
+			}
+
+			const Assets::MaterialData& material =
+				m_ObjectSceneAsset.materials[*materialIndex];
+
+			const auto& factor =
+				material.metallicRoughness.baseColorFactor;
+
+			baseColorFactor = glm::vec4{
+				factor[0],
+				factor[1],
+				factor[2],
+				factor[3]
+			};
+
+			const auto& textureReference =
+				material.metallicRoughness.baseColorTexture;
+
+			if (textureReference)
+			{
+				if (textureReference->textureIndex >=
+					m_GpuTextures.size())
+				{
+					throw std::runtime_error(
+						"Material references an invalid GPU texture.");
+				}
+
+				baseColorTexture =
+					&m_GpuTextures[
+						textureReference->textureIndex];
+			}
+		}
+
+		baseColorTexture->Bind(baseColorTextureUnit);
+		m_DefaultSampler.Bind(baseColorTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			"uBaseColorTexture",
+			static_cast<int>(baseColorTextureUnit));
+
+		m_ObjectShaderProgram.SetVector4(
+			"uBaseColorFactor",
+			baseColorFactor);
 	}
 }

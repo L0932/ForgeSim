@@ -354,4 +354,26 @@ namespace ForgeSim::Renderer::OpenGL
 			GL_FALSE,
 			glm::value_ptr(value));
 	}
+
+	void ShaderProgram::SetVector4(
+		std::string_view name,
+		const glm::vec4& value) const
+	{
+		const std::string uniformName{ name };
+
+		const int location =
+			glGetUniformLocation(
+				m_Handle,
+				uniformName.c_str());
+
+		if (location >= 0)
+		{
+			glUniform4f(
+				location,
+				value.x,
+				value.y,
+				value.z,
+				value.w);
+		}
+	}
 }

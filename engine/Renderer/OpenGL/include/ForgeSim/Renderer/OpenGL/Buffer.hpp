@@ -24,8 +24,8 @@ namespace ForgeSim::Renderer::OpenGL
 		Buffer(const Buffer&) = delete;
 		Buffer& operator=(const Buffer&) = delete;
 
-		Buffer(Buffer&&) = delete;
-		Buffer& operator=(Buffer&&) = delete;
+		Buffer(Buffer&& other) noexcept;
+		Buffer& operator=(Buffer&& other) noexcept;
 
 		[[nodiscard]] unsigned int Handle() const noexcept;
 

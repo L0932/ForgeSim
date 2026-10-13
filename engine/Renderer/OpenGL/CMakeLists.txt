@@ -12,6 +12,7 @@ target_sources(
 	PRIVATE
 		src/Buffer.cpp
 		src/DebugLineRenderer.cpp
+		src/GpuMesh.cpp
 		src/ShaderProgram.cpp
 		src/Sampler.cpp
 		src/Texture2D.cpp
@@ -22,21 +23,17 @@ target_sources(
 		FILES
 			include/ForgeSim/Renderer/OpenGL/Buffer.hpp
 			include/ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp
+			include/ForgeSim/Renderer/OpenGL/GpuMesh.hpp
 			include/ForgeSim/Renderer/OpenGL/Sampler.hpp
 			include/ForgeSim/Renderer/OpenGL/ShaderProgram.hpp
 			include/ForgeSim/Renderer/OpenGL/Texture2D.hpp
 			include/ForgeSim/Renderer/OpenGL/VertexArray.hpp
 )
 
-target_include_directories(
-	ForgeSimRendererOpenGL
-	PUBLIC
-		"${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
 target_link_libraries(
 	ForgeSimRendererOpenGL
 	PUBLIC
+		ForgeSim::Assets
 		ForgeSim::Renderer
 		glm::glm-header-only
 	PRIVATE

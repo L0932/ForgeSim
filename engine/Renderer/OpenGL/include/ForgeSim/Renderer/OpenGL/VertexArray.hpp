@@ -16,8 +16,8 @@ namespace ForgeSim::Renderer::OpenGL
 		VertexArray(const VertexArray&) = delete;
 		VertexArray& operator=(const VertexArray&) = delete;
 
-		VertexArray(VertexArray&&) = delete;
-		VertexArray& operator=(VertexArray&&) = delete;
+		VertexArray(VertexArray&& other) noexcept;
+		VertexArray& operator=(VertexArray&& other) noexcept;
 
 		void SetVertexBuffer(
 			const Buffer& buffer,

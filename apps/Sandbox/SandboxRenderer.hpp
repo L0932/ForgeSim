@@ -11,14 +11,15 @@
 #include <glm/mat4x4.hpp>
 
 #include <ForgeSim/Assets/MeshData.hpp>
+#include <ForgeSim/Assets/SceneAsset.hpp>
 #include <ForgeSim/Renderer/DebugGeometry.hpp>
 #include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
+#include <ForgeSim/Renderer/OpenGL/GpuMesh.hpp>
 #include <ForgeSim/Renderer/OpenGL/Sampler.hpp>
 #include <ForgeSim/Renderer/OpenGL/Texture2D.hpp>
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
-#include <ForgeSim/Renderer/OpenGL/VertexArray.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -56,18 +57,40 @@ namespace ForgeSim::Sandbox
 			ObjectLocalBounds() const noexcept;
 
 	private:
-		Assets::MeshData m_ObjectMesh;
+
+		void BindMaterial(
+			std::optional<Assets::MaterialIndex> materialIndex);
+
+		struct RenderSubmission
+		{
+			const Renderer::OpenGL::GpuMesh* mesh = nullptr;
+			std::optional<Assets::MaterialIndex> materialIndex;
+			glm::mat4 modelTransform{ 1.0f };
+			bool isSelected = false;
+		};
+
+		struct GpuPrimitiveResource
+		{
+			Renderer::OpenGL::GpuMesh mesh;
+			Assets::SceneMeshIndex sceneMeshIndex;
+			std::optional<Assets::MaterialIndex> materialIndex;
+		};
+
+		std::vector<RenderSubmission> m_RenderSubmissions;
+
+		Assets::SceneAsset m_ObjectSceneAsset;
 		Renderer::AxisAlignedBoundingBox m_ObjectLocalBounds;
 
 		ShaderFileMonitor m_ObjectShaderMonitor;
 		Renderer::OpenGL::ShaderProgram m_ObjectShaderProgram;
 
-		Renderer::OpenGL::Buffer m_VertexBuffer;
-		Renderer::OpenGL::Buffer m_IndexBuffer;
-		Renderer::OpenGL::VertexArray m_VertexArray;
+		std::vector<GpuPrimitiveResource> 
+			m_GpuPrimitiveResources;
+
+		std::vector<Renderer::OpenGL::Texture2D>
+			m_GpuTextures;
 
 		Renderer::OpenGL::Texture2D m_FallbackWhiteTexture;
-		Renderer::OpenGL::Texture2D m_DemonstrationTexture;
 		Renderer::OpenGL::Sampler m_DefaultSampler;
 
 		std::vector<ForgeSim::Renderer::DebugLineVertex>

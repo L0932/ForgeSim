@@ -16,14 +16,10 @@ namespace ForgeSim::Renderer::OpenGL
 		~Texture2D();
 
 		Texture2D(const Texture2D&) = delete;
-
-		Texture2D& operator=(
-			const Texture2D&) = delete;
+		Texture2D& operator=(const Texture2D&) = delete;
 
 		Texture2D(Texture2D&& other) noexcept;
-
-		Texture2D& operator=(
-			Texture2D&& other) noexcept;
+		Texture2D& operator=(Texture2D&& other) noexcept;
 
 		void Bind(
 			std::uint32_t textureUnit) const noexcept;

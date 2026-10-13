@@ -108,12 +108,8 @@ namespace ForgeSim::Renderer::OpenGL
 		}
 	}
 
-	Texture2D::Texture2D(
-		Texture2D&& other) noexcept
-		: m_Handle(
-			std::exchange(
-				other.m_Handle,
-				0))
+	Texture2D::Texture2D(Texture2D&& other) noexcept
+		: m_Handle(std::exchange(other.m_Handle, 0))
 	{}
 
 	Texture2D& Texture2D::operator=(
@@ -126,15 +122,12 @@ namespace ForgeSim::Renderer::OpenGL
 
 		if (m_Handle != 0)
 		{
-			glDeleteTextures(
-				1,
-				&m_Handle);
+			glDeleteTextures(1, &m_Handle);
 		}
 
-		m_Handle =
-			std::exchange(
-				other.m_Handle,
-				0);
+		m_Handle = std::exchange(
+			other.m_Handle,
+			0);
 
 		return *this;
 	}

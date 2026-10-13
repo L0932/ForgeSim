@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 
 namespace ForgeSim::Renderer::OpenGL
 {
@@ -32,6 +33,10 @@ namespace ForgeSim::Renderer::OpenGL
 			std::string_view name,
 			int value
 		) const;
+
+		void SetVector4(
+			std::string_view name,
+			const glm::vec4& value) const;
 
 		void SetMatrix4x4(
 			std::string_view name,
