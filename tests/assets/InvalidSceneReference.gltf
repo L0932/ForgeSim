@@ -1,0 +1,17 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "ForgeSim invalid-reference test fixture"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "nodes": [4]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Only Valid Node"
+    }
+  ]
+}

@@ -413,6 +413,298 @@ int main()
 				return EXIT_FAILURE;
 			}
 		}
+
+		// The existing single-mesh fixture should also load through
+		// the general scene-asset interface.
+		{
+			const std::filesystem::path assetPath =
+				assetDirectory / "Triangle.gltf";
+
+			const ForgeSim::Assets::SceneAsset scene =
+				ForgeSim::Assets::LoadGltfScene(
+					assetPath);
+
+			if (scene.meshes.size() != 1)
+			{
+				std::cerr
+					<< "Expected one scene mesh\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const ForgeSim::Assets::SceneMeshData& mesh =
+				scene.meshes[0];
+
+			if (mesh.primitives.size() != 1)
+			{
+				std::cerr
+					<< "Expected one scene mesh primitive\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const ForgeSim::Assets::MeshPrimitiveData& primitive =
+				mesh.primitives[0];
+
+			if (primitive.geometry.vertices.size() != 3 ||
+				primitive.geometry.indices.size() != 3)
+			{
+				std::cerr
+					<< "Scene loader did not preserve "
+					<< "the triangle geometry\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (!scene.textureResources.HasValidReferences())
+			{
+				std::cerr
+					<< "Scene loader produced invalid "
+					<< "texture-resource references\n";
+
+				return EXIT_FAILURE;
+			}
+		}
+
+		// A complete scene should preserve roots, hierarchy, transforms,
+		// meshes, primitives, materials, textures, images, and samplers.
+		{
+			const std::filesystem::path scenePath =
+				assetDirectory / "SceneHierarchy.gltf";
+
+			const ForgeSim::Assets::SceneAsset scene =
+				ForgeSim::Assets::LoadGltfScene(
+					scenePath);
+
+			if (scene.name != "ForgeSim Test Scene")
+			{
+				std::cerr
+					<< "Scene name was not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (scene.rootNodeIndices.size() != 2 ||
+				scene.rootNodeIndices[0] != 0 ||
+				scene.rootNodeIndices[1] != 2)
+			{
+				std::cerr
+					<< "Scene root nodes were not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (scene.nodes.size() != 3)
+			{
+				std::cerr
+					<< "Expected three scene nodes\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& parentNode =
+				scene.nodes[0];
+
+			if (parentNode.childIndices.size() != 1 ||
+				parentNode.childIndices[0] != 1 ||
+				parentNode.localTransform.translation[0] != 1.0f ||
+				parentNode.localTransform.translation[1] != 2.0f ||
+				parentNode.localTransform.translation[2] != 3.0f)
+			{
+				std::cerr
+					<< "Parent-node hierarchy or transform "
+					<< "was not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& childNode =
+				scene.nodes[1];
+
+			if (!childNode.meshIndex ||
+				*childNode.meshIndex != 0 ||
+				childNode.localTransform.scale[0] != 2.0f ||
+				childNode.localTransform.scale[1] != 2.0f ||
+				childNode.localTransform.scale[2] != 2.0f)
+			{
+				std::cerr
+					<< "Child-node mesh or scale "
+					<< "was not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& matrixNode =
+				scene.nodes[2];
+
+			if (!matrixNode.meshIndex ||
+				*matrixNode.meshIndex != 1 ||
+				!matrixNode.localTransform.matrix ||
+				(*matrixNode.localTransform.matrix)[12] != -2.0f)
+			{
+				std::cerr
+					<< "Matrix-based node transform "
+					<< "was not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (scene.meshes.size() != 2 ||
+				scene.meshes[0].primitives.size() != 2 ||
+				scene.meshes[1].primitives.size() != 1)
+			{
+				std::cerr
+					<< "Multiple meshes or primitives "
+					<< "were not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& firstPrimitive =
+				scene.meshes[0].primitives[0];
+
+			const auto& secondPrimitive =
+				scene.meshes[0].primitives[1];
+
+			const auto& thirdPrimitive =
+				scene.meshes[1].primitives[0];
+
+			if (!firstPrimitive.materialIndex ||
+				*firstPrimitive.materialIndex != 0 ||
+				!secondPrimitive.materialIndex ||
+				*secondPrimitive.materialIndex != 1 ||
+				!thirdPrimitive.materialIndex ||
+				*thirdPrimitive.materialIndex != 1)
+			{
+				std::cerr
+					<< "Primitive-material associations "
+					<< "were not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (scene.materials.size() != 2 ||
+				!scene.materials[0]
+				.metallicRoughness
+				.baseColorTexture ||
+				scene.materials[0]
+				.metallicRoughness
+				.baseColorTexture
+				->textureIndex != 0 ||
+				!scene.materials[1].doubleSided)
+			{
+				std::cerr
+					<< "Scene materials were not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& resources =
+				scene.textureResources;
+
+			if (resources.images.size() != 1 ||
+				resources.samplers.size() != 1 ||
+				resources.textures.size() != 1 ||
+				!resources.HasValidReferences())
+			{
+				std::cerr
+					<< "Scene texture resources were not loaded correctly\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (!resources.images[0].IsValid() ||
+				resources.images[0].width != 1 ||
+				resources.images[0].height != 1)
+			{
+				std::cerr
+					<< "Embedded scene image was not decoded\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& texture =
+				resources.textures[0];
+
+			if (texture.imageIndex != 0 ||
+				!texture.samplerIndex ||
+				*texture.samplerIndex != 0)
+			{
+				std::cerr
+					<< "Texture image or sampler reference "
+					<< "was not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& sampler =
+				resources.samplers[0];
+
+			if (sampler.magnificationFilter !=
+				ForgeSim::Assets::TextureFilter::Linear ||
+				sampler.minificationFilter !=
+				ForgeSim::Assets::TextureFilter::LinearMipmapLinear ||
+				sampler.wrapU !=
+				ForgeSim::Assets::TextureWrap::ClampToEdge ||
+				sampler.wrapV !=
+				ForgeSim::Assets::TextureWrap::MirroredRepeat)
+			{
+				std::cerr
+					<< "Sampler settings were not preserved\n";
+
+				return EXIT_FAILURE;
+			}
+		}
+
+		// Invalid scene references should produce a descriptive error.
+		{
+			const std::filesystem::path invalidReferencePath =
+				assetDirectory /
+				"InvalidSceneReference.gltf";
+
+			bool exceptionWasThrown = false;
+
+			try
+			{
+				static_cast<void>(
+					ForgeSim::Assets::LoadGltfScene(
+						invalidReferencePath));
+			}
+			catch (const std::runtime_error& exception)
+			{
+				exceptionWasThrown = true;
+
+				const std::string_view message{
+					exception.what()
+				};
+
+				const bool describesInvalidData =
+					message.find("invalid glTF") !=
+					std::string_view::npos ||
+					message.find("invalid reference") !=
+					std::string_view::npos;
+
+				if (!describesInvalidData)
+				{
+					std::cerr
+						<< "Invalid-reference error was not descriptive: "
+						<< exception.what()
+						<< '\n';
+
+					return EXIT_FAILURE;
+				}
+			}
+
+			if (!exceptionWasThrown)
+			{
+				std::cerr
+					<< "Expected an invalid scene reference "
+					<< "to be rejected\n";
+
+				return EXIT_FAILURE;
+			}
+		}
+
 		return EXIT_SUCCESS;
 	}
 	catch (const std::exception& exception)

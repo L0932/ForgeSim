@@ -2,3 +2,6 @@
 out/
 build/
 CMakeUserPresets.json
+
+# Dear ImGui local layout
+imgui.ini
