@@ -306,6 +306,30 @@ namespace ForgeSim::Renderer::OpenGL
 			value);
 	}
 
+	void ShaderProgram::SetInt(
+		std::string_view name,
+		int value) const
+	{
+		const std::string nullTerminatedName{
+			name
+		};
+
+		const GLint location =
+			glGetUniformLocation(
+				m_Handle,
+				nullTerminatedName.c_str());
+
+		if (location < 0)
+		{
+			return;
+		}
+
+		glProgramUniform1i(
+			m_Handle,
+			location,
+			value);
+	}
+
 	void ShaderProgram::SetMatrix4x4(
 		std::string_view name,
 		const glm::mat4& value) const

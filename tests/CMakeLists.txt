@@ -390,6 +390,41 @@ add_test(
 	COMMAND ForgeSimRuntimeDiagnosticsTests
 )
 
+add_executable(ForgeSimImageLoaderTests)
+
+target_sources(
+	ForgeSimImageLoaderTests
+	PRIVATE
+		ImageLoaderTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimImageLoaderTests
+	PRIVATE
+		ForgeSim::Assets
+)
+
+target_compile_features(
+	ForgeSimImageLoaderTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimImageLoaderTests
+)
+
+set_target_properties(
+	ForgeSimImageLoaderTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Assets.ImageLoader
+	COMMAND ForgeSimImageLoaderTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -403,6 +438,7 @@ set_target_properties(
 	ForgeSimDebugGeometryTests
 	ForgeSimShaderFileMonitorTests
 	ForgeSimRuntimeDiagnosticsTests
+	ForgeSimImageLoaderTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

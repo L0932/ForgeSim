@@ -1,5 +1,6 @@
 #include "SandboxRenderer.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -15,6 +16,7 @@
 #include <glm/vec3.hpp>
 
 #include <ForgeSim/Assets/GltfLoader.hpp>
+#include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Core/Log.hpp>
 
 #ifndef FORGESIM_SANDBOX_SHADER_DIRECTORY
@@ -29,6 +31,16 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+		constexpr std::array<std::uint8_t, 4>
+			fallbackWhiteTexturePixels{
+				255,
+				255,
+				255,
+				255
+		};
+
+		constexpr std::uint32_t baseColorTextureUnit = 0;
+
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
 		{
@@ -140,11 +152,36 @@ namespace ForgeSim::Sandbox
 				.maximum = maximum
 			};
 		}
+
+		[[nodiscard]] std::filesystem::path TexturePath(
+			const std::filesystem::path& filename)
+		{
+			return
+				std::filesystem::path{
+					FORGESIM_SANDBOX_ASSET_DIRECTORY
+			} /
+				"textures" /
+				filename;
+		}
+
+		[[nodiscard]]
+		Renderer::OpenGL::Texture2D LoadTexture2D(
+			const std::filesystem::path& path)
+		{
+			const Assets::ImageData image =
+				Assets::LoadImage(path);
+
+			return Renderer::OpenGL::Texture2D{
+				image.width,
+				image.height,
+				image.pixels
+			};
+		}
 	}
 
 	SandboxRenderer::SandboxRenderer()
 		: m_ObjectMesh(
-			LoadObjectMesh("BoxVertexColors.glb"))
+			LoadObjectMesh("BoxTextured.glb"))
 		, m_ObjectLocalBounds(
 			CalculateMeshBounds(m_ObjectMesh))
 		, m_ObjectShaderMonitor(
@@ -164,6 +201,14 @@ namespace ForgeSim::Sandbox
 			m_ObjectMesh.indices.size() *
 			sizeof(std::uint32_t))
 		, m_VertexArray()
+		, m_FallbackWhiteTexture(
+			1,
+			1,
+			fallbackWhiteTexturePixels)
+		, m_DemonstrationTexture(
+			LoadTexture2D(
+				TexturePath("Checkerboard.png")))
+		, m_DefaultSampler()
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
 				ForgeSim::Renderer::ReferenceGridSpecification{}))
@@ -201,6 +246,14 @@ namespace ForgeSim::Sandbox
 			offsetof(
 				Assets::MeshVertex,
 				color));
+
+		m_VertexArray.SetFloatAttribute(
+			2,
+			vertexBindingIndex,
+			2,
+			offsetof(
+				Assets::MeshVertex,
+				textureCoordinates));
 
 		glClearColor(
 			0.05f,
@@ -243,6 +296,29 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetMatrix4x4(
 			"uProjection",
 			projection);
+
+		// Temporary integration path until glTF material-to-texture
+		// associations are imported.
+		const Renderer::OpenGL::Texture2D& baseColorTexture =
+			m_ObjectMesh.availableAttributes.textureCoordinates
+			? m_DemonstrationTexture
+			: m_FallbackWhiteTexture;
+
+		baseColorTexture.Bind(baseColorTextureUnit);
+
+		m_DefaultSampler.Bind(baseColorTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			"uBaseColorTexture",
+			static_cast<int>(baseColorTextureUnit));
+
+		m_DefaultSampler.Bind(
+			baseColorTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			"uBaseColorTexture",
+			static_cast<int>(
+				baseColorTextureUnit));
 
 		m_VertexArray.Bind();
 

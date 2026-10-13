@@ -13,6 +13,8 @@ target_sources(
 		src/Buffer.cpp
 		src/DebugLineRenderer.cpp
 		src/ShaderProgram.cpp
+		src/Sampler.cpp
+		src/Texture2D.cpp
 		src/VertexArray.cpp
 	PUBLIC
 		FILE_SET HEADERS
@@ -20,7 +22,9 @@ target_sources(
 		FILES
 			include/ForgeSim/Renderer/OpenGL/Buffer.hpp
 			include/ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp
+			include/ForgeSim/Renderer/OpenGL/Sampler.hpp
 			include/ForgeSim/Renderer/OpenGL/ShaderProgram.hpp
+			include/ForgeSim/Renderer/OpenGL/Texture2D.hpp
 			include/ForgeSim/Renderer/OpenGL/VertexArray.hpp
 )
 

@@ -15,6 +15,8 @@
 #include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
+#include <ForgeSim/Renderer/OpenGL/Sampler.hpp>
+#include <ForgeSim/Renderer/OpenGL/Texture2D.hpp>
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
 #include <ForgeSim/Renderer/OpenGL/VertexArray.hpp>
 
@@ -47,7 +49,7 @@ namespace ForgeSim::Sandbox
 
 		void ReloadChangedShaders();
 
-		// Temporary bridge while SandboxRenderer owns the shared object mesh.
+		// Temporary integration path while SandboxRenderer owns the shared object mesh.
 		// Move bounds ownership to the mesh resource when objects support distinct meshes.
 		[[nodiscard]]
 		const Renderer::AxisAlignedBoundingBox&
@@ -63,6 +65,10 @@ namespace ForgeSim::Sandbox
 		Renderer::OpenGL::Buffer m_VertexBuffer;
 		Renderer::OpenGL::Buffer m_IndexBuffer;
 		Renderer::OpenGL::VertexArray m_VertexArray;
+
+		Renderer::OpenGL::Texture2D m_FallbackWhiteTexture;
+		Renderer::OpenGL::Texture2D m_DemonstrationTexture;
+		Renderer::OpenGL::Sampler m_DefaultSampler;
 
 		std::vector<ForgeSim::Renderer::DebugLineVertex>
 			m_GridVertices;

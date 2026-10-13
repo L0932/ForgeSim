@@ -10,17 +10,21 @@ target_sources(
 	ForgeSimAssets
 	PRIVATE
 		src/GltfLoader.cpp
+		src/ImageLoader.cpp
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS include
 		FILES
 			include/ForgeSim/Assets/GltfLoader.hpp
+			include/ForgeSim/Assets/ImageLoader.hpp
 			include/ForgeSim/Assets/MeshData.hpp
+			include/ForgeSim/Assets/TextureData.hpp
 )
 
 target_link_libraries(
 	ForgeSimAssets
 	PRIVATE
+		ForgeSimStb
 		ForgeSim::Cgltf
 )
 
