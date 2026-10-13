@@ -24,3 +24,15 @@ path.
 - License: Creative Commons Attribution 4.0 International (CC-BY-4.0)
 - License URL: https://creativecommons.org/licenses/by/4.0/
 - Modifications: None
+
+## Mesh_Primitives_00.gltf and Mesh_Primitives_00.bin
+
+A glTF 2.0 validation asset containing one mesh with two primitives
+and two base-color materials. It is used to validate ForgeSim's
+material-aware render-submission path.
+
+- Source: https://github.com/KhronosGroup/glTF-Asset-Generator/tree/main/Output/Positive/Mesh_Primitives
+- Copyright: © 2017 Khronos Group
+- License: MIT License
+- License URL: https://github.com/KhronosGroup/glTF-Asset-Generator/blob/main/LICENSE
+- Modifications: None

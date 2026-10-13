@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 
 #include <ForgeSim/Assets/MeshData.hpp>
 #include <ForgeSim/Assets/SceneAsset.hpp>
@@ -76,6 +77,17 @@ namespace ForgeSim::Sandbox
 			std::optional<Assets::MaterialIndex> materialIndex;
 		};
 
+		struct GpuMaterialResource
+		{
+			const Renderer::OpenGL::Texture2D* baseColorTexture =
+				nullptr;
+
+			const Renderer::OpenGL::Sampler* sampler =
+				nullptr;
+
+			glm::vec4 baseColorFactor{ 1.0f };
+		};
+
 		std::vector<RenderSubmission> m_RenderSubmissions;
 
 		Assets::SceneAsset m_ObjectSceneAsset;
@@ -89,6 +101,12 @@ namespace ForgeSim::Sandbox
 
 		std::vector<Renderer::OpenGL::Texture2D>
 			m_GpuTextures;
+
+		std::vector<Renderer::OpenGL::Sampler>
+			m_GpuSamplers;
+
+		std::vector<GpuMaterialResource>
+			m_GpuMaterialResources;
 
 		Renderer::OpenGL::Texture2D m_FallbackWhiteTexture;
 		Renderer::OpenGL::Sampler m_DefaultSampler;

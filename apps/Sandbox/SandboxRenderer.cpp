@@ -175,6 +175,114 @@ namespace ForgeSim::Sandbox
 
 			return mesh.primitives.front();
 		}
+
+		[[nodiscard]]
+		Renderer::OpenGL::MinificationFilter
+			ToMinificationFilter(
+				std::optional<Assets::TextureFilter> filter)
+		{
+			if (!filter)
+			{
+				return Renderer::OpenGL::
+					MinificationFilter::LinearMipmapLinear;
+			}
+
+			using Source = Assets::TextureFilter;
+			using Destination =
+				Renderer::OpenGL::MinificationFilter;
+
+			switch (*filter)
+			{
+			case Source::Nearest:
+				return Destination::Nearest;
+
+			case Source::Linear:
+				return Destination::Linear;
+
+			case Source::NearestMipmapNearest:
+				return Destination::NearestMipmapNearest;
+
+			case Source::LinearMipmapNearest:
+				return Destination::LinearMipmapNearest;
+
+			case Source::NearestMipmapLinear:
+				return Destination::NearestMipmapLinear;
+
+			case Source::LinearMipmapLinear:
+				return Destination::LinearMipmapLinear;
+			}
+
+			throw std::logic_error(
+				"Unsupported imported minification filter.");
+		}
+
+		[[nodiscard]]
+		Renderer::OpenGL::MagnificationFilter
+			ToMagnificationFilter(
+				std::optional<Assets::TextureFilter> filter)
+		{
+			if (!filter)
+			{
+				return Renderer::OpenGL::
+					MagnificationFilter::Linear;
+			}
+
+			switch (*filter)
+			{
+			case Assets::TextureFilter::Nearest:
+				return Renderer::OpenGL::
+					MagnificationFilter::Nearest;
+
+			case Assets::TextureFilter::Linear:
+				return Renderer::OpenGL::
+					MagnificationFilter::Linear;
+
+			default:
+				throw std::logic_error(
+					"Magnification filters cannot use mipmaps.");
+			}
+		}
+
+		[[nodiscard]]
+		Renderer::OpenGL::SamplerWrap ToSamplerWrap(
+			Assets::TextureWrap wrap)
+		{
+			switch (wrap)
+			{
+			case Assets::TextureWrap::Repeat:
+				return Renderer::OpenGL::SamplerWrap::Repeat;
+
+			case Assets::TextureWrap::MirroredRepeat:
+				return Renderer::OpenGL::
+					SamplerWrap::MirroredRepeat;
+
+			case Assets::TextureWrap::ClampToEdge:
+				return Renderer::OpenGL::
+					SamplerWrap::ClampToEdge;
+			}
+
+			throw std::logic_error(
+				"Unsupported imported sampler wrapping mode.");
+		}
+
+		[[nodiscard]]
+		Renderer::OpenGL::SamplerSpecification
+			CreateSamplerSpecification(
+				const Assets::SamplerData& sampler)
+		{
+			return Renderer::OpenGL::SamplerSpecification{
+				.minificationFilter =
+					ToMinificationFilter(
+						sampler.minificationFilter),
+
+				.magnificationFilter =
+					ToMagnificationFilter(
+						sampler.magnificationFilter),
+
+				.wrapU = ToSamplerWrap(sampler.wrapU),
+				.wrapV = ToSamplerWrap(sampler.wrapV)
+			};
+		}
 	}
 
 	SandboxRenderer::SandboxRenderer()
@@ -278,6 +386,85 @@ namespace ForgeSim::Sandbox
 				image.width,
 				image.height,
 				image.pixels);
+		}
+
+		m_GpuSamplers.reserve(
+			textureResources.samplers.size());
+
+		for (const Assets::SamplerData& sampler :
+			textureResources.samplers)
+		{
+			m_GpuSamplers.emplace_back(
+				CreateSamplerSpecification(sampler));
+		}
+
+		m_GpuMaterialResources.reserve(
+			m_ObjectSceneAsset.materials.size());
+
+		for (const Assets::MaterialData& material :
+			m_ObjectSceneAsset.materials)
+		{
+			const auto& factor =
+				material.metallicRoughness.baseColorFactor;
+
+			GpuMaterialResource gpuMaterial{
+				.baseColorTexture =
+					&m_FallbackWhiteTexture,
+
+				.sampler =
+					&m_DefaultSampler,
+
+				.baseColorFactor = glm::vec4{
+					factor[0],
+					factor[1],
+					factor[2],
+					factor[3]
+				}
+			};
+
+			const auto& textureReference =
+				material.metallicRoughness.baseColorTexture;
+
+			if (textureReference)
+			{
+				if (textureReference->textureCoordinateSet != 0)
+				{
+					throw std::runtime_error(
+						"Only texture-coordinate set zero "
+						"is currently supported.");
+				}
+
+				if (textureReference->textureIndex >=
+					m_GpuTextures.size())
+				{
+					throw std::runtime_error(
+						"Material references an invalid texture.");
+				}
+
+				const Assets::TextureData& texture =
+					textureResources.textures[
+						textureReference->textureIndex];
+
+				gpuMaterial.baseColorTexture =
+					&m_GpuTextures[
+						textureReference->textureIndex];
+
+				if (texture.samplerIndex)
+				{
+					if (*texture.samplerIndex >=
+						m_GpuSamplers.size())
+					{
+						throw std::runtime_error(
+							"Texture references an invalid sampler.");
+					}
+
+					gpuMaterial.sampler =
+						&m_GpuSamplers[*texture.samplerIndex];
+				}
+			}
+
+			m_GpuMaterialResources.push_back(
+				gpuMaterial);
 		}
 		
 		// Configure persistent OpenGL state.
@@ -495,50 +682,41 @@ namespace ForgeSim::Sandbox
 		const Renderer::OpenGL::Texture2D* baseColorTexture =
 			&m_FallbackWhiteTexture;
 
+		const Renderer::OpenGL::Sampler* sampler =
+			&m_DefaultSampler;
+
 		glm::vec4 baseColorFactor{ 1.0f };
 
 		if (materialIndex)
 		{
 			if (*materialIndex >=
-				m_ObjectSceneAsset.materials.size())
+				m_GpuMaterialResources.size())
 			{
 				throw std::runtime_error(
-					"Render submission references an invalid material.");
+					"Render submission references "
+					"an invalid material.");
 			}
 
-			const Assets::MaterialData& material =
-				m_ObjectSceneAsset.materials[*materialIndex];
+			const GpuMaterialResource& material =
+				m_GpuMaterialResources[*materialIndex];
 
-			const auto& factor =
-				material.metallicRoughness.baseColorFactor;
-
-			baseColorFactor = glm::vec4{
-				factor[0],
-				factor[1],
-				factor[2],
-				factor[3]
-			};
-
-			const auto& textureReference =
-				material.metallicRoughness.baseColorTexture;
-
-			if (textureReference)
+			if (material.baseColorTexture != nullptr)
 			{
-				if (textureReference->textureIndex >=
-					m_GpuTextures.size())
-				{
-					throw std::runtime_error(
-						"Material references an invalid GPU texture.");
-				}
-
 				baseColorTexture =
-					&m_GpuTextures[
-						textureReference->textureIndex];
+					material.baseColorTexture;
 			}
+
+			if (material.sampler != nullptr)
+			{
+				sampler = material.sampler;
+			}
+
+			baseColorFactor =
+				material.baseColorFactor;
 		}
 
 		baseColorTexture->Bind(baseColorTextureUnit);
-		m_DefaultSampler.Bind(baseColorTextureUnit);
+		sampler->Bind(baseColorTextureUnit);
 
 		m_ObjectShaderProgram.SetInt(
 			"uBaseColorTexture",
