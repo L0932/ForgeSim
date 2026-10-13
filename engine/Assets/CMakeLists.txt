@@ -17,6 +17,7 @@ target_sources(
 		FILES
 			include/ForgeSim/Assets/GltfLoader.hpp
 			include/ForgeSim/Assets/ImageLoader.hpp
+			include/ForgeSim/Assets/MaterialData.hpp
 			include/ForgeSim/Assets/MeshData.hpp
 			include/ForgeSim/Assets/TextureData.hpp
 )

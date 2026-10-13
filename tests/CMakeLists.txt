@@ -425,6 +425,41 @@ add_test(
 	COMMAND ForgeSimImageLoaderTests
 )
 
+add_executable(ForgeSimMaterialDataTests)
+
+target_sources(
+	ForgeSimMaterialDataTests
+	PRIVATE
+		MaterialDataTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimMaterialDataTests
+	PRIVATE
+		ForgeSim::Assets
+)
+
+target_compile_features(
+	ForgeSimMaterialDataTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimMaterialDataTests
+)
+
+set_target_properties(
+	ForgeSimMaterialDataTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Assets.MaterialData
+	COMMAND ForgeSimMaterialDataTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -439,6 +474,7 @@ set_target_properties(
 	ForgeSimShaderFileMonitorTests
 	ForgeSimRuntimeDiagnosticsTests
 	ForgeSimImageLoaderTests
+	ForgeSimMaterialDataTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )
