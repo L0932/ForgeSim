@@ -25,25 +25,25 @@ The long-term goal is not to reproduce the feature set of a general-purpose comm
 
 ## Current Status
 
-ForgeSim is in the early foundation stage.
+ForgeSim is currently in Phase 3: Textured Assets and PBR Scene Rendering.
 
-Current development is focused on establishing a small, testable runtime foundation before higher-level simulation and editor systems are introduced.
+The Sandbox currently supports:
 
-Implemented foundation work includes:
+- Fixed-timestep simulation scheduling with bounded catch-up
+- Interactive free-camera navigation
+- Object selection and editable transforms
+- glTF static-mesh loading
+- Mesh positions, normals, texture coordinates, tangents, and vertex colors
+- File-backed GLSL shaders with hot reload
+- File-backed image decoding
+- OpenGL texture and sampler resources
+- Textured mesh rendering with a white fallback texture
+- Reference-grid and bounding-box debug rendering
+- Dear ImGui runtime diagnostics
 
-- Modern C++20 project structure
-- CMake and Ninja build workflow
-- GLFW-based window and platform integration
-- OpenGL rendering foundation
-- Runtime application loop
-- `std::chrono::steady_clock`-based timing
-- Frame timing and runtime statistics
-- Fixed-timestep simulation scheduling
-- Bounded fixed-step catch-up
-- Deterministic automated tests for core timing behavior
-- Debug and Release build/test validation
-
-The repository records the architecture, implementation, testing, and development history as the project evolves.
+Texture assignment is currently demonstrated through the Sandbox.
+Importing glTF materials and their texture associations is the next step
+toward physically based rendering.
 
 ## Documentation
 
