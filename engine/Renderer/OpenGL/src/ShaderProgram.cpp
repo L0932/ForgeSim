@@ -150,7 +150,9 @@ namespace ForgeSim::Renderer::OpenGL
 
 	ShaderProgram::ShaderProgram(
 		std::string_view vertexShaderSource,
-		std::string_view fragmentShaderSource)
+		std::string_view fragmentShaderSource,
+		std::span<const std::string_view>
+		requiredUniformNames)
 	{
 		unsigned int vertexShader = 0;
 		unsigned int fragmentShader = 0;
@@ -201,6 +203,8 @@ namespace ForgeSim::Renderer::OpenGL
 					"Shader program linking failed:\n" +
 					infoLog);
 			}
+
+			ValidateRequiredUniforms(requiredUniformNames);
 
 			glDetachShader(
 				m_Handle,
@@ -398,6 +402,44 @@ namespace ForgeSim::Renderer::OpenGL
 				value.y,
 				value.z,
 				value.w);
+		}
+	}
+
+	void ShaderProgram::ValidateRequiredUniforms(
+		std::span<const std::string_view>
+		requiredUniformNames) const
+	{
+		std::string missingUniformNames;
+
+		for (const std::string_view name :
+		requiredUniformNames)
+		{
+			const std::string nullTerminatedName{ name };
+
+			const int location =
+				glGetUniformLocation(
+					m_Handle,
+					nullTerminatedName.c_str());
+
+			if (location >= 0)
+			{
+				continue;
+			}
+
+			if (!missingUniformNames.empty())
+			{
+				missingUniformNames += ", ";
+			}
+
+			missingUniformNames +=
+				nullTerminatedName;
+		}
+
+		if (!missingUniformNames.empty())
+		{
+			throw std::runtime_error(
+				"Shader program is missing required uniforms: " +
+				missingUniformNames);
 		}
 	}
 }

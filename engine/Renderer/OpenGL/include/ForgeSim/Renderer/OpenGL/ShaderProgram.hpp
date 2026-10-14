@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <string_view>
 
 #include <glm/mat4x4.hpp>
@@ -13,8 +14,9 @@ namespace ForgeSim::Renderer::OpenGL
 	public:
 		explicit ShaderProgram(
 			std::string_view vertexShaderSource,
-			std::string_view fragmentShaderSource
-		);
+			std::string_view fragmentShaderSource,
+			std::span<const std::string_view>
+				requiredUniformNames);
 
 		~ShaderProgram();
 
@@ -48,6 +50,10 @@ namespace ForgeSim::Renderer::OpenGL
 			const glm::mat4& value) const;
 
 	private:
+		void ValidateRequiredUniforms(
+			std::span<const std::string_view>
+			requiredUniformNames) const;
+
 		unsigned int m_Handle = 0;
 	};
 }

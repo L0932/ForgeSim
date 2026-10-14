@@ -1,19 +1,36 @@
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 #include <utility>
 
 #include <glad/gl.h>
 
 namespace ForgeSim::Renderer::OpenGL
 {
+	namespace
+	{
+		namespace DebugLineShaderUniform
+		{
+			constexpr std::string_view view = "uView";
+			constexpr std::string_view projection = "uProjection";
+
+			constexpr std::array required {
+				view,
+				projection
+			};
+		}
+	}
+
 	DebugLineRenderer::DebugLineRenderer(
 		std::string_view vertexShaderSource,
 		std::string_view fragmentShaderSource)
 		: m_ShaderProgram(
 			vertexShaderSource,
-			fragmentShaderSource)
+			fragmentShaderSource,
+			DebugLineShaderUniform::required)
 		, m_VertexBuffer(
 			nullptr,
 			sizeof(DebugLineVertex),
@@ -57,11 +74,11 @@ namespace ForgeSim::Renderer::OpenGL
 		m_ShaderProgram.Bind();
 
 		m_ShaderProgram.SetMatrix4x4(
-			"uView",
+			DebugLineShaderUniform::view,
 			view);
 
 		m_ShaderProgram.SetMatrix4x4(
-			"uProjection",
+			DebugLineShaderUniform::projection,
 			projection);
 
 		m_VertexArray.Bind();
@@ -79,7 +96,8 @@ namespace ForgeSim::Renderer::OpenGL
 	{
 		ShaderProgram replacement{
 			vertexShaderSource,
-			fragmentShaderSource
+			fragmentShaderSource,
+			DebugLineShaderUniform::required
 		};
 
 		m_ShaderProgram =

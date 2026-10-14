@@ -6,9 +6,11 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <glad/gl.h>
@@ -32,6 +34,85 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+		namespace SandboxRendererShaderUniform
+		{
+			constexpr std::string_view model =
+				"uModel";
+
+			constexpr std::string_view view =
+				"uView";
+
+			constexpr std::string_view projection =
+				"uProjection";
+
+			constexpr std::string_view baseColorFactor =
+				"uBaseColorFactor";
+
+			constexpr std::string_view baseColorTexture =
+				"uBaseColorTexture";
+
+			constexpr std::string_view metallicRoughnessTexture =
+				"uMetallicRoughnessTexture";
+
+			constexpr std::string_view normalTexture =
+				"uNormalTexture";
+
+			constexpr std::string_view occlusionTexture =
+				"uOcclusionTexture";
+
+			constexpr std::string_view emissiveTexture =
+				"uEmissiveTexture";
+
+			constexpr std::string_view normalScale =
+				"uNormalScale";
+
+			constexpr std::string_view occlusionStrength =
+				"uOcclusionStrength";
+
+			constexpr std::string_view emissiveFactor =
+				"uEmissiveFactor";
+
+			constexpr std::string_view cameraPosition =
+				"uCameraPosition";
+
+			constexpr std::string_view lightDirection =
+				"uLightDirection";
+
+			constexpr std::string_view lightRadiance =
+				"uLightRadiance";
+
+			constexpr std::string_view metallicFactor =
+				"uMetallicFactor";
+
+			constexpr std::string_view roughnessFactor =
+				"uRoughnessFactor";
+
+			constexpr std::string_view selectionAmount =
+				"uSelectionAmount";
+
+			constexpr std::array required{
+				model,
+				view,
+				projection,
+				baseColorFactor,
+				baseColorTexture,
+				metallicRoughnessTexture,
+				normalTexture,
+				occlusionTexture,
+				emissiveTexture,
+				normalScale,
+				occlusionStrength,
+				emissiveFactor,
+				cameraPosition,
+				lightDirection,
+				lightRadiance,
+				metallicFactor,
+				roughnessFactor,
+				selectionAmount
+			};
+
+		}
+
 		constexpr std::array<std::uint8_t, 4>
 			fallbackWhiteTexturePixels{
 				255,
@@ -100,7 +181,9 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]]
 		ForgeSim::Renderer::OpenGL::ShaderProgram CreateShaderProgram(
 			const std::filesystem::path& vertexShaderFilename,
-			const std::filesystem::path& fragmentShaderFilename)
+			const std::filesystem::path& fragmentShaderFilename,
+			std::span<const std::string_view>
+				requiredUniformNames)
 		{
 			const std::string vertexShaderSource =
 				LoadShaderSource(vertexShaderFilename);
@@ -110,7 +193,8 @@ namespace ForgeSim::Sandbox
 
 			return ForgeSim::Renderer::OpenGL::ShaderProgram{
 				vertexShaderSource,
-				fragmentShaderSource
+				fragmentShaderSource,
+				requiredUniformNames
 			};
 		}
 
@@ -311,7 +395,8 @@ namespace ForgeSim::Sandbox
 		, m_ObjectShaderProgram(
 			CreateShaderProgram(
 				m_ObjectShaderMonitor.VertexShaderPath(),
-				m_ObjectShaderMonitor.FragmentShaderPath()))
+				m_ObjectShaderMonitor.FragmentShaderPath(),
+				SandboxRendererShaderUniform::required))
 		, m_FallbackWhiteTexture(
 			1,
 			1,
@@ -614,23 +699,23 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.Bind();
 
 		m_ObjectShaderProgram.SetMatrix4x4(
-			"uView",
+			SandboxRendererShaderUniform::view,
 			view);
 
 		m_ObjectShaderProgram.SetMatrix4x4(
-			"uProjection",
+			SandboxRendererShaderUniform::projection,
 			projection);
 
 		m_ObjectShaderProgram.SetVector3(
-			"uCameraPosition",
+			SandboxRendererShaderUniform::cameraPosition,
 			cameraPosition);
 
 		m_ObjectShaderProgram.SetVector3(
-			"uLightDirection",
+			SandboxRendererShaderUniform::lightDirection,
 			light.directionToLight);
 
 		m_ObjectShaderProgram.SetVector3(
-			"uLightRadiance",
+			SandboxRendererShaderUniform::lightRadiance,
 			light.color * light.intensity);
 
 		m_BoundsVertices.clear();
@@ -703,11 +788,11 @@ namespace ForgeSim::Sandbox
 			BindMaterial(submission.materialIndex);
 
 			m_ObjectShaderProgram.SetFloat(
-				"uSelectionAmount",
+				SandboxRendererShaderUniform::selectionAmount,
 				submission.isSelected ? 0.55f : 0.0f);
 
 			m_ObjectShaderProgram.SetMatrix4x4(
-				"uModel",
+				SandboxRendererShaderUniform::model,
 				submission.modelTransform);
 
 			submission.mesh->Bind();
@@ -748,7 +833,8 @@ namespace ForgeSim::Sandbox
 				auto replacement =
 					CreateShaderProgram(
 						m_ObjectShaderMonitor.VertexShaderPath(),
-						m_ObjectShaderMonitor.FragmentShaderPath());
+						m_ObjectShaderMonitor.FragmentShaderPath(),
+						SandboxRendererShaderUniform::required);
 
 				m_ObjectShaderProgram =
 					std::move(replacement);
@@ -903,49 +989,49 @@ namespace ForgeSim::Sandbox
 			emissiveTextureUnit);
 
 		m_ObjectShaderProgram.SetInt(
-			"uNormalTexture",
+			SandboxRendererShaderUniform::normalTexture,
 			static_cast<int>(normalTextureUnit));
 
 		m_ObjectShaderProgram.SetFloat(
-			"uNormalScale",
+			SandboxRendererShaderUniform::normalScale,
 			normalScale);
 
 		m_ObjectShaderProgram.SetInt(
-			"uBaseColorTexture",
+			SandboxRendererShaderUniform::baseColorTexture,
 			static_cast<int>(baseColorTextureUnit));
 
 		m_ObjectShaderProgram.SetInt(
-			"uMetallicRoughnessTexture",
+			SandboxRendererShaderUniform::metallicRoughnessTexture,
 			static_cast<int>(
 			metallicRoughnessTextureUnit));
 
 		m_ObjectShaderProgram.SetVector4(
-			"uBaseColorFactor",
+			SandboxRendererShaderUniform::baseColorFactor,
 			baseColorFactor);
 
 		m_ObjectShaderProgram.SetFloat(
-			"uMetallicFactor",
+			SandboxRendererShaderUniform::metallicFactor,
 			metallicFactor);
 
 		m_ObjectShaderProgram.SetFloat(
-			"uRoughnessFactor",
+			SandboxRendererShaderUniform::roughnessFactor,
 			roughnessFactor);
 
 		m_ObjectShaderProgram.SetInt(
-			"uOcclusionTexture",
+			SandboxRendererShaderUniform::occlusionTexture,
 			static_cast<int>(occlusionTextureUnit));
 
 		m_ObjectShaderProgram.SetFloat(
-			"uOcclusionStrength",
+			SandboxRendererShaderUniform::occlusionStrength,
 			occlusionStrength);
 
 		m_ObjectShaderProgram.SetInt(
-			"uEmissiveTexture",
+			SandboxRendererShaderUniform::emissiveTexture,
 			static_cast<int>(
 			emissiveTextureUnit));
 
 		m_ObjectShaderProgram.SetVector3(
-			"uEmissiveFactor",
+			SandboxRendererShaderUniform::emissiveFactor,
 			emissiveFactor);
 	}
 }
