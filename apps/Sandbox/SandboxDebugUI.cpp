@@ -95,6 +95,38 @@ namespace ForgeSim::Sandbox
 			"Show object bounds",
 			&m_ShowObjectBounds);
 
+		ImGui::SeparatorText("Rendering");
+
+		ImGui::SliderFloat(
+			"Exposure",
+			&m_Exposure,
+			0.05f,
+			5.0f, 
+			"%.2f",
+			ImGuiSliderFlags_Logarithmic);
+
+		ImGui::SeparatorText("Selection");
+
+		ImGui::Checkbox(
+			"Show selection highlight",
+			&m_SelectionHighlightEnabled);
+
+		ImGui::BeginDisabled(
+			!m_SelectionHighlightEnabled);
+
+		ImGui::ColorEdit3(
+			"Highlight color",
+			&m_SelectionHighlightColor.x);
+
+		ImGui::SliderFloat(
+			"Highlight strength",
+			&m_SelectionHighlightStrength,
+			0.0f,
+			1.0f,
+			"%.2f");
+
+		ImGui::EndDisabled();
+
 		ImGui::SeparatorText("Runtime Diagnostics");
 
 		ImGui::Checkbox(
@@ -205,6 +237,11 @@ namespace ForgeSim::Sandbox
 			ImGui::GetDrawData());
 	}
 
+	float SandboxDebugUI::Exposure() const noexcept
+	{
+		return m_Exposure;
+	}
+
 	bool SandboxDebugUI::WantsMouseCapture()
 		const noexcept
 	{
@@ -231,5 +268,24 @@ namespace ForgeSim::Sandbox
 		const noexcept
 	{
 		return m_RuntimeDiagnosticsEnabled;
+	}
+
+	bool SandboxDebugUI::SelectionHighlightEnabled()
+		const noexcept
+	{
+		return m_SelectionHighlightEnabled;
+	}
+
+	const glm::vec3&
+		SandboxDebugUI::SelectionHighlightColor()
+		const noexcept
+	{
+		return m_SelectionHighlightColor;
+	}
+
+	float SandboxDebugUI::SelectionHighlightStrength()
+		const noexcept
+	{
+		return m_SelectionHighlightStrength;
 	}
 }

@@ -1,5 +1,6 @@
 #include "SandboxRenderer.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -90,6 +91,9 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view selectionAmount =
 				"uSelectionAmount";
 
+			constexpr std::string_view selectionColor =
+				"uSelectionColor";
+
 			constexpr std::array required{
 				model,
 				view,
@@ -108,7 +112,8 @@ namespace ForgeSim::Sandbox
 				lightRadiance,
 				metallicFactor,
 				roughnessFactor,
-				selectionAmount
+				selectionAmount,
+				selectionColor
 			};
 
 		}
@@ -400,11 +405,13 @@ namespace ForgeSim::Sandbox
 		, m_FallbackWhiteTexture(
 			1,
 			1,
-			fallbackWhiteTexturePixels)
+			fallbackWhiteTexturePixels,
+			Renderer::OpenGL::TextureColorSpace::Linear)
 		, m_FallbackNormalTexture(
 			1,
 			1,
-			fallbackNormalTexturePixels)
+			fallbackNormalTexturePixels,
+			Renderer::OpenGL::TextureColorSpace::Linear)
 		, m_DefaultSampler()
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
@@ -417,6 +424,14 @@ namespace ForgeSim::Sandbox
 				m_GridShaderMonitor.VertexShaderPath()),
 			LoadTextFile(
 				m_GridShaderMonitor.FragmentShaderPath()))
+		, m_ToneMappingShaderMonitor(
+			ShaderPath("ToneMapping.vert"),
+			ShaderPath("ToneMapping.frag"))
+		, m_ToneMappingRenderer(
+			LoadTextFile(
+				m_ToneMappingShaderMonitor.VertexShaderPath()),
+			LoadTextFile(
+				m_ToneMappingShaderMonitor.FragmentShaderPath()))
 	{	
 		// Upload imported mesh primitives once.
 		std::size_t primitiveCount = 0;
@@ -461,33 +476,9 @@ namespace ForgeSim::Sandbox
 		const Assets::TextureResources& textureResources =
 			m_ObjectSceneAsset.textureResources;
 
+		// A source texture may need both an sRGB and a linear GPU copy.
 		m_GpuTextures.reserve(
-			textureResources.textures.size());
-
-		for (const Assets::TextureData& texture :
-			textureResources.textures)
-		{
-			if (texture.imageIndex >=
-				textureResources.images.size())
-			{
-				throw std::runtime_error(
-					"Texture references an invalid image index.");
-			}
-
-			const Assets::ImageData& image =
-				textureResources.images[texture.imageIndex];
-
-			if (!image.IsValid())
-			{
-				throw std::runtime_error(
-					"Cannot upload an invalid texture image.");
-			}
-
-			m_GpuTextures.emplace_back(
-				image.width,
-				image.height,
-				image.pixels);
-		}
+			textureResources.textures.size() * 2);
 
 		m_GpuSamplers.reserve(
 			textureResources.samplers.size());
@@ -499,11 +490,81 @@ namespace ForgeSim::Sandbox
 				CreateSamplerSpecification(sampler));
 		}
 
-		const auto resolveTextureBinding =
+		const auto resolveGpuTexture =
 			[this, &textureResources](
+				std::size_t textureIndex,
+				Renderer::OpenGL::TextureColorSpace colorSpace)
+			-> const Renderer::OpenGL::Texture2D*
+			{
+				if (textureIndex >=
+					textureResources.textures.size())
+				{
+					throw std::runtime_error(
+						"Material references an invalid texture.");
+				}
+
+				const auto existingTexture =
+					std::find_if(
+						m_GpuTextures.begin(),
+						m_GpuTextures.end(),
+						[textureIndex, colorSpace](
+							const GpuTextureResource& resource)
+						{
+							return
+								resource.sourceTextureIndex ==
+								textureIndex &&
+								resource.colorSpace ==
+								colorSpace;
+
+						});
+
+				if (existingTexture != m_GpuTextures.end())
+				{
+					return &existingTexture->texture;
+				}
+
+				const Assets::TextureData& texture =
+					textureResources.textures[textureIndex];
+
+				if (texture.imageIndex >=
+					textureResources.images.size())
+				{
+					throw std::runtime_error(
+						"Texture references an invalid image index.");
+				}
+
+				const Assets::ImageData& image =
+					textureResources.images[texture.imageIndex];
+
+				if (!image.IsValid())
+				{
+					throw std::runtime_error(
+						"Cannot upload an invalid texture image.");
+				}
+
+				m_GpuTextures.push_back(
+					GpuTextureResource{
+						.sourceTextureIndex = textureIndex,
+						.colorSpace = colorSpace,
+						.texture =
+							Renderer::OpenGL::Texture2D{
+								image.width,
+								image.height,
+								image.pixels,
+								colorSpace
+							}
+					});
+
+				return &m_GpuTextures.back().texture;					
+			};
+
+
+		const auto resolveTextureBinding =
+			[this, &textureResources, &resolveGpuTexture](
 				const std::optional<
 				Assets::MaterialTextureReference>& reference,
-				const Renderer::OpenGL::Texture2D& fallbackTexture)
+				const Renderer::OpenGL::Texture2D& fallbackTexture,
+				Renderer::OpenGL::TextureColorSpace colorSpace)
 			-> GpuTextureBinding
 			{
 				GpuTextureBinding binding{
@@ -524,7 +585,7 @@ namespace ForgeSim::Sandbox
 				}
 
 				if (reference->textureIndex >=
-					m_GpuTextures.size())
+					textureResources.textures.size())
 				{
 					throw std::runtime_error(
 						"Material references an invalid texture.");
@@ -535,8 +596,9 @@ namespace ForgeSim::Sandbox
 						reference->textureIndex];
 
 				binding.texture =
-					&m_GpuTextures[
-						reference->textureIndex];
+					resolveGpuTexture(
+						reference->textureIndex,
+						colorSpace);
 
 				if (texture.samplerIndex)
 				{
@@ -615,27 +677,32 @@ namespace ForgeSim::Sandbox
 				.baseColor =
 					resolveTextureBinding(
 						metallicRoughness.baseColorTexture,
-						m_FallbackWhiteTexture),
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Srgb),
 
 				.metallicRoughness =
 					resolveTextureBinding(
 						metallicRoughness.metallicRoughnessTexture,
-						m_FallbackWhiteTexture),
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Linear),
 
 				.normal =
 					resolveTextureBinding(
 						normalTextureReference,
-						m_FallbackNormalTexture),
+						m_FallbackNormalTexture,
+						Renderer::OpenGL::TextureColorSpace::Linear),
 
 				.occlusion = 
 					resolveTextureBinding(
 						occlusionTextureReference,
-						m_FallbackWhiteTexture),
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Linear),
 
 				.emissive = 
 					resolveTextureBinding(
 						emissiveTextureReference,
-						m_FallbackWhiteTexture),
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Srgb),
 
 				.baseColorFactor = glm::vec4{
 					baseColorFactor[0],
@@ -679,14 +746,34 @@ namespace ForgeSim::Sandbox
 		const glm::mat4& projection,
 		const glm::vec3& cameraPosition,
 		const DirectionalLight& light,
-		bool showGrid,
-		bool showObjectBounds)
+		const SandboxRenderSettings& settings)
 	{
+		if (!m_HdrRenderTarget)
+		{
+			m_HdrRenderTarget.emplace(
+				settings.framebufferWidth,
+				settings.framebufferHeight);
+		}
+		else
+		{
+			m_HdrRenderTarget->Resize(
+				settings.framebufferWidth,
+				settings.framebufferHeight);
+		}
+
+		m_HdrRenderTarget->Bind();
+
+		glViewport(
+			0,
+			0,
+			static_cast<GLsizei>(settings.framebufferWidth),
+			static_cast<GLsizei>(settings.framebufferHeight));
+
 		glClear(
 			GL_COLOR_BUFFER_BIT |
 			GL_DEPTH_BUFFER_BIT);
 
-		if (showGrid)
+		if (settings.showGrid)
 		{
 			// Render the reference grid.
 			m_DebugLineRenderer.Render(
@@ -694,6 +781,8 @@ namespace ForgeSim::Sandbox
 				view,
 				projection);
 		}
+
+
 
 		// Render Sandbox objects.
 		m_ObjectShaderProgram.Bind();
@@ -718,9 +807,13 @@ namespace ForgeSim::Sandbox
 			SandboxRendererShaderUniform::lightRadiance,
 			light.color * light.intensity);
 
+		m_ObjectShaderProgram.SetVector3(
+			SandboxRendererShaderUniform::selectionColor,
+			settings.selectionHighlight.color);
+
 		m_BoundsVertices.clear();
 
-		if (showObjectBounds)
+		if (settings.showObjectBounds)
 		{
 			m_BoundsVertices.reserve(objects.size() * 24);
 		}
@@ -757,7 +850,7 @@ namespace ForgeSim::Sandbox
 					});
 			}
 
-			if (showObjectBounds)
+			if (settings.showObjectBounds)
 			{
 				const glm::vec3 boundsColor =
 					isSelected
@@ -787,9 +880,18 @@ namespace ForgeSim::Sandbox
 
 			BindMaterial(submission.materialIndex);
 
+			const float selectionAmount =
+				submission.isSelected &&
+				settings.selectionHighlight.enabled
+				? std::clamp(
+					settings.selectionHighlight.strength,
+					0.0f,
+					1.0f)
+				: 0.0f;
+
 			m_ObjectShaderProgram.SetFloat(
 				SandboxRendererShaderUniform::selectionAmount,
-				submission.isSelected ? 0.55f : 0.0f);
+				selectionAmount);
 
 			m_ObjectShaderProgram.SetMatrix4x4(
 				SandboxRendererShaderUniform::model,
@@ -805,7 +907,7 @@ namespace ForgeSim::Sandbox
 				nullptr);
 		}
 
-		if (showObjectBounds && !m_BoundsVertices.empty())
+		if (settings.showObjectBounds && !m_BoundsVertices.empty())
 		{
 			const GLboolean depthTestWasEnabled =
 				glIsEnabled(GL_DEPTH_TEST);
@@ -822,6 +924,10 @@ namespace ForgeSim::Sandbox
 				glEnable(GL_DEPTH_TEST);
 			}
 		}
+
+		m_ToneMappingRenderer.RenderToDefaultFramebuffer(
+			*m_HdrRenderTarget,
+			settings.exposure);
 	}
 
 	void SandboxRenderer::ReloadChangedShaders()
@@ -873,6 +979,35 @@ namespace ForgeSim::Sandbox
 			{
 				ForgeSim::Core::LogError(
 					"Failed to reload grid shader program: " +
+					std::string{ exception.what() });
+			}
+		}
+
+		if (m_ToneMappingShaderMonitor.PollForChanges())
+		{
+			try
+			{
+				const std::string vertexShaderSource =
+					LoadTextFile(
+						m_ToneMappingShaderMonitor
+						.VertexShaderPath());
+
+				const std::string fragmentShaderSource =
+					LoadTextFile(
+						m_ToneMappingShaderMonitor
+						.FragmentShaderPath());
+
+				m_ToneMappingRenderer.ReloadShaders(
+					vertexShaderSource,
+					fragmentShaderSource);
+
+				ForgeSim::Core::LogInfo(
+					"Reloaded tone-mapping shader program.");
+			}
+			catch (const std::exception& exception)
+			{
+				ForgeSim::Core::LogError(
+					"Failed to reload tone-mapping shader program: " +
 					std::string{ exception.what() });
 			}
 		}

@@ -5,13 +5,20 @@
 
 namespace ForgeSim::Renderer::OpenGL
 {
+	enum class TextureColorSpace
+	{
+		Linear,
+		Srgb
+	};
+
 	class Texture2D final
 	{
 	public:
 		Texture2D(
 			std::uint32_t width,
 			std::uint32_t height,
-			std::span<const std::uint8_t> rgbaPixels);
+			std::span<const std::uint8_t> rgbaPixels,
+			TextureColorSpace colorSpace);
 
 		~Texture2D();
 

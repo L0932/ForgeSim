@@ -232,6 +232,34 @@ namespace ForgeSim::Sandbox
 				);
 			}
 
+			const SandboxRenderSettings renderSettings{
+				.framebufferWidth =
+					static_cast<std::uint32_t>(
+						framebufferExtent.width),
+
+				.framebufferHeight =
+					static_cast<std::uint32_t>(
+						framebufferExtent.height),
+
+				.exposure = m_DebugUI.Exposure(),
+
+				.showGrid = m_DebugUI.ShowGrid(),
+
+				.showObjectBounds =
+					m_DebugUI.ShowObjectBounds(),
+
+				.selectionHighlight = {
+					.enabled =
+						m_DebugUI.SelectionHighlightEnabled(),
+
+					.color =
+						m_DebugUI.SelectionHighlightColor(),
+
+					.strength =
+						m_DebugUI.SelectionHighlightStrength()
+					}
+			};
+
 			m_Renderer.Render(
 				m_Scene.Objects(),
 				selectionController.SelectedObjectId(),
@@ -239,9 +267,7 @@ namespace ForgeSim::Sandbox
 				projection,
 				camera.Position(),
 				directionalLight,
-				m_DebugUI.ShowGrid(),
-				m_DebugUI.ShowObjectBounds()
-			);
+				renderSettings);
 
 			SandboxObject* selectedObject = nullptr;
 

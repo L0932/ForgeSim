@@ -41,9 +41,19 @@ The Sandbox currently supports:
 - Reference-grid and bounding-box debug rendering
 - Dear ImGui runtime diagnostics
 
-Texture assignment is currently demonstrated through the Sandbox.
-Importing glTF materials and their texture associations is the next step
-toward physically based rendering.
+## Rendering Color Management
+
+ForgeSim performs scene lighting in linear color space.
+- Base-color and emissive textures are uploaded using sRGB texture formats. OpenGL converts their RGB values to linear space when sampled.
+- Normal, metallic-roughness, and occlusion textures are uploaded as linear data textures.
+- Material factors, vertex colors, light colors, and shader lighting calculations are treated as linear values.
+- Scene color is rendered into an RGBA16F HDR render target.
+- The final scene is processed using an ACES approximation with configurable exposure.
+- The tone-mapping shader converts the final linear color to sRGB before writing to the default framebuffer.
+- GL_FRAMEBUFFER_SRGB remains disabled during this presentation pass because the shader performs the conversion explicitly.
+- Render-target attachments are recreated when the framebuffer size changes.
+- Rendering is skipped while the framebuffer has a zero width or height, such as when the window is minimized.
+This captures the boundary decisions clearly without creating a larger architecture document solely for this issue. After adding it, the remaining work is validation in Debug and Release.
 
 ## Documentation
 

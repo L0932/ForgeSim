@@ -29,7 +29,8 @@ namespace ForgeSim::Renderer::OpenGL
 	Texture2D::Texture2D(
 		std::uint32_t width,
 		std::uint32_t height,
-		std::span<const std::uint8_t> rgbaPixels)
+		std::span<const std::uint8_t> rgbaPixels,
+		TextureColorSpace colorSpace)
 	{
 		if (width == 0 || height == 0)
 		{
@@ -77,10 +78,15 @@ namespace ForgeSim::Renderer::OpenGL
 		const std::uint32_t mipLevelCount =
 			std::bit_width(maximumDimension);
 
+		const GLenum internalFormat =
+			colorSpace == TextureColorSpace::Srgb
+			? GL_SRGB8_ALPHA8
+			: GL_RGBA8;
+
 		glTextureStorage2D(
 			m_Handle,
 			static_cast<GLsizei>(mipLevelCount),
-			GL_RGBA8,
+			internalFormat,
 			static_cast<GLsizei>(width),
 			static_cast<GLsizei>(height));
 

@@ -3,6 +3,7 @@
 #include "SandboxObject.hpp"
 #include "ShaderFileMonitor.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <optional>
 #include <span>
@@ -19,8 +20,10 @@
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/GpuMesh.hpp>
+#include <ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/Sampler.hpp>
 #include <ForgeSim/Renderer/OpenGL/Texture2D.hpp>
+#include <ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
 
 namespace ForgeSim::Sandbox
@@ -36,6 +39,32 @@ namespace ForgeSim::Sandbox
 
 		glm::vec3 color{ 1.0f };
 		float intensity = 3.0f;
+	};
+
+	struct SelectionHighlightSettings
+	{
+		bool enabled = true;
+
+		glm::vec3 color{
+			1.0f,
+			0.35f,
+			0.05
+		};
+
+		float strength = 0.20f;
+	};
+
+	struct SandboxRenderSettings
+	{
+		std::uint32_t framebufferWidth = 0;
+		std::uint32_t framebufferHeight = 0;
+
+		float exposure = 1.0f;
+
+		bool showGrid = true;
+		bool showObjectBounds = false;
+
+		SelectionHighlightSettings selectionHighlight;
 	};
 
 	class SandboxRenderer final
@@ -62,8 +91,7 @@ namespace ForgeSim::Sandbox
 			const glm::mat4& projection,
 			const glm::vec3& cameraPosition,
 			const DirectionalLight& light,
-			bool showGrid,
-			bool showObjectBounds);
+			const SandboxRenderSettings& settings);
 
 		void ReloadChangedShaders();
 
@@ -91,6 +119,13 @@ namespace ForgeSim::Sandbox
 			Renderer::OpenGL::GpuMesh mesh;
 			Assets::SceneMeshIndex sceneMeshIndex;
 			std::optional<Assets::MaterialIndex> materialIndex;
+		};
+
+		struct GpuTextureResource
+		{
+			std::size_t sourceTextureIndex;
+			Renderer::OpenGL::TextureColorSpace colorSpace;
+			Renderer::OpenGL::Texture2D texture;
 		};
 
 		struct GpuTextureBinding
@@ -127,7 +162,7 @@ namespace ForgeSim::Sandbox
 		std::vector<GpuPrimitiveResource> 
 			m_GpuPrimitiveResources;
 
-		std::vector<Renderer::OpenGL::Texture2D>
+		std::vector<GpuTextureResource>
 			m_GpuTextures;
 
 		std::vector<Renderer::OpenGL::Sampler>
@@ -149,5 +184,13 @@ namespace ForgeSim::Sandbox
 		ShaderFileMonitor m_GridShaderMonitor;
 		ForgeSim::Renderer::OpenGL::DebugLineRenderer
 			m_DebugLineRenderer;
+
+		std::optional<Renderer::OpenGL::HdrRenderTarget>
+			m_HdrRenderTarget;
+
+		ShaderFileMonitor m_ToneMappingShaderMonitor;
+
+		Renderer::OpenGL::ToneMappingRenderer
+			m_ToneMappingRenderer;
 	};
 }

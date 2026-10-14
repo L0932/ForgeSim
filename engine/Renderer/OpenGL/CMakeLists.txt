@@ -13,9 +13,11 @@ target_sources(
 		src/Buffer.cpp
 		src/DebugLineRenderer.cpp
 		src/GpuMesh.cpp
+		src/HdrRenderTarget.cpp
 		src/ShaderProgram.cpp
 		src/Sampler.cpp
 		src/Texture2D.cpp
+		src/ToneMappingRenderer.cpp
 		src/VertexArray.cpp
 	PUBLIC
 		FILE_SET HEADERS
@@ -24,9 +26,11 @@ target_sources(
 			include/ForgeSim/Renderer/OpenGL/Buffer.hpp
 			include/ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/GpuMesh.hpp
+			include/ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp
 			include/ForgeSim/Renderer/OpenGL/Sampler.hpp
 			include/ForgeSim/Renderer/OpenGL/ShaderProgram.hpp
 			include/ForgeSim/Renderer/OpenGL/Texture2D.hpp
+			include/ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/VertexArray.hpp
 )
 

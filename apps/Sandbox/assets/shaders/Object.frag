@@ -8,23 +8,29 @@ in vec3 vWorldPosition;
 in vec3 vWorldNormal;
 in vec4 vWorldTangent;
 
-uniform vec4 uBaseColorFactor;
 uniform sampler2D uBaseColorTexture;
+uniform vec4 uBaseColorFactor;
+
 uniform sampler2D uMetallicRoughnessTexture;
+uniform float uMetallicFactor;
+
 uniform sampler2D uNormalTexture;
-uniform sampler2D uOcclusionTexture;
-uniform sampler2D uEmissiveTexture;
 uniform float uNormalScale;
+
+uniform sampler2D uOcclusionTexture;
 uniform float uOcclusionStrength;
+
+uniform sampler2D uEmissiveTexture;
 uniform vec3 uEmissiveFactor;
+
+uniform vec3 uSelectionColor;
+uniform float uSelectionAmount;
 
 uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
 uniform vec3 uLightRadiance;
 
-uniform float uMetallicFactor;
 uniform float uRoughnessFactor;
-uniform float uSelectionAmount;
 
 out vec4 fragColor;
 
@@ -361,13 +367,10 @@ void main()
 		directLighting +
 		emissiveLighting;
 
-	const vec3 selectionColor =
-		vec3(1.0, 0.65, 0.1);
-
 	vec3 finalColor =
 		mix(
 			surfaceColor,
-			selectionColor,
+			uSelectionColor,
 			uSelectionAmount);
 
 	vec3 toneMappedColor =
