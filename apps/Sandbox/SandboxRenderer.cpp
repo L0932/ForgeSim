@@ -41,6 +41,7 @@ namespace ForgeSim::Sandbox
 		};
 
 		constexpr std::uint32_t baseColorTextureUnit = 0;
+		constexpr std::uint32_t metallicRoughnessTextureUnit = 1;
 
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
@@ -398,43 +399,30 @@ namespace ForgeSim::Sandbox
 				CreateSamplerSpecification(sampler));
 		}
 
-		m_GpuMaterialResources.reserve(
-			m_ObjectSceneAsset.materials.size());
-
-		for (const Assets::MaterialData& material :
-			m_ObjectSceneAsset.materials)
-		{
-			const auto& factor =
-				material.metallicRoughness.baseColorFactor;
-
-			GpuMaterialResource gpuMaterial{
-				.baseColorTexture =
-					&m_FallbackWhiteTexture,
-
-				.sampler =
-					&m_DefaultSampler,
-
-				.baseColorFactor = glm::vec4{
-					factor[0],
-					factor[1],
-					factor[2],
-					factor[3]
-				}
-			};
-
-			const auto& textureReference =
-				material.metallicRoughness.baseColorTexture;
-
-			if (textureReference)
+		const auto resolveTextureBinding =
+			[this, &textureResources](
+				const std::optional<
+				Assets::MaterialTextureReference>& reference)
+			-> GpuTextureBinding
 			{
-				if (textureReference->textureCoordinateSet != 0)
+				GpuTextureBinding binding{
+					.texture = &m_FallbackWhiteTexture,
+					.sampler = &m_DefaultSampler
+				};
+
+				if (!reference)
+				{
+					return binding;
+				}
+
+				if (reference->textureCoordinateSet != 0)
 				{
 					throw std::runtime_error(
 						"Only texture-coordinate set zero "
 						"is currently supported.");
 				}
 
-				if (textureReference->textureIndex >=
+				if (reference->textureIndex >=
 					m_GpuTextures.size())
 				{
 					throw std::runtime_error(
@@ -443,11 +431,11 @@ namespace ForgeSim::Sandbox
 
 				const Assets::TextureData& texture =
 					textureResources.textures[
-						textureReference->textureIndex];
+						reference->textureIndex];
 
-				gpuMaterial.baseColorTexture =
+				binding.texture =
 					&m_GpuTextures[
-						textureReference->textureIndex];
+						reference->textureIndex];
 
 				if (texture.samplerIndex)
 				{
@@ -458,10 +446,49 @@ namespace ForgeSim::Sandbox
 							"Texture references an invalid sampler.");
 					}
 
-					gpuMaterial.sampler =
-						&m_GpuSamplers[*texture.samplerIndex];
+					binding.sampler =
+						&m_GpuSamplers[
+							*texture.samplerIndex];
 				}
-			}
+
+				return binding;
+			};
+
+		m_GpuMaterialResources.reserve(
+			m_ObjectSceneAsset.materials.size());
+
+		for (const Assets::MaterialData& material :
+			m_ObjectSceneAsset.materials)
+		{
+			const auto& metallicRoughness =
+				material.metallicRoughness;
+
+			const auto& baseColorFactor =
+				metallicRoughness.baseColorFactor;
+
+			GpuMaterialResource gpuMaterial{
+				.baseColor =
+					resolveTextureBinding(
+						metallicRoughness.baseColorTexture),
+
+				.metallicRoughness =
+					resolveTextureBinding(
+						metallicRoughness
+							.metallicRoughnessTexture),
+
+				.baseColorFactor = glm::vec4{
+					baseColorFactor[0],
+					baseColorFactor[1],
+					baseColorFactor[2],
+					baseColorFactor[3]
+				},
+
+				.metallicFactor =
+					metallicRoughness.metallicFactor,
+
+				.roughnessFactor =
+					metallicRoughness.roughnessFactor
+			};
 
 			m_GpuMaterialResources.push_back(
 				gpuMaterial);
@@ -483,6 +510,8 @@ namespace ForgeSim::Sandbox
 		std::optional<SandboxObjectId> selectedObjectId,
 		const glm::mat4& view,
 		const glm::mat4& projection,
+		const glm::vec3& cameraPosition,
+		const DirectionalLight& light,
 		bool showGrid,
 		bool showObjectBounds)
 	{
@@ -509,6 +538,18 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetMatrix4x4(
 			"uProjection",
 			projection);
+
+		m_ObjectShaderProgram.SetVector3(
+			"uCameraPosition",
+			cameraPosition);
+
+		m_ObjectShaderProgram.SetVector3(
+			"uLightDirection",
+			light.directionToLight);
+
+		m_ObjectShaderProgram.SetVector3(
+			"uLightRadiance",
+			light.color * light.intensity);
 
 		m_BoundsVertices.clear();
 
@@ -679,13 +720,20 @@ namespace ForgeSim::Sandbox
 	void SandboxRenderer::BindMaterial(
 		std::optional<Assets::MaterialIndex> materialIndex)
 	{
-		const Renderer::OpenGL::Texture2D* baseColorTexture =
-			&m_FallbackWhiteTexture;
+		GpuTextureBinding baseColor{
+			.texture = &m_FallbackWhiteTexture,
+			.sampler = &m_DefaultSampler
+		};
 
-		const Renderer::OpenGL::Sampler* sampler =
-			&m_DefaultSampler;
+		GpuTextureBinding metallicRoughness{
+			.texture = &m_FallbackWhiteTexture,
+			.sampler = &m_DefaultSampler
+		};
 
 		glm::vec4 baseColorFactor{ 1.0f };
+
+		float metallicFactor = 1.0f;
+		float roughnessFactor = 1.0f;
 
 		if (materialIndex)
 		{
@@ -700,30 +748,51 @@ namespace ForgeSim::Sandbox
 			const GpuMaterialResource& material =
 				m_GpuMaterialResources[*materialIndex];
 
-			if (material.baseColorTexture != nullptr)
-			{
-				baseColorTexture =
-					material.baseColorTexture;
-			}
-
-			if (material.sampler != nullptr)
-			{
-				sampler = material.sampler;
-			}
+			baseColor = material.baseColor;
+			metallicRoughness =
+				material.metallicRoughness;
 
 			baseColorFactor =
 				material.baseColorFactor;
+
+			metallicFactor =
+				material.metallicFactor;
+
+			roughnessFactor =
+				material.roughnessFactor;
 		}
 
-		baseColorTexture->Bind(baseColorTextureUnit);
-		sampler->Bind(baseColorTextureUnit);
+		baseColor.texture->Bind(
+			baseColorTextureUnit);
+
+		baseColor.sampler->Bind(
+			baseColorTextureUnit);
+
+		metallicRoughness.texture->Bind(
+			metallicRoughnessTextureUnit);
+
+		metallicRoughness.sampler->Bind(
+			metallicRoughnessTextureUnit);
 
 		m_ObjectShaderProgram.SetInt(
 			"uBaseColorTexture",
 			static_cast<int>(baseColorTextureUnit));
 
+		m_ObjectShaderProgram.SetInt(
+			"uMetallicRoughnessTexture",
+			static_cast<int>(
+				metallicRoughnessTextureUnit));
+
 		m_ObjectShaderProgram.SetVector4(
 			"uBaseColorFactor",
 			baseColorFactor);
+
+		m_ObjectShaderProgram.SetFloat(
+			"uMetallicFactor",
+			metallicFactor);
+
+		m_ObjectShaderProgram.SetFloat(
+			"uRoughnessFactor",
+			roughnessFactor);
 	}
 }

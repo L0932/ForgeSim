@@ -24,6 +24,7 @@ namespace ForgeSim::Renderer
 		[[nodiscard]] glm::mat4 ProjectionMatrix(
 			float aspectRatio) const;
 
+		[[nodiscard]] const glm::vec3& Position() const noexcept;
 		[[nodiscard]] glm::vec3 ForwardDirection() const;
 		[[nodiscard]] glm::vec3 RightDirection() const;
 

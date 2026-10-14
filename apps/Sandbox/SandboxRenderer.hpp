@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
 #include <ForgeSim/Assets/MeshData.hpp>
@@ -24,6 +25,19 @@
 
 namespace ForgeSim::Sandbox
 {
+	struct DirectionalLight
+	{
+		// World-space direction from the surface toward the light.
+		glm::vec3 directionToLight{
+			-0.5f,
+			1.0f,
+			0.3f
+		};
+
+		glm::vec3 color{ 1.0f };
+		float intensity = 3.0f;
+	};
+
 	class SandboxRenderer final
 	{
 	public:
@@ -46,6 +60,8 @@ namespace ForgeSim::Sandbox
 			std::optional<SandboxObjectId> selectedObjectId,
 			const glm::mat4& view,
 			const glm::mat4& projection,
+			const glm::vec3& cameraPosition,
+			const DirectionalLight& light,
 			bool showGrid,
 			bool showObjectBounds);
 
@@ -77,15 +93,21 @@ namespace ForgeSim::Sandbox
 			std::optional<Assets::MaterialIndex> materialIndex;
 		};
 
+		struct GpuTextureBinding
+		{
+			const Renderer::OpenGL::Texture2D* texture = nullptr;
+			const Renderer::OpenGL::Sampler* sampler = nullptr;
+		};
+
 		struct GpuMaterialResource
 		{
-			const Renderer::OpenGL::Texture2D* baseColorTexture =
-				nullptr;
-
-			const Renderer::OpenGL::Sampler* sampler =
-				nullptr;
+			GpuTextureBinding baseColor;
+			GpuTextureBinding metallicRoughness;
 
 			glm::vec4 baseColorFactor{ 1.0f };
+
+			float metallicFactor = 1.0f;
+			float roughnessFactor = 1.0f;
 		};
 
 		std::vector<RenderSubmission> m_RenderSubmissions;

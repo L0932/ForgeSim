@@ -355,6 +355,30 @@ namespace ForgeSim::Renderer::OpenGL
 			glm::value_ptr(value));
 	}
 
+	void ShaderProgram::SetVector3(
+		std::string_view name,
+		const glm::vec3& value) const
+	{
+		const std::string uniformName{ name };
+
+		const int location =
+			glGetUniformLocation(
+				m_Handle,
+				uniformName.c_str());
+
+		if (location < 0)
+		{
+			return;
+		}
+
+		glProgramUniform3f(
+			m_Handle,
+			location,
+			value.x,
+			value.y,
+			value.z);
+	}
+
 	void ShaderProgram::SetVector4(
 		std::string_view name,
 		const glm::vec4& value) const

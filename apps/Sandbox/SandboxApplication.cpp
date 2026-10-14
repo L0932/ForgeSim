@@ -76,6 +76,20 @@ namespace ForgeSim::Sandbox
 			maximumStepsPerFrame
 		};
 
+		const DirectionalLight directionalLight{
+			.directionToLight = {
+				-0.5f,
+				1.0f,
+				0.3f
+			},
+			.color = {
+				1.0f,
+				0.95f,
+				0.9f
+			},
+			.intensity = 3.0f
+				};
+
 		while (!m_Window.ShouldClose())
 		{
 			m_Window.PollEvents();
@@ -223,6 +237,8 @@ namespace ForgeSim::Sandbox
 				selectionController.SelectedObjectId(),
 				view,
 				projection,
+				camera.Position(),
+				directionalLight,
 				m_DebugUI.ShowGrid(),
 				m_DebugUI.ShowObjectBounds()
 			);

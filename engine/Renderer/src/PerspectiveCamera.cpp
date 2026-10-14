@@ -77,6 +77,12 @@ namespace ForgeSim::Renderer
 		m_Target += displacement;
 	}
 
+	const glm::vec3&
+		PerspectiveCamera::Position() const noexcept
+	{
+		return m_Position;
+	}
+
 	glm::vec3 PerspectiveCamera::ForwardDirection() const
 	{
 		return glm::normalize(
