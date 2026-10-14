@@ -36,3 +36,16 @@ material-aware render-submission path.
 - License: MIT License
 - License URL: https://github.com/KhronosGroup/glTF-Asset-Generator/blob/main/LICENSE
 - Modifications: None
+
+## Avocado.glb
+
+A natural object using core glTF 2.0 materials, including base-color,
+metallic-roughness, and normal textures. The model is used to validate
+ForgeSim's initial PBR material and normal-mapping paths.
+
+- Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Avocado
+- Author: Microsoft
+- Copyright: Public, 2017
+- License: Creative Commons Zero v1.0 Universal (CC0-1.0)
+- License URL: https://creativecommons.org/publicdomain/zero/1.0/
+- Modifications: None

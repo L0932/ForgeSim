@@ -103,11 +103,13 @@ namespace ForgeSim::Sandbox
 		{
 			GpuTextureBinding baseColor;
 			GpuTextureBinding metallicRoughness;
+			GpuTextureBinding normal;
 
 			glm::vec4 baseColorFactor{ 1.0f };
 
 			float metallicFactor = 1.0f;
 			float roughnessFactor = 1.0f;
+			float normalScale = 1.0f;
 		};
 
 		std::vector<RenderSubmission> m_RenderSubmissions;
@@ -131,6 +133,7 @@ namespace ForgeSim::Sandbox
 			m_GpuMaterialResources;
 
 		Renderer::OpenGL::Texture2D m_FallbackWhiteTexture;
+		Renderer::OpenGL::Texture2D m_FallbackNormalTexture;
 		Renderer::OpenGL::Sampler m_DefaultSampler;
 
 		std::vector<ForgeSim::Renderer::DebugLineVertex>

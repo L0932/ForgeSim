@@ -31,8 +31,10 @@ void main()
         normalize(normalMatrix * aNormal);
 
     vWorldTangent = vec4(
-        normalize(normalMatrix * aTangent.xyz),
-        aTangent.w);
+	    normalize(
+		    mat3(uModel) *
+		    aTangent.xyz),
+	    aTangent.w);
 
     gl_Position =
         uProjection *

@@ -6,9 +6,13 @@ in vec3 vColor;
 in vec2 vTextureCoordinates;
 in vec3 vWorldPosition;
 in vec3 vWorldNormal;
+in vec4 vWorldTangent;
 
 uniform vec4 uBaseColorFactor;
 uniform sampler2D uBaseColorTexture;
+uniform sampler2D uMetallicRoughnessTexture;
+uniform sampler2D uNormalTexture;
+uniform float uNormalScale;
 
 uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
@@ -103,8 +107,60 @@ void main()
 		uBaseColorFactor *
 		vec4(vColor, 1.0);
 
-	vec3 normal =
+	vec3 geometricNormal =
 		normalize(vWorldNormal);
+
+	vec3 projectedTangent =
+		vWorldTangent.xyz -
+		geometricNormal *
+		dot(
+			vWorldTangent.xyz,
+			geometricNormal);
+
+	vec3 normal = geometricNormal;
+
+	float tangentLengthSquared =
+		dot(
+			projectedTangent,
+			projectedTangent);
+
+	if (tangentLengthSquared > 0.000001)
+	{
+		vec3 tangent =
+			normalize(
+				vWorldTangent.xyz -
+				geometricNormal *
+				dot(
+					vWorldTangent.xyz,
+					geometricNormal));
+
+		vec3 bitangent =
+			normalize(
+				cross(
+					geometricNormal,
+					tangent)) *
+				vWorldTangent.w;
+
+		vec3 tangentSpaceNormal =
+			texture(
+				uNormalTexture,
+				vTextureCoordinates).xyz *
+			2.0 -
+			1.0;
+
+		tangentSpaceNormal.xy *= uNormalScale;
+
+		mat3 tangentToWorld =
+			mat3(
+				tangent,
+				bitangent,
+				geometricNormal);
+
+		vec3 normal =
+			normalize(
+				tangentToWorld *
+				tangentSpaceNormal);
+	}
 
 	vec3 viewDirection =
 		normalize(
@@ -119,16 +175,23 @@ void main()
 			viewDirection +
 			lightDirection);
 
-	// Temporary constants until material factors are connected.
+	vec4 sampledMetallicRoughness =
+		texture(
+			uMetallicRoughnessTexture,
+			vTextureCoordinates);
+
+	// glTF stores roughness in green and metallic in blue.
 	float metallic =
 		clamp(
-			uMetallicFactor,
+			uMetallicFactor *
+			sampledMetallicRoughness.b,
 			0.0,
 			1.0);
 
 	float roughness =
 		clamp(
-			uRoughnessFactor,
+			uRoughnessFactor *
+			sampledMetallicRoughness.g,
 			0.045,
 			1.0);
 

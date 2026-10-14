@@ -40,9 +40,18 @@ namespace ForgeSim::Sandbox
 				255
 		};
 
+		constexpr std::array<std::uint8_t, 4>
+			fallbackNormalTexturePixels{
+				128,
+				128,
+				255,
+				255
+		};
+
 		constexpr std::uint32_t baseColorTextureUnit = 0;
 		constexpr std::uint32_t metallicRoughnessTextureUnit = 1;
-
+		constexpr std::uint32_t normalTextureUnit = 2;
+		
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
 		{
@@ -305,6 +314,10 @@ namespace ForgeSim::Sandbox
 			1,
 			1,
 			fallbackWhiteTexturePixels)
+		, m_FallbackNormalTexture(
+			1,
+			1,
+			fallbackNormalTexturePixels)
 		, m_DefaultSampler()
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
@@ -402,11 +415,12 @@ namespace ForgeSim::Sandbox
 		const auto resolveTextureBinding =
 			[this, &textureResources](
 				const std::optional<
-				Assets::MaterialTextureReference>& reference)
+				Assets::MaterialTextureReference>& reference,
+				const Renderer::OpenGL::Texture2D& fallbackTexture)
 			-> GpuTextureBinding
 			{
 				GpuTextureBinding binding{
-					.texture = &m_FallbackWhiteTexture,
+					.texture = &fallbackTexture,
 					.sampler = &m_DefaultSampler
 				};
 
@@ -466,15 +480,35 @@ namespace ForgeSim::Sandbox
 			const auto& baseColorFactor =
 				metallicRoughness.baseColorFactor;
 
+			std::optional<Assets::MaterialTextureReference>
+				normalTextureReference;
+
+			float normalScale = 1.0f;
+
+			if (material.normalTexture)
+			{
+				normalTextureReference =
+					material.normalTexture->texture;
+
+				normalScale =
+					material.normalTexture->scale;
+			}
+
 			GpuMaterialResource gpuMaterial{
 				.baseColor =
 					resolveTextureBinding(
-						metallicRoughness.baseColorTexture),
+						metallicRoughness.baseColorTexture,
+						m_FallbackWhiteTexture),
 
 				.metallicRoughness =
 					resolveTextureBinding(
-						metallicRoughness
-							.metallicRoughnessTexture),
+						metallicRoughness.metallicRoughnessTexture,
+						m_FallbackWhiteTexture),
+
+				.normal =
+					resolveTextureBinding(
+						normalTextureReference,
+						m_FallbackNormalTexture),
 
 				.baseColorFactor = glm::vec4{
 					baseColorFactor[0],
@@ -487,7 +521,9 @@ namespace ForgeSim::Sandbox
 					metallicRoughness.metallicFactor,
 
 				.roughnessFactor =
-					metallicRoughness.roughnessFactor
+					metallicRoughness.roughnessFactor,
+
+				.normalScale = normalScale
 			};
 
 			m_GpuMaterialResources.push_back(
@@ -730,6 +766,13 @@ namespace ForgeSim::Sandbox
 			.sampler = &m_DefaultSampler
 		};
 
+		GpuTextureBinding normal{
+			.texture = &m_FallbackNormalTexture,
+			.sampler = &m_DefaultSampler
+		};
+
+		float normalScale = 1.0f;
+
 		glm::vec4 baseColorFactor{ 1.0f };
 
 		float metallicFactor = 1.0f;
@@ -752,6 +795,10 @@ namespace ForgeSim::Sandbox
 			metallicRoughness =
 				material.metallicRoughness;
 
+			normal = material.normal;
+
+			normalScale = material.normalScale;
+
 			baseColorFactor =
 				material.baseColorFactor;
 
@@ -773,6 +820,17 @@ namespace ForgeSim::Sandbox
 
 		metallicRoughness.sampler->Bind(
 			metallicRoughnessTextureUnit);
+
+		normal.texture->Bind(normalTextureUnit);
+		normal.sampler->Bind(normalTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			"uNormalTexture",
+			static_cast<int>(normalTextureUnit));
+
+		m_ObjectShaderProgram.SetFloat(
+			"uNormalScale",
+			normalScale);
 
 		m_ObjectShaderProgram.SetInt(
 			"uBaseColorTexture",
