@@ -148,6 +148,21 @@ vec3 LinearToSrgb(vec3 color)
 		useLinearSegment);
 }
 
+vec3 ToneMapAces(vec3 color)
+{
+	const float a = 2.51;
+	const float b = 0.03;
+	const float c = 2.43;
+	const float d = 0.59;
+	const float e = 0.14;
+
+	return clamp(
+		(color * (a * color + b)) /
+		(color * (c * color + d) + e),
+		0.0,
+		1.0);
+}
+
 void main()
 {
 	vec4 baseColorSample =
@@ -355,7 +370,10 @@ void main()
 			selectionColor,
 			uSelectionAmount);
 
+	vec3 toneMappedColor =
+		ToneMapAces(finalColor);
+
 	fragColor = vec4(
-		LinearToSrgb(finalColor),
+		LinearToSrgb(toneMappedColor),
 		sampledBaseColor.a);
 }
