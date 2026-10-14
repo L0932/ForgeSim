@@ -15,4 +15,11 @@ namespace ForgeSim::Assets
 	[[nodiscard]] ImageData DecodeImage(
 		std::span<const std::uint8_t> encodedData,
 		std::string_view sourceName = "<memory>");
+
+	[[nodiscard]] HdrImageData LoadHdrImage(
+		const std::filesystem::path& path);
+
+	[[nodiscard]] HdrImageData DecodeHdrImage(
+		std::span<const std::uint8_t> encodedData,
+		std::string_view sourceName = "<memory>");
 }

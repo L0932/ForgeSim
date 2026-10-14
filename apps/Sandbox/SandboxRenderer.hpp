@@ -19,10 +19,12 @@
 #include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
+#include <ForgeSim/Renderer/OpenGL/EnvironmentMapProcessor.hpp>
 #include <ForgeSim/Renderer/OpenGL/GpuMesh.hpp>
 #include <ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/Sampler.hpp>
 #include <ForgeSim/Renderer/OpenGL/Texture2D.hpp>
+#include <ForgeSim/Renderer/OpenGL/TextureCube.hpp>
 #include <ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
 
@@ -60,6 +62,7 @@ namespace ForgeSim::Sandbox
 		std::uint32_t framebufferHeight = 0;
 
 		float exposure = 1.0f;
+		float environmentIntensity = 0.2f;
 
 		bool showGrid = true;
 		bool showObjectBounds = false;
@@ -174,6 +177,18 @@ namespace ForgeSim::Sandbox
 		Renderer::OpenGL::Texture2D m_FallbackWhiteTexture;
 		Renderer::OpenGL::Texture2D m_FallbackNormalTexture;
 		Renderer::OpenGL::Sampler m_DefaultSampler;
+
+		Renderer::OpenGL::Texture2D
+			m_EnvironmentEquirectangularTexture;
+
+		Renderer::OpenGL::EnvironmentMapProcessor
+			m_EnvironmentMapProcessor;
+
+		Renderer::OpenGL::TextureCube
+			m_EnvironmentCubemap;
+
+		Renderer::OpenGL::TextureCube
+			m_DiffuseIrradianceMap;
 
 		std::vector<ForgeSim::Renderer::DebugLineVertex>
 			m_GridVertices;

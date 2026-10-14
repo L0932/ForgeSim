@@ -15,14 +15,13 @@ namespace ForgeSim::Renderer::OpenGL
 	{
 		[[nodiscard]] std::size_t ExpectedPixelDataSize(
 			std::uint32_t width,
-			std::uint32_t height)
+			std::uint32_t height,
+			std::size_t channelCount)
 		{
-			constexpr std::size_t rgbaChannelCount = 4;
-
 			return
 				static_cast<std::size_t>(width) *
 				static_cast<std::size_t>(height) *
-				rgbaChannelCount;
+				channelCount;
 		}
 	}
 
@@ -52,7 +51,8 @@ namespace ForgeSim::Renderer::OpenGL
 		const std::size_t expectedSize =
 			ExpectedPixelDataSize(
 				width,
-				height);
+				height,
+				4);
 
 		if (rgbaPixels.size() != expectedSize)
 		{
@@ -102,6 +102,80 @@ namespace ForgeSim::Renderer::OpenGL
 			rgbaPixels.data());
 
 		glGenerateTextureMipmap(m_Handle);
+	}
+
+	Texture2D::Texture2D(
+		std::uint32_t width,
+		std::uint32_t height,
+		std::span<const float> linearRgbPixels)
+	{
+		if (width == 0 || height == 0)
+		{
+			throw std::invalid_argument(
+				"Texture dimensions must be positive.");
+		}
+
+		if (width >
+			static_cast<std::uint32_t>(
+				std::numeric_limits<GLsizei>::max()) ||
+			height >
+			static_cast<std::uint32_t>(
+				std::numeric_limits<GLsizei>::max()))
+		{
+			throw std::invalid_argument(
+				"Texture dimensions exceed OpenGL limits.");
+		}
+
+		const std::size_t expectedSize =
+			ExpectedPixelDataSize(
+				width,
+				height,
+				3);
+
+		if (linearRgbPixels.size() != expectedSize)
+		{
+			throw std::invalid_argument(
+				"Texture pixel data does not match "
+				"the linear RGB dimensions.");
+		}
+
+		glCreateTextures(
+			GL_TEXTURE_2D,
+			1,
+			&m_Handle);
+
+		if (m_Handle == 0)
+		{
+			throw std::runtime_error(
+				"Failed to create OpenGL HDR texture.");
+		}
+
+		const std::uint32_t maximumDimension =
+			std::max(width, height);
+
+		const std::uint32_t mipLevelCount =
+			std::bit_width(maximumDimension);
+
+		glTextureStorage2D(
+			m_Handle,
+			static_cast<GLsizei>(mipLevelCount),
+			GL_RGB16F,
+			static_cast<GLsizei>(width),
+			static_cast<GLsizei>(height));
+
+		glTextureSubImage2D(
+			m_Handle,
+			0,
+			0,
+			0,
+			static_cast<GLsizei>(width),
+			static_cast<GLsizei>(height),
+			GL_RGB,
+			GL_FLOAT,
+			linearRgbPixels.data());
+
+		glGenerateTextureMipmap(
+			m_Handle);
 	}
 
 	Texture2D::~Texture2D()

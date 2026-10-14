@@ -20,6 +20,11 @@ namespace ForgeSim::Renderer::OpenGL
 			std::span<const std::uint8_t> rgbaPixels,
 			TextureColorSpace colorSpace);
 
+		Texture2D(
+			std::uint32_t width,
+			std::uint32_t height,
+			std::span<const float> linearRgbPixels);
+
 		~Texture2D();
 
 		Texture2D(const Texture2D&) = delete;

@@ -2,11 +2,23 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
+
+namespace
+{
+	[[nodiscard]] bool NearlyEqual(
+		float left,
+		float right,
+		float tolerance = 1e-5f) noexcept
+	{
+		return std::abs(left - right) <= tolerance;
+	}
+}
 
 int main()
 {
@@ -68,6 +80,96 @@ int main()
 			std::cerr
 				<< "Decoded pixels did not match "
 				<< "the expected RGBA8 values.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// A one-pixel Radiance HDR image should decode into linear RGB floats.
+	{
+		constexpr char hdrData[] =
+			"#?RADIANCE\n"
+			"FORMAT=32-bit_rle_rgbe\n"
+			"\n"
+			"-Y 1 +X 1\n"
+			"\x80\x40\x20\x81";
+
+		const std::span<const std::uint8_t> encodedData{
+			reinterpret_cast<const std::uint8_t*>(
+				hdrData),
+			sizeof(hdrData) - 1
+		};
+
+		const ForgeSim::Assets::HdrImageData image =
+			ForgeSim::Assets::DecodeHdrImage(
+				encodedData,
+				"embedded HDR test image");
+
+		if (!image.IsValid())
+		{
+			std::cerr
+				<< "Decoded HDR image was not valid.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		if (image.width != 1 ||
+			image.height != 1 ||
+			image.channelCount != 3)
+		{
+			std::cerr
+				<< "Decoded HDR image had unexpected "
+				<< "dimensions or channel count.\n";
+
+			return EXIT_FAILURE;
+		}
+
+		if (!NearlyEqual(image.pixels[0], 1.0f) ||
+			!NearlyEqual(image.pixels[1], 0.5f) ||
+			!NearlyEqual(image.pixels[2], 0.25f))
+		{
+			std::cerr
+				<< "Decoded HDR pixel values were unexpected.\n";
+
+			return EXIT_FAILURE;
+		}
+	}
+
+	// The HDR decoder should reject ordinary low-dynamic-range images.
+	{
+		bool exceptionWasThrown = false;
+
+		try
+		{
+			static_cast<void>(
+				ForgeSim::Assets::DecodeHdrImage(
+					pngData,
+					"embedded test PNG"));
+		}
+		catch (const std::runtime_error& exception)
+		{
+			exceptionWasThrown = true;
+
+			const std::string_view message{
+				exception.what()
+			};
+
+			if (message.find("not encoded as HDR") ==
+				std::string_view::npos)
+			{
+				std::cerr
+					<< "Non-HDR rejection was not descriptive: "
+					<< exception.what()
+					<< '\n';
+
+				return EXIT_FAILURE;
+			}
+		}
+
+		if (!exceptionWasThrown)
+		{
+			std::cerr
+				<< "Expected the HDR decoder to reject PNG data.\n";
 
 			return EXIT_FAILURE;
 		}

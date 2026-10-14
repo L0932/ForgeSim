@@ -32,6 +32,9 @@ uniform vec3 uLightRadiance;
 
 uniform float uRoughnessFactor;
 
+uniform samplerCube uDiffuseIrradianceMap;
+uniform float uEnvironmentIntensity;
+
 out vec4 fragColor;
 
 float DistributionGGX(
@@ -108,67 +111,6 @@ vec3 FresnelSchlick(
 			5.0);
 }
 
-vec3 SrgbToLinear(vec3 color)
-{
-	bvec3 useLinearSegment =
-		lessThanEqual(
-			color,
-			vec3(0.04045));
-
-	vec3 linearSegment =
-		color / 12.92;
-
-	vec3 exponentialSegment =
-		pow(
-			(color + 0.055) / 1.055,
-			vec3(2.4));
-
-	return mix(
-		exponentialSegment,
-		linearSegment,
-		useLinearSegment);
-}
-
-vec3 LinearToSrgb(vec3 color)
-{
-	color = max(color, vec3(0.0));
-
-	bvec3 useLinearSegment =
-		lessThanEqual(
-			color,
-			vec3(0.0031308));
-
-	vec3 linearSegment =
-		color * 12.92;
-
-	vec3 exponentialSegment =
-		1.055 *
-		pow(
-			color,
-			vec3(1.0 / 2.4)) -
-		0.055;
-
-	return mix(
-		exponentialSegment,
-		linearSegment,
-		useLinearSegment);
-}
-
-vec3 ToneMapAces(vec3 color)
-{
-	const float a = 2.51;
-	const float b = 0.03;
-	const float c = 2.43;
-	const float d = 0.59;
-	const float e = 0.14;
-
-	return clamp(
-		(color * (a * color + b)) /
-		(color * (c * color + d) + e),
-		0.0,
-		1.0);
-}
-
 void main()
 {
 	vec4 baseColorSample =
@@ -177,9 +119,9 @@ void main()
 			vTextureCoordinates);
 
 	vec4 sampledBaseColor =
-		vec4(
-			SrgbToLinear(baseColorSample.rgb),
-			baseColorSample.a) *
+		texture(
+			uBaseColorTexture,
+			vTextureCoordinates) *
 		uBaseColorFactor *
 		vec4(vColor, 1.0);
 
@@ -349,21 +291,35 @@ void main()
 				0.0,
 				1.0));
 
-	// Temporary ambient term until image-based lighting is added.
-	vec3 ambientLighting =
-		0.03 *
+	vec3 environmentFresnel =
+		FresnelSchlick(
+			normalDotView,
+			reflectanceAtNormalIncidence);
+
+	vec3 environmentDiffuseFraction =
+		(vec3(1.0) - environmentFresnel) *
+		(1.0 - metallic);
+
+	vec3 irradiance =
+		texture(
+			uDiffuseIrradianceMap,
+			normal).rgb * 
+			uEnvironmentIntensity;
+
+	vec3 indirectDiffuseLighting =
+		environmentDiffuseFraction *
+		irradiance *
 		sampledBaseColor.rgb *
 		ambientOcclusion;
 
 	vec3 emissiveLighting =
-		SrgbToLinear(
-			texture(
-				uEmissiveTexture,
-				vTextureCoordinates).rgb) *
+		texture(
+			uEmissiveTexture,
+			vTextureCoordinates).rgb *
 		uEmissiveFactor;
 
 	vec3 surfaceColor =
-		ambientLighting +
+		indirectDiffuseLighting +
 		directLighting +
 		emissiveLighting;
 
@@ -373,10 +329,7 @@ void main()
 			uSelectionColor,
 			uSelectionAmount);
 
-	vec3 toneMappedColor =
-		ToneMapAces(finalColor);
-
 	fragColor = vec4(
-		LinearToSrgb(toneMappedColor),
+		finalColor,
 		sampledBaseColor.a);
 }

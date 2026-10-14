@@ -20,6 +20,7 @@
 #include <glm/vec4.hpp>
 
 #include <ForgeSim/Assets/GltfLoader.hpp>
+#include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Assets/SceneAsset.hpp>
 #include <ForgeSim/Core/Log.hpp>
 
@@ -94,6 +95,12 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view selectionColor =
 				"uSelectionColor";
 
+			constexpr std::string_view diffuseIrradianceMap =
+				"uDiffuseIrradianceMap";
+
+			constexpr std::string_view environmentIntensity =
+				"uEnvironmentIntensity";
+
 			constexpr std::array required{
 				model,
 				view,
@@ -113,7 +120,8 @@ namespace ForgeSim::Sandbox
 				metallicFactor,
 				roughnessFactor,
 				selectionAmount,
-				selectionColor
+				selectionColor,
+				diffuseIrradianceMap
 			};
 
 		}
@@ -139,6 +147,7 @@ namespace ForgeSim::Sandbox
 		constexpr std::uint32_t normalTextureUnit = 2;
 		constexpr std::uint32_t occlusionTextureUnit = 3;
 		constexpr std::uint32_t emissiveTextureUnit = 4;
+		constexpr std::uint32_t diffuseIrradianceTextureUnit = 5;
 		
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
@@ -384,6 +393,37 @@ namespace ForgeSim::Sandbox
 				.wrapV = ToSamplerWrap(sampler.wrapV)
 			};
 		}
+
+		[[nodiscard]] std::filesystem::path EnvironmentPath(
+			const std::filesystem::path& filename)
+		{
+			return std::filesystem::path{
+				FORGESIM_SANDBOX_ASSET_DIRECTORY
+			} /
+				"environments" /
+				filename;
+		}
+
+		[[nodiscard]]
+		Renderer::OpenGL::Texture2D LoadEnvironmentTexture(
+			const std::filesystem::path& filename)
+		{
+			const Assets::HdrImageData image =
+				Assets::LoadHdrImage(
+					EnvironmentPath(filename));
+
+			if (!image.IsValid())
+			{
+				throw std::runtime_error(
+					"Cannot upload an invalid HDR environment image.");
+			}
+
+			return Renderer::OpenGL::Texture2D{
+				image.width,
+				image.height,
+				image.pixels
+			};
+		}
 	}
 
 	SandboxRenderer::SandboxRenderer()
@@ -413,6 +453,26 @@ namespace ForgeSim::Sandbox
 			fallbackNormalTexturePixels,
 			Renderer::OpenGL::TextureColorSpace::Linear)
 		, m_DefaultSampler()
+		, m_EnvironmentEquirectangularTexture(
+			LoadEnvironmentTexture(
+				"Studio_Small_01_4k.hdr"))
+		, m_EnvironmentMapProcessor(
+			LoadShaderSource(
+				"EnvironmentCapture.vert"),
+			LoadShaderSource(
+				"EquirectangularToCubemap.frag"),
+			LoadShaderSource(
+				"DiffuseIrradiance.frag"))
+		, m_EnvironmentCubemap(
+			m_EnvironmentMapProcessor
+			.ConvertEquirectangularToCubemap(
+				m_EnvironmentEquirectangularTexture,
+				512))
+		, m_DiffuseIrradianceMap(
+			m_EnvironmentMapProcessor
+			.CreateDiffuseIrradianceMap(
+				m_EnvironmentCubemap,
+				32))
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
 				ForgeSim::Renderer::ReferenceGridSpecification{}))
@@ -782,10 +842,26 @@ namespace ForgeSim::Sandbox
 				projection);
 		}
 
-
-
 		// Render Sandbox objects.
 		m_ObjectShaderProgram.Bind();
+
+		glBindSampler(
+			diffuseIrradianceTextureUnit,
+			0);
+
+		m_DiffuseIrradianceMap.Bind(
+			diffuseIrradianceTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::
+			diffuseIrradianceMap,
+			static_cast<int>(
+				diffuseIrradianceTextureUnit));
+
+		m_ObjectShaderProgram.SetFloat(
+			SandboxRendererShaderUniform::
+			environmentIntensity,
+			settings.environmentIntensity);
 
 		m_ObjectShaderProgram.SetMatrix4x4(
 			SandboxRendererShaderUniform::view,

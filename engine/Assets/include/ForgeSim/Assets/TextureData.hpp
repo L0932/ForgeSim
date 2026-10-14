@@ -50,6 +50,32 @@ namespace ForgeSim::Assets
 		}
 	};
 
+	struct HdrImageData
+	{
+		std::uint32_t width = 0;
+		std::uint32_t height;
+		std::uint32_t channelCount = 0;
+
+		std::vector<float> pixels;
+
+		[[nodiscard]] bool IsValid() const noexcept
+		{
+			if (width == 0 ||
+				height == 0 ||
+				channelCount == 0)
+			{
+				return false;
+			}
+
+			const std::size_t expectedSize =
+				static_cast<std::size_t>(width) *
+				static_cast<std::size_t>(height) *
+				static_cast<std::size_t>(channelCount);
+
+			return pixels.size() == expectedSize;		
+		}
+	};
+
 	struct SamplerData
 	{
 		std::optional<TextureFilter> minificationFilter;
