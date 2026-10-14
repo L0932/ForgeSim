@@ -102,12 +102,63 @@ vec3 FresnelSchlick(
 			5.0);
 }
 
+vec3 SrgbToLinear(vec3 color)
+{
+	bvec3 useLinearSegment =
+		lessThanEqual(
+			color,
+			vec3(0.04045));
+
+	vec3 linearSegment =
+		color / 12.92;
+
+	vec3 exponentialSegment =
+		pow(
+			(color + 0.055) / 1.055,
+			vec3(2.4));
+
+	return mix(
+		exponentialSegment,
+		linearSegment,
+		useLinearSegment);
+}
+
+vec3 LinearToSrgb(vec3 color)
+{
+	color = max(color, vec3(0.0));
+
+	bvec3 useLinearSegment =
+		lessThanEqual(
+			color,
+			vec3(0.0031308));
+
+	vec3 linearSegment =
+		color * 12.92;
+
+	vec3 exponentialSegment =
+		1.055 *
+		pow(
+			color,
+			vec3(1.0 / 2.4)) -
+		0.055;
+
+	return mix(
+		exponentialSegment,
+		linearSegment,
+		useLinearSegment);
+}
+
 void main()
 {
-	vec4 sampledBaseColor =
+	vec4 baseColorSample =
 		texture(
 			uBaseColorTexture,
-			vTextureCoordinates) *
+			vTextureCoordinates);
+
+	vec4 sampledBaseColor =
+		vec4(
+			SrgbToLinear(baseColorSample.rgb),
+			baseColorSample.a) *
 		uBaseColorFactor *
 		vec4(vColor, 1.0);
 
@@ -284,9 +335,10 @@ void main()
 		ambientOcclusion;
 
 	vec3 emissiveLighting =
-		texture(
-			uEmissiveTexture,
-			vTextureCoordinates).rgb *
+		SrgbToLinear(
+			texture(
+				uEmissiveTexture,
+				vTextureCoordinates).rgb) *
 		uEmissiveFactor;
 
 	vec3 surfaceColor =
@@ -304,6 +356,6 @@ void main()
 			uSelectionAmount);
 
 	fragColor = vec4(
-		finalColor,
+		LinearToSrgb(finalColor),
 		sampledBaseColor.a);
 }
