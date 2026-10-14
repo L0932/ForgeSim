@@ -12,7 +12,9 @@ uniform vec4 uBaseColorFactor;
 uniform sampler2D uBaseColorTexture;
 uniform sampler2D uMetallicRoughnessTexture;
 uniform sampler2D uNormalTexture;
+uniform sampler2D uOcclusionTexture;
 uniform float uNormalScale;
+uniform float uOcclusionStrength;
 
 uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
@@ -127,12 +129,8 @@ void main()
 	if (tangentLengthSquared > 0.000001)
 	{
 		vec3 tangent =
-			normalize(
-				vWorldTangent.xyz -
-				geometricNormal *
-				dot(
-					vWorldTangent.xyz,
-					geometricNormal));
+			projectedTangent *
+			inversesqrt(tangentLengthSquared);
 
 		vec3 bitangent =
 			normalize(
@@ -156,7 +154,7 @@ void main()
 				bitangent,
 				geometricNormal);
 
-		vec3 normal =
+		normal =
 			normalize(
 				tangentToWorld *
 				tangentSpaceNormal);
@@ -263,10 +261,25 @@ void main()
 		uLightRadiance *
 		normalDotLight;
 
+	float sampledOcclusion =
+		texture(
+			uOcclusionTexture,
+			vTextureCoordinates).r;
+
+	float ambientOcclusion =
+		mix(
+			1.0,
+			sampledOcclusion,
+			clamp(
+				uOcclusionStrength,
+				0.0,
+				1.0));
+
 	// Temporary ambient term until image-based lighting is added.
 	vec3 ambientLighting =
 		0.03 *
-		sampledBaseColor.rgb;
+		sampledBaseColor.rgb *
+		ambientOcclusion;
 
 	vec3 surfaceColor =
 		ambientLighting +

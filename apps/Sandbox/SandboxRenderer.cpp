@@ -51,6 +51,7 @@ namespace ForgeSim::Sandbox
 		constexpr std::uint32_t baseColorTextureUnit = 0;
 		constexpr std::uint32_t metallicRoughnessTextureUnit = 1;
 		constexpr std::uint32_t normalTextureUnit = 2;
+		constexpr std::uint32_t occlusionTextureUnit = 3;
 		
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
@@ -297,7 +298,7 @@ namespace ForgeSim::Sandbox
 
 	SandboxRenderer::SandboxRenderer()
 		: m_ObjectSceneAsset(
-			LoadObjectScene("BoxTextured.glb"))
+			LoadObjectScene("Avocado.glb"))
 		, m_ObjectLocalBounds(
 			CalculateMeshBounds(
 				FirstPrimitive(
@@ -468,6 +469,7 @@ namespace ForgeSim::Sandbox
 				return binding;
 			};
 
+
 		m_GpuMaterialResources.reserve(
 			m_ObjectSceneAsset.materials.size());
 
@@ -494,6 +496,20 @@ namespace ForgeSim::Sandbox
 					material.normalTexture->scale;
 			}
 
+			std::optional<Assets::MaterialTextureReference>
+				occlusionTextureReference;
+
+			float occlusionStrength = 1.0f;
+
+			if (material.occlusionTexture)
+			{
+				occlusionTextureReference =
+					material.occlusionTexture->texture;
+
+				occlusionStrength =
+					material.occlusionTexture->strength;
+			}
+
 			GpuMaterialResource gpuMaterial{
 				.baseColor =
 					resolveTextureBinding(
@@ -510,6 +526,11 @@ namespace ForgeSim::Sandbox
 						normalTextureReference,
 						m_FallbackNormalTexture),
 
+				.occlusion = 
+					resolveTextureBinding(
+						occlusionTextureReference,
+						m_FallbackWhiteTexture),
+
 				.baseColorFactor = glm::vec4{
 					baseColorFactor[0],
 					baseColorFactor[1],
@@ -523,7 +544,9 @@ namespace ForgeSim::Sandbox
 				.roughnessFactor =
 					metallicRoughness.roughnessFactor,
 
-				.normalScale = normalScale
+				.normalScale = normalScale,
+
+				.occlusionStrength = occlusionStrength
 			};
 
 			m_GpuMaterialResources.push_back(
@@ -771,12 +794,18 @@ namespace ForgeSim::Sandbox
 			.sampler = &m_DefaultSampler
 		};
 
+		GpuTextureBinding occlusion{
+			.texture = &m_FallbackWhiteTexture,
+			.sampler = &m_DefaultSampler
+		};
+
 		float normalScale = 1.0f;
 
 		glm::vec4 baseColorFactor{ 1.0f };
 
 		float metallicFactor = 1.0f;
 		float roughnessFactor = 1.0f;
+		float occlusionStrength = 1.0f;
 
 		if (materialIndex)
 		{
@@ -807,6 +836,10 @@ namespace ForgeSim::Sandbox
 
 			roughnessFactor =
 				material.roughnessFactor;
+
+			occlusion = material.occlusion;
+
+			occlusionStrength = material.occlusionStrength;
 		}
 
 		baseColor.texture->Bind(
@@ -823,6 +856,12 @@ namespace ForgeSim::Sandbox
 
 		normal.texture->Bind(normalTextureUnit);
 		normal.sampler->Bind(normalTextureUnit);
+
+		occlusion.texture->Bind(
+			occlusionTextureUnit);
+
+		occlusion.sampler->Bind(
+			occlusionTextureUnit);
 
 		m_ObjectShaderProgram.SetInt(
 			"uNormalTexture",
@@ -852,5 +891,13 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetFloat(
 			"uRoughnessFactor",
 			roughnessFactor);
+
+		m_ObjectShaderProgram.SetInt(
+			"uOcclusionTexture",
+			static_cast<int>(occlusionTextureUnit));
+
+		m_ObjectShaderProgram.SetFloat(
+			"uOcclusionStrength",
+			occlusionStrength);
 	}
 }

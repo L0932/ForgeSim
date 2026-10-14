@@ -19,7 +19,7 @@ namespace ForgeSim::Sandbox
 						glm::radians(35.0f),
 						0.0f
 					},
-					.scale = glm::vec3{ 0.75f }
+					.scale = glm::vec3{ 10.0f }
 				}
 			},
 			SandboxObject{

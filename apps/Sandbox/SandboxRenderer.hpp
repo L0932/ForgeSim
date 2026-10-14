@@ -104,12 +104,14 @@ namespace ForgeSim::Sandbox
 			GpuTextureBinding baseColor;
 			GpuTextureBinding metallicRoughness;
 			GpuTextureBinding normal;
+			GpuTextureBinding occlusion;
 
 			glm::vec4 baseColorFactor{ 1.0f };
 
 			float metallicFactor = 1.0f;
 			float roughnessFactor = 1.0f;
 			float normalScale = 1.0f;
+			float occlusionStrength = 1.0f;
 		};
 
 		std::vector<RenderSubmission> m_RenderSubmissions;
