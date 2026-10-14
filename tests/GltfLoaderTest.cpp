@@ -114,12 +114,20 @@ int main()
 				return EXIT_FAILURE;
 			}
 
-			if (mesh.availableAttributes.normals ||
-				mesh.availableAttributes.textureCoordinates ||
+			if (!mesh.availableAttributes.normals)
+			{
+				std::cerr
+					<< "Expected missing normals to be generated\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (mesh.availableAttributes.textureCoordinates ||
 				mesh.availableAttributes.tangents)
 			{
 				std::cerr
-					<< "Unexpected optional attributes were reported\n";
+					<< "Unexpected texture coordinates or "
+					<< "tangents were reported\n";
 
 				return EXIT_FAILURE;
 			}
@@ -256,14 +264,22 @@ int main()
 				return EXIT_FAILURE;
 			}
 
-			if (mesh.availableAttributes.normals ||
-				mesh.availableAttributes.textureCoordinates ||
+			if (!mesh.availableAttributes.normals)
+			{
+				std::cerr
+					<< "Expected missing normals to be generated "
+					<< "for non-indexed geometry\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (mesh.availableAttributes.textureCoordinates ||
 				mesh.availableAttributes.tangents ||
 				mesh.availableAttributes.colors)
 			{
 				std::cerr
-					<< "Missing optional attributes were incorrectly "
-					<< "reported as available\n";
+					<< "Unexpected optional attributes were reported "
+					<< "for non-indexed geometry\n";
 
 				return EXIT_FAILURE;
 			}
@@ -289,8 +305,8 @@ int main()
 					vertex.normal[2] != 1.0f)
 				{
 					std::cerr
-						<< "Expected missing normals to default "
-						<< "to positive Z\n";
+						<< "Expected generated normal to point "
+						<< "along positive Z\n";
 
 					return EXIT_FAILURE;
 				}

@@ -11,6 +11,7 @@ target_sources(
 	PRIVATE
 		src/GltfLoader.cpp
 		src/ImageLoader.cpp
+		src/MeshProcessing.cpp
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS include
@@ -19,6 +20,7 @@ target_sources(
 			include/ForgeSim/Assets/ImageLoader.hpp
 			include/ForgeSim/Assets/MaterialData.hpp
 			include/ForgeSim/Assets/MeshData.hpp
+			include/ForgeSim/Assets/MeshProcessing.hpp
 			include/ForgeSim/Assets/TextureData.hpp
 )
 
@@ -27,6 +29,7 @@ target_link_libraries(
 	PRIVATE
 		ForgeSimStb
 		ForgeSim::Cgltf
+		glm::glm-header-only
 )
 
 target_compile_features(

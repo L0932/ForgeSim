@@ -460,6 +460,41 @@ add_test(
 	COMMAND ForgeSimMaterialDataTests
 )
 
+add_executable(ForgeSimMeshProcessingTests)
+
+target_sources(
+	ForgeSimMeshProcessingTests
+	PRIVATE
+		MeshProcessingTest.cpp
+)
+
+target_link_libraries(
+	ForgeSimMeshProcessingTests
+	PRIVATE
+		ForgeSim::Assets
+)
+
+target_compile_features(
+	ForgeSimMeshProcessingTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimMeshProcessingTests
+)
+
+set_target_properties(
+	ForgeSimMeshProcessingTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Assets.MeshProcessing
+	COMMAND ForgeSimMeshProcessingTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -475,6 +510,7 @@ set_target_properties(
 	ForgeSimRuntimeDiagnosticsTests
 	ForgeSimImageLoaderTests
 	ForgeSimMaterialDataTests
+	ForgeSimMeshProcessingTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

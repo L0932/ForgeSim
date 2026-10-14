@@ -17,6 +17,7 @@
 #include <cgltf.h>
 
 #include <ForgeSim/Assets/ImageLoader.hpp>
+#include <ForgeSim/Assets/MeshProcessing.hpp>
 
 namespace ForgeSim::Assets
 {
@@ -520,6 +521,15 @@ namespace ForgeSim::Assets
 					"glTF triangle index count is not divisible by three: " +
 					path.string());
 			}
+
+			if (meshData.indices.size() % 3 != 0)
+			{
+				throw std::runtime_error(
+					"glTF triangle index count is not divisible by three: " +
+					path.string());
+			}
+
+			GenerateMissingNormalsAndTangents(meshData);
 
 			return meshData;
 		}
