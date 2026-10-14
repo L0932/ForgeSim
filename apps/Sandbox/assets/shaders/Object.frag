@@ -13,8 +13,10 @@ uniform sampler2D uBaseColorTexture;
 uniform sampler2D uMetallicRoughnessTexture;
 uniform sampler2D uNormalTexture;
 uniform sampler2D uOcclusionTexture;
+uniform sampler2D uEmissiveTexture;
 uniform float uNormalScale;
 uniform float uOcclusionStrength;
+uniform vec3 uEmissiveFactor;
 
 uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
@@ -281,9 +283,16 @@ void main()
 		sampledBaseColor.rgb *
 		ambientOcclusion;
 
+	vec3 emissiveLighting =
+		texture(
+			uEmissiveTexture,
+			vTextureCoordinates).rgb *
+		uEmissiveFactor;
+
 	vec3 surfaceColor =
 		ambientLighting +
-		directLighting;
+		directLighting +
+		emissiveLighting;
 
 	const vec3 selectionColor =
 		vec3(1.0, 0.65, 0.1);

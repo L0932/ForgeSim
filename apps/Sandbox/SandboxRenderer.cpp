@@ -52,6 +52,7 @@ namespace ForgeSim::Sandbox
 		constexpr std::uint32_t metallicRoughnessTextureUnit = 1;
 		constexpr std::uint32_t normalTextureUnit = 2;
 		constexpr std::uint32_t occlusionTextureUnit = 3;
+		constexpr std::uint32_t emissiveTextureUnit = 4;
 		
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
@@ -510,6 +511,21 @@ namespace ForgeSim::Sandbox
 					material.occlusionTexture->strength;
 			}
 
+			std::optional<Assets::MaterialTextureReference>
+				emissiveTextureReference;
+
+			if (material.emissiveTexture)
+			{
+				emissiveTextureReference =
+					*material.emissiveTexture;
+			}
+
+			const glm::vec3 emissiveFactor{
+				material.emissiveFactor[0],
+				material.emissiveFactor[1],
+				material.emissiveFactor[2]
+			};
+
 			GpuMaterialResource gpuMaterial{
 				.baseColor =
 					resolveTextureBinding(
@@ -531,12 +547,19 @@ namespace ForgeSim::Sandbox
 						occlusionTextureReference,
 						m_FallbackWhiteTexture),
 
+				.emissive = 
+					resolveTextureBinding(
+						emissiveTextureReference,
+						m_FallbackWhiteTexture),
+
 				.baseColorFactor = glm::vec4{
 					baseColorFactor[0],
 					baseColorFactor[1],
 					baseColorFactor[2],
 					baseColorFactor[3]
 				},
+
+				.emissiveFactor = emissiveFactor,
 
 				.metallicFactor =
 					metallicRoughness.metallicFactor,
@@ -799,6 +822,13 @@ namespace ForgeSim::Sandbox
 			.sampler = &m_DefaultSampler
 		};
 
+		GpuTextureBinding emissive{
+			.texture = &m_FallbackWhiteTexture,
+			.sampler = &m_DefaultSampler
+		};
+
+		glm::vec3 emissiveFactor{ 0.0f };
+
 		float normalScale = 1.0f;
 
 		glm::vec4 baseColorFactor{ 1.0f };
@@ -840,6 +870,9 @@ namespace ForgeSim::Sandbox
 			occlusion = material.occlusion;
 
 			occlusionStrength = material.occlusionStrength;
+
+			emissive = material.emissive;
+			emissiveFactor = material.emissiveFactor;
 		}
 
 		baseColor.texture->Bind(
@@ -863,6 +896,12 @@ namespace ForgeSim::Sandbox
 		occlusion.sampler->Bind(
 			occlusionTextureUnit);
 
+		emissive.texture->Bind(
+			emissiveTextureUnit);
+
+		emissive.sampler->Bind(
+			emissiveTextureUnit);
+
 		m_ObjectShaderProgram.SetInt(
 			"uNormalTexture",
 			static_cast<int>(normalTextureUnit));
@@ -878,7 +917,7 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetInt(
 			"uMetallicRoughnessTexture",
 			static_cast<int>(
-				metallicRoughnessTextureUnit));
+			metallicRoughnessTextureUnit));
 
 		m_ObjectShaderProgram.SetVector4(
 			"uBaseColorFactor",
@@ -899,5 +938,14 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetFloat(
 			"uOcclusionStrength",
 			occlusionStrength);
+
+		m_ObjectShaderProgram.SetInt(
+			"uEmissiveTexture",
+			static_cast<int>(
+			emissiveTextureUnit));
+
+		m_ObjectShaderProgram.SetVector3(
+			"uEmissiveFactor",
+			emissiveFactor);
 	}
 }
