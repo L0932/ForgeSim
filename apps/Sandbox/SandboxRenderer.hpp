@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <span>
 #include <vector>
@@ -72,10 +73,22 @@ namespace ForgeSim::Sandbox
 		SelectionHighlightSettings selectionHighlight;
 	};
 
+	struct SandboxRendererSpecification
+	{
+		std::optional<std::filesystem::path>
+			environmentFilename =
+			std::filesystem::path{
+				"Studio_Small_01_4k.hdr"
+		};
+	};
+
 	class SandboxRenderer final
 	{
 	public:
 		SandboxRenderer();
+
+		explicit SandboxRenderer(
+			const SandboxRendererSpecification& specification);
 
 		SandboxRenderer(
 			const SandboxRenderer&) = delete;
@@ -170,7 +183,7 @@ namespace ForgeSim::Sandbox
 		ShaderFileMonitor m_ObjectShaderMonitor;
 		Renderer::OpenGL::ShaderProgram m_ObjectShaderProgram;
 
-		std::vector<GpuPrimitiveResource> 
+		std::vector<GpuPrimitiveResource>
 			m_GpuPrimitiveResources;
 
 		std::vector<GpuTextureResource>

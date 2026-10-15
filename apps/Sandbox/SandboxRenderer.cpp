@@ -7,6 +7,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -159,6 +160,13 @@ namespace ForgeSim::Sandbox
 				255
 		};
 
+		constexpr std::array<float, 3>
+			fallbackEnvironmentPixels{
+				0.03f,
+				0.03f,
+				0.03f
+		};
+
 		constexpr std::uint32_t baseColorTextureUnit = 0;
 		constexpr std::uint32_t metallicRoughnessTextureUnit = 1;
 		constexpr std::uint32_t normalTextureUnit = 2;
@@ -167,7 +175,7 @@ namespace ForgeSim::Sandbox
 		constexpr std::uint32_t diffuseIrradianceTextureUnit = 5;
 		constexpr std::uint32_t prefilteredSpecularTextureUnit = 6;
 		constexpr std::uint32_t brdfLookupTextureUnit = 7;
-		
+
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
 		{
@@ -216,7 +224,7 @@ namespace ForgeSim::Sandbox
 			const std::filesystem::path& vertexShaderFilename,
 			const std::filesystem::path& fragmentShaderFilename,
 			std::span<const std::string_view>
-				requiredUniformNames)
+			requiredUniformNames)
 		{
 			const std::string vertexShaderSource =
 				LoadShaderSource(vertexShaderFilename);
@@ -242,67 +250,6 @@ namespace ForgeSim::Sandbox
 				filename;
 
 			return ForgeSim::Assets::LoadGltfScene(modelPath);
-		}
-
-		[[nodiscard]]
-		Renderer::AxisAlignedBoundingBox CalculateMeshBounds(
-			const Assets::MeshData& mesh)
-		{
-			if (mesh.vertices.empty())
-			{
-				throw std::runtime_error(
-					"Cannot calculate bounds for an empty mesh.");
-			}
-
-			const Assets::MeshVertex& firstVertex =
-				mesh.vertices.front();
-
-			glm::vec3 minimum{
-				firstVertex.position[0],
-				firstVertex.position[1],
-				firstVertex.position[2]
-			};
-
-			glm::vec3 maximum = minimum;
-
-			for (const Assets::MeshVertex& vertex : mesh.vertices)
-			{
-				const glm::vec3 position{
-					vertex.position[0],
-					vertex.position[1],
-					vertex.position[2]
-				};
-
-				minimum = glm::min(minimum, position);
-				maximum = glm::max(maximum, position);
-			}
-
-			return Renderer::AxisAlignedBoundingBox{
-				.minimum = minimum,
-				.maximum = maximum
-			};
-		}
-
-		[[nodiscard]] const Assets::MeshPrimitiveData&
-			FirstPrimitive(
-				const Assets::SceneAsset& scene)
-		{
-			if (scene.meshes.empty())
-			{
-				throw std::runtime_error(
-					"Cannot render a scene without meshes.");
-			}
-
-			const Assets::SceneMeshData& mesh =
-				scene.meshes.front();
-
-			if (mesh.primitives.empty())
-			{
-				throw std::runtime_error(
-					"Cannot render a mesh without primitives.");
-			}
-
-			return mesh.primitives.front();
 		}
 
 		[[nodiscard]]
@@ -425,11 +372,20 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]]
 		Renderer::OpenGL::Texture2D LoadEnvironmentTexture(
-			const std::filesystem::path& filename)
+			const std::optional<std::filesystem::path>& filename)
 		{
+			if (!filename)
+			{
+				return Renderer::OpenGL::Texture2D{
+					1,
+					1,
+					fallbackEnvironmentPixels
+				};
+			}
+
 			const Assets::HdrImageData image =
 				Assets::LoadHdrImage(
-					EnvironmentPath(filename));
+					EnvironmentPath(*filename));
 
 			if (!image.IsValid())
 			{
@@ -488,13 +444,135 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
+	void ExpandSceneNodeBounds(
+		const Assets::SceneAsset& scene,
+		Assets::SceneNodeIndex nodeIndex,
+		const glm::mat4& parentTransform,
+		glm::vec3& minimum,
+		glm::vec3& maximum,
+		bool& containsVertices)
+	{
+		if (nodeIndex >= scene.nodes.size())
+		{
+			throw std::runtime_error(
+				"Scene bounds reference an invalid node.");
+		}
+
+		const Assets::SceneNodeData& node =
+			scene.nodes[nodeIndex];
+
+		const glm::mat4 nodeTransform =
+			parentTransform *
+			CreateSceneNodeLocalMatrix(
+				node.localTransform);
+
+		if (node.meshIndex)
+		{
+			if (*node.meshIndex >= scene.meshes.size())
+			{
+				throw std::runtime_error(
+					"Scene node references an invalid mesh.");
+			}
+
+			const Assets::SceneMeshData& mesh =
+				scene.meshes[*node.meshIndex];
+
+			for (const Assets::MeshPrimitiveData& primitive :
+				mesh.primitives)
+			{
+				for (const Assets::MeshVertex& vertex :
+					primitive.geometry.vertices)
+				{
+					const glm::vec4 transformedPosition =
+						nodeTransform *
+						glm::vec4{
+							vertex.position[0],
+							vertex.position[1],
+							vertex.position[2],
+							1.0f
+					};
+
+					const glm::vec3 position{
+						transformedPosition
+					};
+
+					minimum = glm::min(
+						minimum,
+						position);
+
+					maximum = glm::max(
+						maximum,
+						position);
+
+					containsVertices = true;
+				}
+			}
+		}
+
+		for (const Assets::SceneNodeIndex childIndex :
+		node.childIndices)
+		{
+			ExpandSceneNodeBounds(
+				scene,
+				childIndex,
+				nodeTransform,
+				minimum,
+				maximum,
+				containsVertices);
+		}
+	}
+
+	[[nodiscard]]
+	Renderer::AxisAlignedBoundingBox CalculateSceneBounds(
+		const Assets::SceneAsset& scene)
+	{
+		glm::vec3 minimum{
+			std::numeric_limits<float>::max()
+		};
+
+		glm::vec3 maximum{
+			std::numeric_limits<float>::lowest()
+		};
+
+		bool containsVertices = false;
+
+		for (const Assets::SceneNodeIndex rootNodeIndex :
+		scene.rootNodeIndices)
+		{
+			ExpandSceneNodeBounds(
+				scene,
+				rootNodeIndex,
+				glm::mat4{ 1.0f },
+				minimum,
+				maximum,
+				containsVertices);
+		}
+
+		if (!containsVertices)
+		{
+			throw std::runtime_error(
+				"Cannot calculate bounds for a scene "
+				"without vertices.");
+		}
+
+		return Renderer::AxisAlignedBoundingBox{
+			.minimum = minimum,
+			.maximum = maximum
+		};
+	}
+
 	SandboxRenderer::SandboxRenderer()
+		: SandboxRenderer(
+			SandboxRendererSpecification{})
+	{}
+
+	SandboxRenderer::SandboxRenderer(
+		const SandboxRendererSpecification& specification)
 		: m_ObjectSceneAsset(
 			LoadObjectScene("MetalRoughSpheresNoTextures.glb"))
 		, m_ObjectLocalBounds(
-			CalculateMeshBounds(
-				FirstPrimitive(
-					m_ObjectSceneAsset).geometry))
+			CalculateSceneBounds(
+				m_ObjectSceneAsset))
 		, m_ObjectShaderMonitor(
 			ShaderPath("Object.vert"),
 			ShaderPath("Object.frag")
@@ -517,7 +595,7 @@ namespace ForgeSim::Sandbox
 		, m_DefaultSampler()
 		, m_EnvironmentEquirectangularTexture(
 			LoadEnvironmentTexture(
-				"Studio_Small_01_4k.hdr"))
+				specification.environmentFilename))
 		, m_EnvironmentMapProcessor(
 			LoadShaderSource("EnvironmentCapture.vert"),
 			LoadShaderSource("EquirectangularToCubemap.frag"),
@@ -564,7 +642,7 @@ namespace ForgeSim::Sandbox
 				m_ToneMappingShaderMonitor.VertexShaderPath()),
 			LoadTextFile(
 				m_ToneMappingShaderMonitor.FragmentShaderPath()))
-	{	
+	{
 		// Upload imported mesh primitives once.
 		std::size_t primitiveCount = 0;
 
@@ -687,7 +765,7 @@ namespace ForgeSim::Sandbox
 							}
 					});
 
-				return &m_GpuTextures.back().texture;					
+				return &m_GpuTextures.back().texture;
 			};
 
 
@@ -824,13 +902,13 @@ namespace ForgeSim::Sandbox
 						m_FallbackNormalTexture,
 						Renderer::OpenGL::TextureColorSpace::Linear),
 
-				.occlusion = 
+				.occlusion =
 					resolveTextureBinding(
 						occlusionTextureReference,
 						m_FallbackWhiteTexture,
 						Renderer::OpenGL::TextureColorSpace::Linear),
 
-				.emissive = 
+				.emissive =
 					resolveTextureBinding(
 						emissiveTextureReference,
 						m_FallbackWhiteTexture,
@@ -859,7 +937,7 @@ namespace ForgeSim::Sandbox
 			m_GpuMaterialResources.push_back(
 				gpuMaterial);
 		}
-		
+
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
 	}
@@ -1076,7 +1154,7 @@ namespace ForgeSim::Sandbox
 				object.transform.ModelMatrix();
 
 			for (const Assets::SceneNodeIndex rootNodeIndex :
-				m_ObjectSceneAsset.rootNodeIndices)
+			m_ObjectSceneAsset.rootNodeIndices)
 			{
 				AppendSceneNodeSubmissions(
 					rootNodeIndex,
@@ -1153,7 +1231,7 @@ namespace ForgeSim::Sandbox
 				m_BoundsVertices,
 				view,
 				projection);
-			
+
 			if (depthTestWasEnabled == GL_TRUE)
 			{
 				glEnable(GL_DEPTH_TEST);
@@ -1373,7 +1451,7 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::metallicRoughnessTexture,
 			static_cast<int>(
-			metallicRoughnessTextureUnit));
+				metallicRoughnessTextureUnit));
 
 		m_ObjectShaderProgram.SetVector4(
 			SandboxRendererShaderUniform::baseColorFactor,
@@ -1398,7 +1476,7 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::emissiveTexture,
 			static_cast<int>(
-			emissiveTextureUnit));
+				emissiveTextureUnit));
 
 		m_ObjectShaderProgram.SetVector3(
 			SandboxRendererShaderUniform::emissiveFactor,
