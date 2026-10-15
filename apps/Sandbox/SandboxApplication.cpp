@@ -290,6 +290,9 @@ namespace ForgeSim::Sandbox
 				.environmentIntensity =
 					m_DebugUI.EnvironmentIntensity(),
 
+				.showEnvironmentBackground =
+					m_DebugUI.ShowEnvironmentBackground(),
+
 				.showGrid = m_DebugUI.ShowGrid(),
 
 				.showObjectBounds =

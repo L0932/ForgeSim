@@ -28,6 +28,7 @@
 #include <ForgeSim/Renderer/OpenGL/TextureCube.hpp>
 #include <ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/ShaderProgram.hpp>
+#include <ForgeSim/Renderer/OpenGL/SkyboxRenderer.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -67,6 +68,7 @@ namespace ForgeSim::Sandbox
 		float exposure = 1.0f;
 		float environmentIntensity = 0.2f;
 
+		bool showEnvironmentBackground = false;
 		bool showGrid = true;
 		bool showObjectBounds = false;
 
@@ -213,6 +215,11 @@ namespace ForgeSim::Sandbox
 
 		Renderer::OpenGL::TextureCube
 			m_EnvironmentCubemap;
+
+		ShaderFileMonitor m_SkyboxShaderMonitor;
+
+		Renderer::OpenGL::SkyboxRenderer
+			m_SkyboxRenderer;
 
 		Renderer::OpenGL::TextureCube
 			m_DiffuseIrradianceMap;

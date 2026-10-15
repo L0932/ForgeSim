@@ -17,6 +17,7 @@ target_sources(
 		src/HdrRenderTarget.cpp
 		src/ShaderProgram.cpp
 		src/Sampler.cpp
+		src/SkyboxRenderer.cpp
 		src/Texture2D.cpp
 		src/TextureCube.cpp
 		src/ToneMappingRenderer.cpp
@@ -32,6 +33,7 @@ target_sources(
 			include/ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp
 			include/ForgeSim/Renderer/OpenGL/Sampler.hpp
 			include/ForgeSim/Renderer/OpenGL/ShaderProgram.hpp
+			include/ForgeSim/Renderer/OpenGL/SkyboxRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/Texture2D.hpp
 			include/ForgeSim/Renderer/OpenGL/TextureCube.hpp
 			include/ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp

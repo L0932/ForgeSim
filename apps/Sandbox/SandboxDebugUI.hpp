@@ -55,6 +55,8 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] glm::vec3 BackgroundColor() const noexcept;
 		[[nodiscard]] float Exposure() const noexcept;
 		[[nodiscard]] float EnvironmentIntensity() const noexcept;
+
+		[[nodiscard]] bool ShowEnvironmentBackground() const noexcept;
 		[[nodiscard]] bool ShowGrid() const noexcept;
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
 
@@ -76,7 +78,9 @@ namespace ForgeSim::Sandbox
 
 		float m_Exposure = 1.0f;
 		float m_EnvironmentIntensity = 0.2f;
+
 		bool m_IsVisible = true;
+		bool m_ShowEnvironmentBackground = false;
 		bool m_ShowGrid = true;
 		bool m_ShowObjectBounds = false;
 		bool m_RuntimeDiagnosticsEnabled = false;

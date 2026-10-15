@@ -144,10 +144,19 @@ namespace ForgeSim::Sandbox
 
 		ImGui::SeparatorText("Rendering");
 
+		ImGui::Checkbox(
+			"Show environment background",
+			&m_ShowEnvironmentBackground);
+
+		ImGui::BeginDisabled(
+			m_ShowEnvironmentBackground);
+
 		ImGui::ColorEdit3(
-			"Background color",
+			"Fallback background color",
 			&m_BackgroundColor.x,
 			ImGuiColorEditFlags_Float);
+
+		ImGui::EndDisabled();
 
 		ImGui::SliderFloat(
 			"Exposure",
@@ -311,6 +320,12 @@ namespace ForgeSim::Sandbox
 		const noexcept
 	{
 		return m_EnvironmentIntensity;
+	}
+
+	bool SandboxDebugUI::ShowEnvironmentBackground()
+		const noexcept
+	{
+		return m_ShowEnvironmentBackground;
 	}
 
 	bool SandboxDebugUI::WantsMouseCapture()

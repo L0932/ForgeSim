@@ -621,6 +621,14 @@ namespace ForgeSim::Sandbox
 			.ConvertEquirectangularToCubemap(
 				m_EnvironmentEquirectangularTexture,
 				512))
+		, m_SkyboxShaderMonitor(
+			ShaderPath("Skybox.vert"),
+			ShaderPath("Skybox.frag"))
+		, m_SkyboxRenderer(
+			LoadTextFile(
+				m_SkyboxShaderMonitor.VertexShaderPath()),
+			LoadTextFile(
+				m_SkyboxShaderMonitor.FragmentShaderPath()))
 		, m_DiffuseIrradianceMap(
 			m_EnvironmentMapProcessor
 			.CreateDiffuseIrradianceMap(
@@ -1065,6 +1073,15 @@ namespace ForgeSim::Sandbox
 			GL_COLOR_BUFFER_BIT |
 			GL_DEPTH_BUFFER_BIT);
 
+		if (settings.showEnvironmentBackground)
+		{
+			m_SkyboxRenderer.Render(
+				m_EnvironmentCubemap,
+				view,
+				projection,
+				settings.environmentIntensity);
+		}
+
 		if (settings.showGrid)
 		{
 			m_DebugLineRenderer.Render(
@@ -1492,6 +1509,35 @@ namespace ForgeSim::Sandbox
 			{
 				ForgeSim::Core::LogError(
 					"Failed to reload object shader program: " +
+					std::string{ exception.what() });
+			}
+		}
+
+		if (m_SkyboxShaderMonitor.PollForChanges())
+		{
+			try
+			{
+				const std::string vertexShaderSource =
+					LoadTextFile(
+						m_SkyboxShaderMonitor
+						.VertexShaderPath());
+
+				const std::string fragmentShaderSource =
+					LoadTextFile(
+						m_SkyboxShaderMonitor
+						.FragmentShaderPath());
+
+				m_SkyboxRenderer.ReloadShaders(
+					vertexShaderSource,
+					fragmentShaderSource);
+
+				ForgeSim::Core::LogInfo(
+					"Reloaded skybox shader program.");
+			}
+			catch (const std::exception& exception)
+			{
+				ForgeSim::Core::LogError(
+					"Failed to reload skybox shader program: " +
 					std::string{ exception.what() });
 			}
 		}
