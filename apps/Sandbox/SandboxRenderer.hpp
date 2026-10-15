@@ -173,6 +173,12 @@ namespace ForgeSim::Sandbox
 			float roughnessFactor = 1.0f;
 			float normalScale = 1.0f;
 			float occlusionStrength = 1.0f;
+
+			Assets::AlphaMode alphaMode =
+				Assets::AlphaMode::Opaque;
+
+			float alphaCutoff = 0.5f;
+			bool doubleSided = false;
 		};
 
 		std::vector<RenderSubmission> m_RenderSubmissions;

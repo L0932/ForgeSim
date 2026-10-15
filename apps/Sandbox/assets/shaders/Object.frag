@@ -11,6 +11,11 @@ in vec4 vWorldTangent;
 uniform sampler2D uBaseColorTexture;
 uniform vec4 uBaseColorFactor;
 
+uniform int uAlphaMaskEnabled;
+uniform float uAlphaCutoff;
+
+uniform int uDoubleSided;
+
 uniform sampler2D uMetallicRoughnessTexture;
 uniform float uMetallicFactor;
 
@@ -136,11 +141,6 @@ vec3 FresnelSchlickRoughness(
 
 void main()
 {
-	vec4 baseColorSample =
-		texture(
-			uBaseColorTexture,
-			vTextureCoordinates);
-
 	vec4 sampledBaseColor =
 		texture(
 			uBaseColorTexture,
@@ -148,8 +148,21 @@ void main()
 		uBaseColorFactor *
 		vec4(vColor, 1.0);
 
+	if (uAlphaMaskEnabled != 0 &&
+		sampledBaseColor.a < uAlphaCutoff)
+	{
+		discard;
+	}
+
 	vec3 geometricNormal =
 		normalize(vWorldNormal);
+
+	if (uDoubleSided != 0 &&
+		!gl_FrontFacing)
+	{
+		geometricNormal =
+			-geometricNormal;
+	}
 
 	vec3 projectedTangent =
 		vWorldTangent.xyz -

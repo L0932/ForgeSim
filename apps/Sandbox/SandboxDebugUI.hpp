@@ -69,9 +69,9 @@ namespace ForgeSim::Sandbox
 
 	private:
 		glm::vec3 m_BackgroundColor{
-			0.024f,
-			0.051f,
-			0.103f
+			0.032f,
+			0.036f,
+			0.044f
 		};
 
 		float m_Exposure = 1.0f;

@@ -42,16 +42,57 @@ namespace ForgeSim::Sandbox
 
 		m_Window.Show();
 
+		const Renderer::AxisAlignedBoundingBox& bounds =
+			m_Renderer.ObjectLocalBounds();
+
+		const glm::vec3 modelCenter =
+			(bounds.minimum + bounds.maximum) * 0.5f;
+
+		const float modelRadius =
+			glm::length(bounds.maximum - bounds.minimum) * 0.5f;
+
+		constexpr float verticalFieldOfView =
+			glm::radians(45.0f);
+
+		const float cameraDistance =
+			modelRadius /
+			std::tan(verticalFieldOfView * 0.5f) *
+			1.25f;
+
+		const float nearPlane =
+			std::max(modelRadius * 0.01f, 0.001f);
+
+		const float farPlane =
+			std::max(
+				cameraDistance + modelRadius * 4.0f,
+				10.0f);
+
 		ForgeSim::Renderer::PerspectiveCamera camera{
-			glm::vec3{ -0.360f, 1.666f, 2.778f },
-			glm::vec3{ -0.248f, 1.425f, 1.814f },
+			modelCenter +
+				glm::vec3{
+					0.0f,
+					0.0f,
+					cameraDistance
+				},
+			modelCenter,
 			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::radians(45.0f),
-			0.1f,
-			100.0f
+			verticalFieldOfView,
+			nearPlane,
+			farPlane
 		};
 
-		FreeCameraController cameraController;
+		FreeCameraController cameraController{
+			FreeCameraControllerSpecification{
+				.movementSpeed =
+					std::max(
+						cameraDistance * 0.5f,
+						0.01f),
+
+				.mouseSensitivity = 0.002f,
+				.maximumDeltaSeconds = 0.1f
+			}
+		};
+
 		ViewportSelectionController selectionController;
 
 		ForgeSim::Core::Timer timer;

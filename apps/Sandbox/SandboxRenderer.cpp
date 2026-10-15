@@ -18,6 +18,7 @@
 #include <glad/gl.h>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/mat4x4.hpp>
@@ -57,6 +58,15 @@ namespace ForgeSim::Sandbox
 
 			constexpr std::string_view baseColorTexture =
 				"uBaseColorTexture";
+
+			constexpr std::string_view alphaMaskEnabled =
+				"uAlphaMaskEnabled";
+
+			constexpr std::string_view alphaCutoff =
+				"uAlphaCutoff";
+
+			constexpr std::string_view doubleSided =
+				"uDoubleSided";
 
 			constexpr std::string_view metallicRoughnessTexture =
 				"uMetallicRoughnessTexture";
@@ -121,6 +131,9 @@ namespace ForgeSim::Sandbox
 				projection,
 				baseColorFactor,
 				baseColorTexture,
+				alphaMaskEnabled,
+				alphaCutoff,
+				doubleSided,
 				metallicRoughnessTexture,
 				normalTexture,
 				occlusionTexture,
@@ -931,7 +944,13 @@ namespace ForgeSim::Sandbox
 
 				.normalScale = normalScale,
 
-				.occlusionStrength = occlusionStrength
+				.occlusionStrength = occlusionStrength,
+
+				.alphaMode = material.alphaMode,
+
+				.alphaCutoff = material.alphaCutoff,
+
+				.doubleSided = material.doubleSided
 			};
 
 			m_GpuMaterialResources.push_back(
@@ -1037,8 +1056,10 @@ namespace ForgeSim::Sandbox
 		glViewport(
 			0,
 			0,
-			static_cast<GLsizei>(settings.framebufferWidth),
-			static_cast<GLsizei>(settings.framebufferHeight));
+			static_cast<GLsizei>(
+				settings.framebufferWidth),
+			static_cast<GLsizei>(
+				settings.framebufferHeight));
 
 		glClear(
 			GL_COLOR_BUFFER_BIT |
@@ -1046,14 +1067,12 @@ namespace ForgeSim::Sandbox
 
 		if (settings.showGrid)
 		{
-			// Render the reference grid.
 			m_DebugLineRenderer.Render(
 				m_GridVertices,
 				view,
 				projection);
 		}
 
-		// Render Sandbox objects.
 		m_ObjectShaderProgram.Bind();
 
 		glBindSampler(
@@ -1136,7 +1155,8 @@ namespace ForgeSim::Sandbox
 
 		if (settings.showObjectBounds)
 		{
-			m_BoundsVertices.reserve(objects.size() * 24);
+			m_BoundsVertices.reserve(
+				objects.size() * 24);
 		}
 
 		m_RenderSubmissions.clear();
@@ -1167,13 +1187,21 @@ namespace ForgeSim::Sandbox
 			{
 				const glm::vec3 boundsColor =
 					isSelected
-					? glm::vec3{ 1.0f, 0.85f, 0.1f }
-				: glm::vec3{ 0.1f, 0.9f, 1.0f };
+					? glm::vec3{
+						1.0f,
+						0.85f,
+						0.1f
+				}
+					: glm::vec3{
+						0.1f,
+						0.9f,
+						1.0f
+				};
 
 				const auto boundsVertices =
 					Renderer::CreateWireframeBoxLines(
 						m_ObjectLocalBounds,
-						object.transform.ModelMatrix(),
+						objectTransform,
 						boundsColor);
 
 				m_BoundsVertices.insert(
@@ -1183,6 +1211,127 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
+		const auto materialFor =
+			[this](const RenderSubmission& submission)
+			-> const GpuMaterialResource*
+			{
+				if (!submission.materialIndex)
+				{
+					return nullptr;
+				}
+
+				if (*submission.materialIndex >=
+					m_GpuMaterialResources.size())
+				{
+					throw std::runtime_error(
+						"Render submission references "
+						"an invalid material.");
+				}
+
+				return &m_GpuMaterialResources[
+					*submission.materialIndex];
+			};
+
+		const auto alphaModeFor =
+			[&materialFor](
+				const RenderSubmission& submission)
+			{
+				const GpuMaterialResource* material =
+					materialFor(submission);
+
+				return material != nullptr
+					? material->alphaMode
+					: Assets::AlphaMode::Opaque;
+			};
+
+		const auto cameraDistanceSquared =
+			[&cameraPosition](
+				const RenderSubmission& submission)
+			{
+				// Transparent submissions are sorted using
+				// their transformed mesh origins.
+				const glm::vec3 submissionPosition{
+					submission.modelTransform[3]
+				};
+
+				const glm::vec3 offset =
+					submissionPosition -
+					cameraPosition;
+
+				return glm::dot(offset, offset);
+			};
+
+		std::stable_sort(
+			m_RenderSubmissions.begin(),
+			m_RenderSubmissions.end(),
+			[&](const RenderSubmission& left,
+				const RenderSubmission& right)
+			{
+				const bool leftIsBlended =
+					alphaModeFor(left) ==
+					Assets::AlphaMode::Blend;
+
+				const bool rightIsBlended =
+					alphaModeFor(right) ==
+					Assets::AlphaMode::Blend;
+
+				if (leftIsBlended != rightIsBlended)
+				{
+					return !leftIsBlended;
+				}
+
+				if (!leftIsBlended)
+				{
+					// Preserve the original order of opaque
+					// and masked submissions.
+					return false;
+				}
+
+				// Transparent geometry uses back-to-front
+				// ordering.
+				return cameraDistanceSquared(left) >
+					cameraDistanceSquared(right);
+			});
+
+		const GLboolean cullFaceWasEnabled =
+			glIsEnabled(GL_CULL_FACE);
+
+		GLint previousCullFaceMode = GL_BACK;
+
+		glGetIntegerv(
+			GL_CULL_FACE_MODE,
+			&previousCullFaceMode);
+
+		const GLboolean blendWasEnabled =
+			glIsEnabled(GL_BLEND);
+
+		GLboolean previousDepthWriteMask = GL_TRUE;
+
+		glGetBooleanv(
+			GL_DEPTH_WRITEMASK,
+			&previousDepthWriteMask);
+
+		GLint previousBlendSourceRgb = GL_ONE;
+		GLint previousBlendDestinationRgb = GL_ZERO;
+		GLint previousBlendSourceAlpha = GL_ONE;
+		GLint previousBlendDestinationAlpha = GL_ZERO;
+
+		glGetIntegerv(
+			GL_BLEND_SRC_RGB,
+			&previousBlendSourceRgb);
+
+		glGetIntegerv(
+			GL_BLEND_DST_RGB,
+			&previousBlendDestinationRgb);
+
+		glGetIntegerv(
+			GL_BLEND_SRC_ALPHA,
+			&previousBlendSourceAlpha);
+
+		glGetIntegerv(
+			GL_BLEND_DST_ALPHA,
+			&previousBlendDestinationAlpha);
+
 		for (const RenderSubmission& submission :
 			m_RenderSubmissions)
 		{
@@ -1191,7 +1340,48 @@ namespace ForgeSim::Sandbox
 				continue;
 			}
 
-			BindMaterial(submission.materialIndex);
+			const GpuMaterialResource* material =
+				materialFor(submission);
+
+			const Assets::AlphaMode alphaMode =
+				material != nullptr
+				? material->alphaMode
+				: Assets::AlphaMode::Opaque;
+
+			const bool doubleSided =
+				material != nullptr &&
+				material->doubleSided;
+
+			if (doubleSided)
+			{
+				glDisable(GL_CULL_FACE);
+			}
+			else
+			{
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+			}
+
+			if (alphaMode == Assets::AlphaMode::Blend)
+			{
+				glEnable(GL_BLEND);
+
+				glBlendFunc(
+					GL_SRC_ALPHA,
+					GL_ONE_MINUS_SRC_ALPHA);
+
+				// Transparent surfaces continue testing
+				// against depth without writing new depth.
+				glDepthMask(GL_FALSE);
+			}
+			else
+			{
+				glDisable(GL_BLEND);
+				glDepthMask(GL_TRUE);
+			}
+
+			BindMaterial(
+				submission.materialIndex);
 
 			const float selectionAmount =
 				submission.isSelected &&
@@ -1203,7 +1393,8 @@ namespace ForgeSim::Sandbox
 				: 0.0f;
 
 			m_ObjectShaderProgram.SetFloat(
-				SandboxRendererShaderUniform::selectionAmount,
+				SandboxRendererShaderUniform::
+				selectionAmount,
 				selectionAmount);
 
 			m_ObjectShaderProgram.SetMatrix4x4(
@@ -1220,7 +1411,43 @@ namespace ForgeSim::Sandbox
 				nullptr);
 		}
 
-		if (settings.showObjectBounds && !m_BoundsVertices.empty())
+		glCullFace(
+			static_cast<GLenum>(
+				previousCullFaceMode));
+
+		if (cullFaceWasEnabled == GL_TRUE)
+		{
+			glEnable(GL_CULL_FACE);
+		}
+		else
+		{
+			glDisable(GL_CULL_FACE);
+		}
+
+		glDepthMask(
+			previousDepthWriteMask);
+
+		glBlendFuncSeparate(
+			static_cast<GLenum>(
+				previousBlendSourceRgb),
+			static_cast<GLenum>(
+				previousBlendDestinationRgb),
+			static_cast<GLenum>(
+				previousBlendSourceAlpha),
+			static_cast<GLenum>(
+				previousBlendDestinationAlpha));
+
+		if (blendWasEnabled == GL_TRUE)
+		{
+			glEnable(GL_BLEND);
+		}
+		else
+		{
+			glDisable(GL_BLEND);
+		}
+
+		if (settings.showObjectBounds &&
+			!m_BoundsVertices.empty())
 		{
 			const GLboolean depthTestWasEnabled =
 				glIsEnabled(GL_DEPTH_TEST);
@@ -1361,11 +1588,17 @@ namespace ForgeSim::Sandbox
 			.sampler = &m_DefaultSampler
 		};
 
-		glm::vec3 emissiveFactor{ 0.0f };
-
 		float normalScale = 1.0f;
 
 		glm::vec4 baseColorFactor{ 1.0f };
+		
+		Assets::AlphaMode alphaMode = 
+			Assets::AlphaMode::Opaque;
+
+		float alphaCutoff = 0.5f;
+		bool doubleSided = false;
+
+		glm::vec3 emissiveFactor{ 0.0f };
 
 		float metallicFactor = 1.0f;
 		float roughnessFactor = 1.0f;
@@ -1385,6 +1618,12 @@ namespace ForgeSim::Sandbox
 				m_GpuMaterialResources[*materialIndex];
 
 			baseColor = material.baseColor;
+
+			alphaMode = material.alphaMode;
+			alphaCutoff = material.alphaCutoff;
+
+			doubleSided = material.doubleSided;
+
 			metallicRoughness =
 				material.metallicRoughness;
 
@@ -1447,6 +1686,20 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::baseColorTexture,
 			static_cast<int>(baseColorTextureUnit));
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::alphaMaskEnabled,
+			alphaMode == Assets::AlphaMode::Mask
+			? 1
+			: 0);
+
+		m_ObjectShaderProgram.SetFloat(
+			SandboxRendererShaderUniform::alphaCutoff,
+			alphaCutoff);
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::doubleSided,
+			doubleSided ? 1 : 0);
 
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::metallicRoughnessTexture,

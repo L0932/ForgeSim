@@ -62,3 +62,27 @@ PBR material and image-based-lighting implementation.
 - License: Creative Commons Zero v1.0 Universal (CC0-1.0)
 - License URL: https://creativecommons.org/publicdomain/zero/1.0/
 - Modifications: None
+
+## Alpha Blend Mode Test
+
+A glTF 2.0 validation asset covering `OPAQUE`, `BLEND`, and `MASK`
+materials, including multiple alpha-cutoff values.
+
+- Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/AlphaBlendModeTest
+- Author: Ed Mackey
+- Copyright: © 2018 Analytical Graphics, Inc.
+- License: Creative Commons Attribution 4.0 International
+- License URL: https://creativecommons.org/licenses/by/4.0/
+- Modifications: None
+
+## Texture Settings Test
+
+A glTF 2.0 validation asset used to verify single-sided and
+double-sided rendering, back-face culling, and texture sampler modes.
+
+- Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/TextureSettingsTest
+- Author: Ed Mackey
+- Copyright: © 2017 Analytical Graphics, Inc.
+- License: Creative Commons Attribution 4.0 International
+- License URL: https://creativecommons.org/licenses/by/4.0/
+- Modifications: None
