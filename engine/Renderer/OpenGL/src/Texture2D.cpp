@@ -178,6 +178,87 @@ namespace ForgeSim::Renderer::OpenGL
 			m_Handle);
 	}
 
+	Texture2D::Texture2D(
+		std::uint32_t width,
+		std::uint32_t height,
+		Texture2DFormat format)
+	{
+		if (width == 0 || height == 0)
+		{
+			throw std::invalid_argument(
+				"Texture dimensions must be positive.");
+		}
+
+		if (width >
+			static_cast<std::uint32_t>(
+				std::numeric_limits<GLsizei>::max()) ||
+			height >
+			static_cast<std::uint32_t>(
+				std::numeric_limits<GLsizei>::max()))
+		{
+			throw std::invalid_argument(
+				"Texture dimensions exceed OpenGL limits.");
+		}
+
+		GLenum internalFormat = 0;
+
+		switch (format)
+		{
+		case Texture2DFormat::Rg16Float:
+			internalFormat = GL_RG16F;
+			break;
+		}
+
+		glCreateTextures(
+			GL_TEXTURE_2D,
+			1,
+			&m_Handle);
+
+		if (m_Handle == 0)
+		{
+			throw std::runtime_error(
+				"Failed to create OpenGL texture.");
+		}
+
+		glTextureStorage2D(
+			m_Handle,
+			1,
+			internalFormat,
+			static_cast<GLsizei>(width),
+			static_cast<GLsizei>(height));
+
+		glTextureParameteri(
+			m_Handle,
+			GL_TEXTURE_MIN_FILTER,
+			GL_LINEAR);
+
+		glTextureParameteri(
+			m_Handle,
+			GL_TEXTURE_MAG_FILTER,
+			GL_LINEAR);
+
+		glTextureParameteri(
+			m_Handle,
+			GL_TEXTURE_WRAP_S,
+			GL_CLAMP_TO_EDGE);
+
+		glTextureParameteri(
+			m_Handle,
+			GL_TEXTURE_WRAP_T,
+			GL_CLAMP_TO_EDGE);
+	}
+
+	void Texture2D::AttachToBoundFramebuffer()
+		const noexcept
+	{
+		glFramebufferTexture2D(
+			GL_DRAW_FRAMEBUFFER,
+			GL_COLOR_ATTACHMENT0,
+			GL_TEXTURE_2D,
+			m_Handle,
+			0);
+	}
+
 	Texture2D::~Texture2D()
 	{
 		if (m_Handle != 0)

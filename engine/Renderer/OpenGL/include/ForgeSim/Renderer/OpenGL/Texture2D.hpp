@@ -11,19 +11,35 @@ namespace ForgeSim::Renderer::OpenGL
 		Srgb
 	};
 
+	enum class Texture2DFormat
+	{
+		Rg16Float
+	};
+
 	class Texture2D final
 	{
 	public:
+
+		// Creates an RGBA8 texture and uploads color image data.
+		// The color space determines whether the GPU performs sRGB decoding.
 		Texture2D(
 			std::uint32_t width,
 			std::uint32_t height,
 			std::span<const std::uint8_t> rgbaPixels,
 			TextureColorSpace colorSpace);
 
+		// Creates an HDR texture and uploads linear RGB pixel data.
 		Texture2D(
 			std::uint32_t width,
 			std::uint32_t height,
 			std::span<const float> linearRgbPixels);
+
+		// Allocates empty texture storage for GPU-generated content,
+		// such as a rendered BRDF lookup table.
+		Texture2D(
+			std::uint32_t width,
+			std::uint32_t height,
+			Texture2DFormat format);
 
 		~Texture2D();
 
@@ -35,6 +51,8 @@ namespace ForgeSim::Renderer::OpenGL
 
 		void Bind(
 			std::uint32_t textureUnit) const noexcept;
+
+		void AttachToBoundFramebuffer() const noexcept;
 
 	private:
 		unsigned int m_Handle = 0;

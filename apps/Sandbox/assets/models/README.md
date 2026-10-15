@@ -49,3 +49,16 @@ ForgeSim's initial PBR material and normal-mapping paths.
 - License: Creative Commons Zero v1.0 Universal (CC0-1.0)
 - License URL: https://creativecommons.org/publicdomain/zero/1.0/
 - Modifications: None
+
+## Metal-Rough Spheres (textureless)
+
+A glTF 2.0 material test asset containing spheres with varying
+metallic and roughness factors. It is used to validate ForgeSim's
+PBR material and image-based-lighting implementation.
+
+- Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/MetalRoughSpheresNoTextures
+- Author: Krill Gavrilov
+- Copyright: Public, 2019
+- License: Creative Commons Zero v1.0 Universal (CC0-1.0)
+- License URL: https://creativecommons.org/publicdomain/zero/1.0/
+- Modifications: None

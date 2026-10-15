@@ -30,10 +30,12 @@ uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
 uniform vec3 uLightRadiance;
 
-uniform float uRoughnessFactor;
-
-uniform samplerCube uDiffuseIrradianceMap;
 uniform float uEnvironmentIntensity;
+uniform samplerCube uDiffuseIrradianceMap;
+uniform samplerCube uPrefilteredSpecularMap;
+uniform sampler2D uBrdfLookupTexture;
+uniform float uMaximumSpecularLod;
+uniform float uRoughnessFactor;
 
 out vec4 fragColor;
 
@@ -108,6 +110,27 @@ vec3 FresnelSchlick(
 		(1.0 - reflectanceAtNormalIncidence) *
 		pow(
 			clamp(1.0 - cosineTheta, 0.0, 1.0),
+			5.0);
+}
+
+vec3 FresnelSchlickRoughness(
+	float cosineTheta,
+	vec3 reflectanceAtNormalIncidence,
+	float roughness)
+{
+	return
+		reflectanceAtNormalIncidence +
+		(
+			max(
+				vec3(1.0 - roughness),
+				reflectanceAtNormalIncidence) -
+			reflectanceAtNormalIncidence
+		) *
+		pow(
+			clamp(
+				1.0 - cosineTheta,
+				0.0,
+				1.0),
 			5.0);
 }
 
@@ -292,9 +315,10 @@ void main()
 				1.0));
 
 	vec3 environmentFresnel =
-		FresnelSchlick(
+		FresnelSchlickRoughness(
 			normalDotView,
-			reflectanceAtNormalIncidence);
+			reflectanceAtNormalIncidence,
+			roughness);
 
 	vec3 environmentDiffuseFraction =
 		(vec3(1.0) - environmentFresnel) *
@@ -318,8 +342,38 @@ void main()
 			vTextureCoordinates).rgb *
 		uEmissiveFactor;
 
+	vec3 reflectionDirection =
+	reflect(
+		-viewDirection,
+		normal);
+
+	vec3 prefilteredEnvironment =
+		textureLod(
+			uPrefilteredSpecularMap,
+			reflectionDirection,
+			roughness *
+				uMaximumSpecularLod).rgb *
+		uEnvironmentIntensity;
+
+	vec2 integratedBrdf =
+		texture(
+			uBrdfLookupTexture,
+			vec2(
+				normalDotView,
+				roughness)).rg;
+
+	vec3 indirectSpecularLighting =
+		prefilteredEnvironment *
+		(
+			environmentFresnel *
+				integratedBrdf.x +
+			integratedBrdf.y
+		) *
+		ambientOcclusion;
+
 	vec3 surfaceColor =
 		indirectDiffuseLighting +
+		indirectSpecularLighting +
 		directLighting +
 		emissiveLighting;
 

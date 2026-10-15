@@ -16,7 +16,7 @@ namespace ForgeSim::Renderer::OpenGL
 			std::string_view vertexShaderSource,
 			std::string_view fragmentShaderSource,
 			std::span<const std::string_view>
-				requiredUniformNames);
+			requiredUniformNames = {});
 
 		~ShaderProgram();
 

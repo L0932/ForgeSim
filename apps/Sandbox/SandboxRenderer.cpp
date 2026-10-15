@@ -101,6 +101,15 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view environmentIntensity =
 				"uEnvironmentIntensity";
 
+			constexpr std::string_view prefilteredSpecularMap =
+				"uPrefilteredSpecularMap";
+
+			constexpr std::string_view brdfLookupTexture =
+				"uBrdfLookupTexture";
+
+			constexpr std::string_view maximumSpecularLod =
+				"uMaximumSpecularLod";
+
 			constexpr std::array required{
 				model,
 				view,
@@ -121,7 +130,11 @@ namespace ForgeSim::Sandbox
 				roughnessFactor,
 				selectionAmount,
 				selectionColor,
-				diffuseIrradianceMap
+				diffuseIrradianceMap,
+				environmentIntensity,
+				prefilteredSpecularMap,
+				brdfLookupTexture,
+				maximumSpecularLod
 			};
 
 		}
@@ -148,6 +161,8 @@ namespace ForgeSim::Sandbox
 		constexpr std::uint32_t occlusionTextureUnit = 3;
 		constexpr std::uint32_t emissiveTextureUnit = 4;
 		constexpr std::uint32_t diffuseIrradianceTextureUnit = 5;
+		constexpr std::uint32_t prefilteredSpecularTextureUnit = 6;
+		constexpr std::uint32_t brdfLookupTextureUnit = 7;
 		
 		[[nodiscard]] std::string LoadTextFile(
 			const std::filesystem::path& path)
@@ -457,12 +472,12 @@ namespace ForgeSim::Sandbox
 			LoadEnvironmentTexture(
 				"Studio_Small_01_4k.hdr"))
 		, m_EnvironmentMapProcessor(
-			LoadShaderSource(
-				"EnvironmentCapture.vert"),
-			LoadShaderSource(
-				"EquirectangularToCubemap.frag"),
-			LoadShaderSource(
-				"DiffuseIrradiance.frag"))
+			LoadShaderSource("EnvironmentCapture.vert"),
+			LoadShaderSource("EquirectangularToCubemap.frag"),
+			LoadShaderSource("DiffuseIrradiance.frag"),
+			LoadShaderSource("SpecularPrefilter.frag"),
+			LoadShaderSource("ToneMapping.vert"),
+			LoadShaderSource("BrdfIntegration.frag"))
 		, m_EnvironmentCubemap(
 			m_EnvironmentMapProcessor
 			.ConvertEquirectangularToCubemap(
@@ -473,6 +488,16 @@ namespace ForgeSim::Sandbox
 			.CreateDiffuseIrradianceMap(
 				m_EnvironmentCubemap,
 				32))
+		, m_PrefilteredSpecularMap(
+			m_EnvironmentMapProcessor
+			.CreatePrefilteredSpecularMap(
+				m_EnvironmentCubemap,
+				128,
+				5))
+		, m_BrdfLookupTexture(
+			m_EnvironmentMapProcessor
+			.CreateBrdfLookupTexture(
+				256))
 		, m_GridVertices(
 			ForgeSim::Renderer::CreateReferenceGridLines(
 				ForgeSim::Renderer::ReferenceGridSpecification{}))
@@ -857,6 +882,40 @@ namespace ForgeSim::Sandbox
 			diffuseIrradianceMap,
 			static_cast<int>(
 				diffuseIrradianceTextureUnit));
+
+		glBindSampler(
+			prefilteredSpecularTextureUnit,
+			0);
+
+		m_PrefilteredSpecularMap.Bind(
+			prefilteredSpecularTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::
+			prefilteredSpecularMap,
+			static_cast<int>(
+				prefilteredSpecularTextureUnit));
+
+		glBindSampler(
+			brdfLookupTextureUnit,
+			0);
+
+		m_BrdfLookupTexture.Bind(
+			brdfLookupTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::
+			brdfLookupTexture,
+			static_cast<int>(
+				brdfLookupTextureUnit));
+
+		m_ObjectShaderProgram.SetFloat(
+			SandboxRendererShaderUniform::
+			maximumSpecularLod,
+			static_cast<float>(
+				m_PrefilteredSpecularMap
+				.MipLevelCount() -
+				1));
 
 		m_ObjectShaderProgram.SetFloat(
 			SandboxRendererShaderUniform::

@@ -3,8 +3,8 @@
 #include "SandboxObject.hpp"
 #include "ShaderFileMonitor.hpp"
 
-#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <vector>
@@ -50,7 +50,7 @@ namespace ForgeSim::Sandbox
 		glm::vec3 color{
 			1.0f,
 			0.35f,
-			0.05
+			0.05f
 		};
 
 		float strength = 0.20f;
@@ -189,6 +189,12 @@ namespace ForgeSim::Sandbox
 
 		Renderer::OpenGL::TextureCube
 			m_DiffuseIrradianceMap;
+
+		Renderer::OpenGL::TextureCube
+			m_PrefilteredSpecularMap;
+
+		Renderer::OpenGL::Texture2D
+			m_BrdfLookupTexture;
 
 		std::vector<ForgeSim::Renderer::DebugLineVertex>
 			m_GridVertices;

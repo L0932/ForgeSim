@@ -19,7 +19,10 @@ namespace ForgeSim::Renderer::OpenGL
 		EnvironmentMapProcessor(
 			std::string_view captureVertexShaderSource,
 			std::string_view conversionFragmentShaderSource,
-			std::string_view irradianceFragmentShaderSource);
+			std::string_view irradianceFragmentShaderSource,
+			std::string_view specularPrefilterFragmentShaderSource,
+			std::string_view fullscreenVertexShaderSource,
+			std::string_view brdfIntegrationFragmentShaderSource);
 
 		~EnvironmentMapProcessor();
 
@@ -44,13 +47,27 @@ namespace ForgeSim::Renderer::OpenGL
 			const TextureCube& environmentCubemap,
 			std::uint32_t irradianceMapSize);
 
+		[[nodiscard]] TextureCube CreatePrefilteredSpecularMap(
+			const TextureCube& environmentCubemap,
+			std::uint32_t specularMapSize,
+			std::uint32_t mipLevelCount);
+
+		[[nodiscard]] Texture2D CreateBrdfLookupTexture(
+			std::uint32_t lookupSize);
+
 	private:
 		ShaderProgram m_ConversionShaderProgram;
 		ShaderProgram m_IrradianceShaderProgram;
+		ShaderProgram m_SpecularPrefilterShaderProgram;
+		ShaderProgram m_BrdfIntegrationShaderProgram;
 
 		Buffer m_CubeVertexBuffer;
 		Buffer m_CubeIndexBuffer;
 		VertexArray m_CubeVertexArray;
+
+		// OpenGL core profile still requires a vertex array to be 
+		// bound even when the shader generates vertices itself
+		VertexArray m_FullscreenVertexArray;
 
 		Sampler m_EquirectangularSampler;
 
@@ -60,6 +77,7 @@ namespace ForgeSim::Renderer::OpenGL
 		void CaptureCubemapFaces(
 			TextureCube& destination,
 			std::uint32_t faceSize,
+			std::uint32_t mipLevel,
 			ShaderProgram& shaderProgram);
 	};
 }

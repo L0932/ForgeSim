@@ -54,6 +54,26 @@ namespace ForgeSim::Renderer::OpenGL
 			};
 		}
 
+		namespace SpecularPrefilterShaderUniform
+		{
+			constexpr std::string_view environmentMap =
+				"uEnvironmentMap";
+
+			constexpr std::string_view environmentResolution =
+				"uEnvironmentResolution";
+
+			constexpr std::string_view roughness =
+				"uRoughness";
+
+			constexpr std::array required{
+				CaptureShaderUniform::projection,
+				CaptureShaderUniform::view,
+				environmentMap,
+				environmentResolution,
+				roughness
+			};
+		}
+
 		constexpr std::uint32_t sourceTextureUnit = 0;
 
 		constexpr std::array<float, 24> cubeVertices{
@@ -146,7 +166,10 @@ namespace ForgeSim::Renderer::OpenGL
 	EnvironmentMapProcessor::EnvironmentMapProcessor(
 		std::string_view captureVertexShaderSource,
 		std::string_view conversionFragmentShaderSource,
-		std::string_view irradianceFragmentShaderSource)
+		std::string_view irradianceFragmentShaderSource,
+		std::string_view specularPrefilterFragmentShaderSource,
+		std::string_view fullscreenVertexShaderSource,
+		std::string_view brdfIntegrationFragmentShaderSource)
 		: m_ConversionShaderProgram(
 			captureVertexShaderSource,
 			conversionFragmentShaderSource,
@@ -155,6 +178,13 @@ namespace ForgeSim::Renderer::OpenGL
 			captureVertexShaderSource,
 			irradianceFragmentShaderSource,
 			IrradianceShaderUniform::required)
+		, m_SpecularPrefilterShaderProgram(
+			captureVertexShaderSource,
+			specularPrefilterFragmentShaderSource,
+			SpecularPrefilterShaderUniform::required)
+		, m_BrdfIntegrationShaderProgram(
+			fullscreenVertexShaderSource,
+			brdfIntegrationFragmentShaderSource)
 		, m_CubeVertexBuffer(
 			cubeVertices.data(),
 			cubeVertices.size() *
@@ -164,6 +194,7 @@ namespace ForgeSim::Renderer::OpenGL
 			cubeIndices.size() *
 			sizeof(std::uint32_t))
 		, m_CubeVertexArray()
+		, m_FullscreenVertexArray()
 		, m_EquirectangularSampler(
 			CreateSourceSampler())
 	{
@@ -240,6 +271,7 @@ namespace ForgeSim::Renderer::OpenGL
 	void EnvironmentMapProcessor::CaptureCubemapFaces(
 		TextureCube& destination,
 		std::uint32_t faceSize,
+		std::uint32_t mipLevel,
 		ShaderProgram& shaderProgram)
 	{
 		GLint previousDrawFramebuffer = 0;
@@ -345,7 +377,7 @@ namespace ForgeSim::Renderer::OpenGL
 				destination.AttachFaceToBoundFramebuffer(
 					static_cast<std::uint32_t>(
 						faceIndex),
-					0);
+					mipLevel);
 
 				if (glCheckFramebufferStatus(
 					GL_DRAW_FRAMEBUFFER) !=
@@ -417,6 +449,7 @@ namespace ForgeSim::Renderer::OpenGL
 		CaptureCubemapFaces(
 			environmentCubemap,
 			cubemapSize,
+			0,
 			m_ConversionShaderProgram);
 
 		environmentCubemap.GenerateMipmaps();
@@ -458,8 +491,224 @@ namespace ForgeSim::Renderer::OpenGL
 		CaptureCubemapFaces(
 			irradianceMap,
 			irradianceMapSize,
+			0,
 			m_IrradianceShaderProgram);
 
 		return irradianceMap;
+	}
+
+	TextureCube
+		EnvironmentMapProcessor::
+		CreatePrefilteredSpecularMap(
+			const TextureCube& environmentCubemap,
+			std::uint32_t specularMapSize,
+			std::uint32_t mipLevelCount)
+	{
+		if (specularMapSize == 0)
+		{
+			throw std::invalid_argument(
+				"Prefiltered specular map size must be positive.");
+		}
+
+		if (mipLevelCount == 0)
+		{
+			throw std::invalid_argument(
+				"Prefiltered specular map must contain "
+				"at least one mip level.");
+		}
+
+		const std::uint32_t maximumMipLevelCount =
+			std::bit_width(specularMapSize);
+
+		if (mipLevelCount > maximumMipLevelCount)
+		{
+			throw std::invalid_argument(
+				"Prefiltered specular map contains more "
+				"mip levels than its dimensions support.");
+		}
+
+		TextureCube prefilteredSpecularMap{
+			specularMapSize,
+			mipLevelCount
+		};
+
+		// Remove any sampler left on this unit so the cubemap's
+		// own mip filtering and wrapping settings are used.
+		glBindSampler(
+			sourceTextureUnit,
+			0);
+
+		environmentCubemap.Bind(
+			sourceTextureUnit);
+
+		m_SpecularPrefilterShaderProgram.Bind();
+
+		m_SpecularPrefilterShaderProgram.SetInt(
+			SpecularPrefilterShaderUniform::
+			environmentMap,
+			static_cast<int>(
+				sourceTextureUnit));
+
+		m_SpecularPrefilterShaderProgram.SetFloat(
+			SpecularPrefilterShaderUniform::
+			environmentResolution,
+			static_cast<float>(
+				environmentCubemap.Size()));
+
+		for (std::uint32_t mipLevel = 0;
+			mipLevel < mipLevelCount;
+			++mipLevel)
+		{
+			const std::uint32_t mipFaceSize =
+				std::max(
+					1u,
+					specularMapSize >> mipLevel);
+
+			const float roughness =
+				mipLevelCount > 1
+				? static_cast<float>(mipLevel) /
+				static_cast<float>(
+					mipLevelCount - 1)
+				: 0.0f;
+
+			m_SpecularPrefilterShaderProgram.SetFloat(
+				SpecularPrefilterShaderUniform::
+				roughness,
+				roughness);
+
+			CaptureCubemapFaces(
+				prefilteredSpecularMap,
+				mipFaceSize,
+				mipLevel,
+				m_SpecularPrefilterShaderProgram);
+		}
+
+		return prefilteredSpecularMap;
+	}
+
+	Texture2D
+		EnvironmentMapProcessor::
+		CreateBrdfLookupTexture(
+			std::uint32_t lookupSize)
+	{
+		if (lookupSize == 0)
+		{
+			throw std::invalid_argument(
+				"BRDF lookup texture size must be positive.");
+		}
+
+		Texture2D brdfLookupTexture{
+			lookupSize,
+			lookupSize,
+			Texture2DFormat::Rg16Float
+		};
+
+		GLint previousDrawFramebuffer = 0;
+		std::array<GLint, 4> previousViewport{};
+
+		glGetIntegerv(
+			GL_DRAW_FRAMEBUFFER_BINDING,
+			&previousDrawFramebuffer);
+
+		glGetIntegerv(
+			GL_VIEWPORT,
+			previousViewport.data());
+
+		const GLboolean depthTestWasEnabled =
+			glIsEnabled(GL_DEPTH_TEST);
+
+		const GLboolean cullFaceWasEnabled =
+			glIsEnabled(GL_CULL_FACE);
+
+		const auto restoreState = [&]()
+			{
+				glBindFramebuffer(
+					GL_DRAW_FRAMEBUFFER,
+					static_cast<GLuint>(
+						previousDrawFramebuffer));
+
+				glViewport(
+					previousViewport[0],
+					previousViewport[1],
+					previousViewport[2],
+					previousViewport[3]);
+
+				if (depthTestWasEnabled == GL_TRUE)
+				{
+					glEnable(GL_DEPTH_TEST);
+				}
+				else
+				{
+					glDisable(GL_DEPTH_TEST);
+				}
+
+				if (cullFaceWasEnabled == GL_TRUE)
+				{
+					glEnable(GL_CULL_FACE);
+				}
+				else
+				{
+					glDisable(GL_CULL_FACE);
+				}
+			};
+
+		try
+		{
+			// The framebuffer already owns a depth renderbuffer.
+			// Keep its dimensions compatible with the color attachment
+			// even though this pass does not use depth testing.
+			glNamedRenderbufferStorage(
+				m_DepthRenderbuffer,
+				GL_DEPTH_COMPONENT24,
+				static_cast<GLsizei>(
+					lookupSize),
+				static_cast<GLsizei>(
+					lookupSize));
+
+			glBindFramebuffer(
+				GL_DRAW_FRAMEBUFFER,
+				m_Framebuffer);
+
+			brdfLookupTexture
+				.AttachToBoundFramebuffer();
+
+			if (glCheckFramebufferStatus(
+				GL_DRAW_FRAMEBUFFER) !=
+				GL_FRAMEBUFFER_COMPLETE)
+			{
+				throw std::runtime_error(
+					"BRDF lookup framebuffer is incomplete.");
+			}
+
+			glViewport(
+				0,
+				0,
+				static_cast<GLsizei>(
+					lookupSize),
+				static_cast<GLsizei>(
+					lookupSize));
+
+			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_CULL_FACE);
+
+			m_BrdfIntegrationShaderProgram.Bind();
+			m_FullscreenVertexArray.Bind();
+
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glDrawArrays(
+				GL_TRIANGLES,
+				0,
+				3);
+		}
+		catch (...)
+		{
+			restoreState();
+			throw;
+		}
+
+		restoreState();
+
+		return brdfLookupTexture;
 	}
 }
