@@ -109,6 +109,12 @@ namespace ForgeSim::Sandbox
 		void BindMaterial(
 			std::optional<Assets::MaterialIndex> materialIndex);
 
+		void AppendSceneNodeSubmissions(
+			Assets::SceneNodeIndex nodeIndex,
+			const glm::mat4& parentNodeTransform,
+			const glm::mat4& objectTransform,
+			bool isSelected);
+
 		struct RenderSubmission
 		{
 			const Renderer::OpenGL::GpuMesh* mesh = nullptr;

@@ -242,6 +242,9 @@ namespace ForgeSim::Sandbox
 						framebufferExtent.height),
 
 				.exposure = m_DebugUI.Exposure(),
+				
+				.environmentIntensity =
+					m_DebugUI.EnvironmentIntensity(),
 
 				.showGrid = m_DebugUI.ShowGrid(),
 

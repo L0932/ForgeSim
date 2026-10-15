@@ -47,6 +47,7 @@ namespace ForgeSim::Sandbox
 			const noexcept;
 
 		[[nodiscard]] float Exposure() const noexcept;
+		[[nodiscard]] float EnvironmentIntensity() const noexcept;
 		[[nodiscard]] bool ShowGrid() const noexcept;
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
 
@@ -61,6 +62,7 @@ namespace ForgeSim::Sandbox
 
 	private:
 		float m_Exposure = 1.0f;
+		float m_EnvironmentIntensity = 0.2f;
 		bool m_IsVisible = true;
 		bool m_ShowGrid = true;
 		bool m_ShowObjectBounds = false;

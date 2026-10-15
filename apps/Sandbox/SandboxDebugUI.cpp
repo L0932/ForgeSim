@@ -104,6 +104,13 @@ namespace ForgeSim::Sandbox
 			5.0f, 
 			"%.2f",
 			ImGuiSliderFlags_Logarithmic);
+		
+		ImGui::SliderFloat(
+			"Environment intensity",
+			&m_EnvironmentIntensity,
+			0.0f,
+			2.0f,
+			"%.2f");
 
 		ImGui::SeparatorText("Selection");
 
@@ -240,6 +247,12 @@ namespace ForgeSim::Sandbox
 	float SandboxDebugUI::Exposure() const noexcept
 	{
 		return m_Exposure;
+	}
+
+	float SandboxDebugUI::EnvironmentIntensity()
+		const noexcept
+	{
+		return m_EnvironmentIntensity;
 	}
 
 	bool SandboxDebugUI::WantsMouseCapture()

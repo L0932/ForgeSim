@@ -16,6 +16,10 @@
 
 #include <glad/gl.h>
 #include <glm/common.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
@@ -439,11 +443,54 @@ namespace ForgeSim::Sandbox
 				image.pixels
 			};
 		}
+
+		[[nodiscard]] glm::mat4 CreateSceneNodeLocalMatrix(
+			const Assets::SceneNodeTransform& transform)
+		{
+			if (transform.matrix)
+			{
+				// Both glTF and GLM store matrix components in
+				// column-major order.
+				return glm::make_mat4(
+					transform.matrix->data());
+			}
+
+			const glm::vec3 translation{
+				transform.translation[0],
+				transform.translation[1],
+				transform.translation[2]
+			};
+
+			// glTF stores quaternion components as X, Y, Z, W,
+			// while GLM's constructor accepts W, X, Y, Z.
+			const glm::quat rotation{
+				transform.rotation[3],
+				transform.rotation[0],
+				transform.rotation[1],
+				transform.rotation[2]
+			};
+
+			const glm::vec3 scale{
+				transform.scale[0],
+				transform.scale[1],
+				transform.scale[2]
+			};
+
+			return
+				glm::translate(
+					glm::mat4{ 1.0f },
+					translation) *
+				glm::mat4_cast(
+					glm::normalize(rotation)) *
+				glm::scale(
+					glm::mat4{ 1.0f },
+					scale);
+		}
 	}
 
 	SandboxRenderer::SandboxRenderer()
 		: m_ObjectSceneAsset(
-			LoadObjectScene("Avocado.glb"))
+			LoadObjectScene("MetalRoughSpheresNoTextures.glb"))
 		, m_ObjectLocalBounds(
 			CalculateMeshBounds(
 				FirstPrimitive(
@@ -824,6 +871,68 @@ namespace ForgeSim::Sandbox
 		glDepthFunc(GL_LESS);
 	}
 
+	void SandboxRenderer::AppendSceneNodeSubmissions(
+		Assets::SceneNodeIndex nodeIndex,
+		const glm::mat4& parentNodeTransform,
+		const glm::mat4& objectTransform,
+		bool isSelected)
+	{
+		if (nodeIndex >= m_ObjectSceneAsset.nodes.size())
+		{
+			throw std::runtime_error(
+				"Scene node index is invalid.");
+		}
+
+		const Assets::SceneNodeData& node =
+			m_ObjectSceneAsset.nodes[nodeIndex];
+
+		const glm::mat4 nodeTransform =
+			parentNodeTransform *
+			CreateSceneNodeLocalMatrix(
+				node.localTransform);
+
+		if (node.meshIndex)
+		{
+			if (*node.meshIndex >=
+				m_ObjectSceneAsset.meshes.size())
+			{
+				throw std::runtime_error(
+					"Scene node references an invalid mesh.");
+			}
+
+			for (const GpuPrimitiveResource& resource :
+				m_GpuPrimitiveResources)
+			{
+				if (resource.sceneMeshIndex !=
+					*node.meshIndex)
+				{
+					continue;
+				}
+
+				m_RenderSubmissions.push_back(
+					RenderSubmission{
+						.mesh = &resource.mesh,
+						.materialIndex =
+							resource.materialIndex,
+						.modelTransform =
+							objectTransform *
+							nodeTransform,
+						.isSelected = isSelected
+					});
+			}
+		}
+
+		for (const Assets::SceneNodeIndex childIndex :
+		node.childIndices)
+		{
+			AppendSceneNodeSubmissions(
+				childIndex,
+				nodeTransform,
+				objectTransform,
+				isSelected);
+		}
+	}
+
 	void SandboxRenderer::Render(
 		std::span<const SandboxObject> objects,
 		std::optional<SandboxObjectId> selectedObjectId,
@@ -964,25 +1073,17 @@ namespace ForgeSim::Sandbox
 				selectedObjectId &&
 				*selectedObjectId == object.id;
 
-			for (const GpuPrimitiveResource& resource :
-				m_GpuPrimitiveResources)
-			{
-				// Sandbox objects currently represent mesh zero.
-				// Scene-node rendering will provide the mesh index later.
-				if (resource.sceneMeshIndex != 0)
-				{
-					continue;
-				}
+			const glm::mat4 objectTransform =
+				object.transform.ModelMatrix();
 
-				m_RenderSubmissions.push_back(
-					RenderSubmission{
-						.mesh = &resource.mesh,
-						.materialIndex =
-							resource.materialIndex,
-						.modelTransform =
-							object.transform.ModelMatrix(),
-						.isSelected = isSelected
-					});
+			for (const Assets::SceneNodeIndex rootNodeIndex :
+				m_ObjectSceneAsset.rootNodeIndices)
+			{
+				AppendSceneNodeSubmissions(
+					rootNodeIndex,
+					glm::mat4{ 1.0f },
+					objectTransform,
+					isSelected);
 			}
 
 			if (settings.showObjectBounds)
