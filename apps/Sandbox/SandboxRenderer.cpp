@@ -860,13 +860,6 @@ namespace ForgeSim::Sandbox
 				gpuMaterial);
 		}
 		
-		// Configure persistent OpenGL state.
-		glClearColor(
-			0.05f,
-			0.15f,
-			0.30f,
-			1.0f);
-
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
 	}
@@ -956,6 +949,12 @@ namespace ForgeSim::Sandbox
 		}
 
 		m_HdrRenderTarget->Bind();
+
+		glClearColor(
+			settings.backgroundColor.r,
+			settings.backgroundColor.g,
+			settings.backgroundColor.b,
+			1.0f);
 
 		glViewport(
 			0,

@@ -12,6 +12,11 @@ namespace ForgeSim::Core
 	struct RuntimeDiagnosticsSnapshot;
 }
 
+namespace ForgeSim::Renderer
+{
+	class PerspectiveCamera;
+}
+
 namespace ForgeSim::Sandbox
 {
 	struct SandboxObject;
@@ -37,7 +42,8 @@ namespace ForgeSim::Sandbox
 		void Draw(
 			SandboxObject* selectedObject,
 			const Core::RuntimeDiagnosticsSnapshot*
-			diagnosticsSnapshot);
+			diagnosticsSnapshot,
+			const Renderer::PerspectiveCamera& camera);
 		void EndFrame();
 
 		[[nodiscard]] bool WantsMouseCapture()
@@ -46,6 +52,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool WantsKeyboardCapture()
 			const noexcept;
 
+		[[nodiscard]] glm::vec3 BackgroundColor() const noexcept;
 		[[nodiscard]] float Exposure() const noexcept;
 		[[nodiscard]] float EnvironmentIntensity() const noexcept;
 		[[nodiscard]] bool ShowGrid() const noexcept;
@@ -61,6 +68,12 @@ namespace ForgeSim::Sandbox
 			const noexcept;
 
 	private:
+		glm::vec3 m_BackgroundColor{
+			0.024f,
+			0.051f,
+			0.103f
+		};
+
 		float m_Exposure = 1.0f;
 		float m_EnvironmentIntensity = 0.2f;
 		bool m_IsVisible = true;

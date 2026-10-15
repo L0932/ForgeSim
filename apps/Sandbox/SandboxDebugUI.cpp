@@ -1,7 +1,9 @@
 #include "SandboxDebugUI.hpp"
 #include "SandboxObject.hpp"
 
+#include <array>
 #include <chrono>
+#include <cstdio>
 #include <stdexcept>
 
 #include <imgui.h>
@@ -9,6 +11,7 @@
 #include <imgui_impl_opengl3.h>
 #include <glm/trigonometric.hpp>
 
+#include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 
@@ -68,7 +71,8 @@ namespace ForgeSim::Sandbox
 	void SandboxDebugUI::Draw(
 		SandboxObject* selectedObject, 
 		const Core::RuntimeDiagnosticsSnapshot*
-		diagnosticsSnapshot)
+		diagnosticsSnapshot,
+		const Renderer::PerspectiveCamera& camera)
 	{
 		if (!m_IsVisible)
 		{
@@ -95,7 +99,55 @@ namespace ForgeSim::Sandbox
 			"Show object bounds",
 			&m_ShowObjectBounds);
 
+		ImGui::SeparatorText("Camera");
+
+		const glm::vec3& cameraPosition =
+			camera.Position();
+
+		const glm::vec3 cameraForward =
+			camera.ForwardDirection();
+
+		const glm::vec3 cameraTarget =
+			cameraPosition + cameraForward;
+
+		ImGui::Text(
+			"Position: %.3f, %.3f, %.3f",
+			cameraPosition.x,
+			cameraPosition.y,
+			cameraPosition.z);
+
+		ImGui::Text(
+			"Forward: %.3f, %.3f, %.3f",
+			cameraForward.x,
+			cameraForward.y,
+			cameraForward.z);
+
+		if (ImGui::Button("Copy camera pose"))
+		{
+			std::array<char, 512> cameraPose{};
+
+			std::snprintf(
+				cameraPose.data(),
+				cameraPose.size(),
+				"glm::vec3{ %.3ff, %.3ff, %.3ff },\n"
+				"glm::vec3{ %.3ff, %.3ff, %.3ff },",
+				cameraPosition.x,
+				cameraPosition.y,
+				cameraPosition.z,
+				cameraTarget.x,
+				cameraTarget.y,
+				cameraTarget.z);
+
+			ImGui::SetClipboardText(
+				cameraPose.data());
+		}
+
 		ImGui::SeparatorText("Rendering");
+
+		ImGui::ColorEdit3(
+			"Background color",
+			&m_BackgroundColor.x,
+			ImGuiColorEditFlags_Float);
 
 		ImGui::SliderFloat(
 			"Exposure",
@@ -242,6 +294,12 @@ namespace ForgeSim::Sandbox
 
 		ImGui_ImplOpenGL3_RenderDrawData(
 			ImGui::GetDrawData());
+	}
+
+	glm::vec3 SandboxDebugUI::BackgroundColor()
+		const noexcept
+	{
+		return m_BackgroundColor;
 	}
 
 	float SandboxDebugUI::Exposure() const noexcept

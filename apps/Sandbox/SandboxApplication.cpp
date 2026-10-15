@@ -43,8 +43,8 @@ namespace ForgeSim::Sandbox
 		m_Window.Show();
 
 		ForgeSim::Renderer::PerspectiveCamera camera{
-			glm::vec3{ 0.0f, 0.0f, 3.0f },
-			glm::vec3{ 0.0f, 0.0f, 0.0f },
+			glm::vec3{ -0.360f, 1.666f, 2.778f },
+			glm::vec3{ -0.248f, 1.425f, 1.814f },
 			glm::vec3{ 0.0f, 1.0f, 0.0f },
 			glm::radians(45.0f),
 			0.1f,
@@ -241,6 +241,9 @@ namespace ForgeSim::Sandbox
 					static_cast<std::uint32_t>(
 						framebufferExtent.height),
 
+				.backgroundColor =
+					m_DebugUI.BackgroundColor(),
+
 				.exposure = m_DebugUI.Exposure(),
 				
 				.environmentIntensity =
@@ -285,7 +288,8 @@ namespace ForgeSim::Sandbox
 				selectedObject,
 				latestDiagnosticsSnapshot
 				? &*latestDiagnosticsSnapshot
-				: nullptr);
+				: nullptr,
+				camera);
 
 			m_DebugUI.EndFrame();
 

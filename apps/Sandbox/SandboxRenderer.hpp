@@ -61,6 +61,8 @@ namespace ForgeSim::Sandbox
 		std::uint32_t framebufferWidth = 0;
 		std::uint32_t framebufferHeight = 0;
 
+		glm::vec3 backgroundColor{ 0.0f };
+
 		float exposure = 1.0f;
 		float environmentIntensity = 0.2f;
 

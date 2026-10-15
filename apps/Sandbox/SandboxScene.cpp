@@ -12,13 +12,8 @@ namespace ForgeSim::Sandbox
 			SandboxObject{
 				.id = 1,
 				.transform = Transform{
-					.position =
-						glm::vec3{ -1.25f, 0.0f, 0.0f },
-					.rotationRadians = glm::vec3{
-						glm::radians(25.0f),
-						glm::radians(35.0f),
-						0.0f
-					},
+					.position = glm::vec3{ 0.0f, 0.0f, 0.0f },
+					.rotationRadians = glm::vec3{ 0.0f },
 					.scale = glm::vec3{ 300.0f }
 				}
 			}
