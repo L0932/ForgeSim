@@ -27,19 +27,46 @@ The long-term goal is not to reproduce the feature set of a general-purpose comm
 
 ForgeSim is currently in Phase 3: Textured Assets and PBR Scene Rendering.
 
-The Sandbox currently supports:
+The current Sandbox demonstrates:
 
 - Fixed-timestep simulation scheduling with bounded catch-up
 - Interactive free-camera navigation
 - Object selection and editable transforms
-- glTF static-mesh loading
-- Mesh positions, normals, texture coordinates, tangents, and vertex colors
-- File-backed GLSL shaders with hot reload
-- File-backed image decoding
-- OpenGL texture and sampler resources
-- Textured mesh rendering with a white fallback texture
+- glTF 2.0 scene loading with multiple meshes, primitives, materials, and node transforms
+- File-backed images and GLSL shaders with shader hot reloading
+- Metallic-roughness physically based rendering
+- Direct lighting and image-based lighting
+- HDR scene rendering, exposure control, tone mapping, and sRGB output
+- Configurable HDR environment backgrounds
+- Alpha masking, alpha blending, and double-sided materials
 - Reference-grid and bounding-box debug rendering
-- Dear ImGui runtime diagnostics
+- Dear ImGui rendering controls and runtime diagnostics
+
+## Rendering Features
+
+![ForgeSim PBR material gallery](docs/images/rendering-debug-controls.png)
+
+ForgeSim currently implements a forward-rendered metallic-roughness PBR pipeline for glTF 2.0 assets.
+
+Rendering features include:
+
+- Multiple glTF meshes, primitives, materials, and node hierarchies
+- Base-color, metallic-roughness, normal, occlusion, and emissive textures
+- Safe fallback textures and glTF-compatible material defaults
+- Generated normals and tangents where supported source data is missing
+- Directional direct lighting using a Cook-Torrance BRDF
+- Diffuse irradiance and prefiltered specular image-based lighting
+- Split-sum BRDF lookup texture generation
+- HDR equirectangular environment conversion to cubemaps
+- Visible environment rendering through a reusable skybox pass
+- RGBA16F HDR scene rendering
+- Configurable exposure and ACES-style tone mapping
+- Explicit linear and sRGB color-space handling
+- Opaque, masked, and blended material rendering
+- Single-sided and double-sided material support
+- Runtime shader validation and hot reloading
+
+The Sandbox Debug UI exposes environment visibility, environment intensity, exposure, fallback background color, selection highlighting, grid visibility, bounds visualization, and runtime diagnostics. The visible environment can be disabled independently while image-based lighting remains active.
 
 ## Rendering Color Management
 
@@ -53,7 +80,6 @@ ForgeSim performs scene lighting in linear color space.
 - GL_FRAMEBUFFER_SRGB remains disabled during this presentation pass because the shader performs the conversion explicitly.
 - Render-target attachments are recreated when the framebuffer size changes.
 - Rendering is skipped while the framebuffer has a zero width or height, such as when the window is minimized.
-This captures the boundary decisions clearly without creating a larger architecture document solely for this issue. After adding it, the remaining work is validation in Debug and Release.
 
 ## Documentation
 
