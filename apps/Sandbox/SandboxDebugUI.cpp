@@ -1,7 +1,9 @@
 #include "SandboxDebugUI.hpp"
 #include "SandboxObject.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <chrono>
 #include <cstdio>
 #include <stdexcept>
@@ -11,6 +13,7 @@
 #include <imgui_impl_opengl3.h>
 #include <glm/trigonometric.hpp>
 
+#include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
@@ -68,12 +71,18 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	void SandboxDebugUI::Draw(
-		SandboxObject* selectedObject, 
-		const Core::RuntimeDiagnosticsSnapshot*
-		diagnosticsSnapshot,
-		const Renderer::PerspectiveCamera& camera)
+	void SandboxDebugUI::Draw(const SandboxDebugUIContext& context)
 	{
+		SandboxObject* selectedObject =
+			context.selectedObject;
+
+		const Core::RuntimeDiagnosticsSnapshot*
+			diagnosticsSnapshot =
+			context.diagnosticsSnapshot;
+
+		const Renderer::PerspectiveCamera& camera =
+			context.camera;
+
 		if (!m_IsVisible)
 		{
 			return;
@@ -262,6 +271,39 @@ namespace ForgeSim::Sandbox
 		}
 		else
 		{
+			const glm::vec3 modelExtent =
+				context.modelBounds.maximum -
+				context.modelBounds.minimum;
+
+			float positionDragSpeed = 0.001f;
+
+			const bool hasValidExtent =
+				std::isfinite(modelExtent.x) &&
+				std::isfinite(modelExtent.y) &&
+				std::isfinite(modelExtent.z) &&
+				modelExtent.x >= 0.0f &&
+				modelExtent.y >= 0.0f &&
+				modelExtent.z >= 0.0f;
+
+			if (hasValidExtent)
+			{
+				const float characteristicSize =
+					std::max({
+						modelExtent.x,
+						modelExtent.y,
+						modelExtent.z
+						});
+
+				if (characteristicSize > 0.0f)
+				{
+					positionDragSpeed =
+						std::clamp(
+							characteristicSize * 0.001f,
+							0.000001f,
+							10.0f);
+				}
+			}
+
 			ImGui::Text(
 				"Selected objectID: %llu",
 				static_cast<unsigned long long>(
@@ -272,10 +314,11 @@ namespace ForgeSim::Sandbox
 			ImGui::DragFloat3(
 				"Position",
 				&selectedObject->transform.position.x,
-				0.05f,
+				positionDragSpeed,
 				0.0f,
 				0.0f,
-				"%.2f");
+				"%.6f",
+				ImGuiSliderFlags_NoRoundToFormat);
 
 			glm::vec3 rotationDegrees =
 				glm::degrees(

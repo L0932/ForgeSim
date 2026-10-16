@@ -329,11 +329,16 @@ namespace ForgeSim::Sandbox
 			}
 
 			m_DebugUI.Draw(
-				selectedObject,
-				latestDiagnosticsSnapshot
-				? &*latestDiagnosticsSnapshot
-				: nullptr,
-				camera);
+				SandboxDebugUIContext{
+					.selectedObject = selectedObject,
+					.diagnosticsSnapshot =
+						latestDiagnosticsSnapshot 
+							? &*latestDiagnosticsSnapshot 
+							: nullptr,
+					.camera = camera,
+					.modelBounds = m_Renderer.ObjectLocalBounds()
+				}
+			);
 
 			m_DebugUI.EndFrame();
 

@@ -17,9 +17,26 @@ namespace ForgeSim::Renderer
 	class PerspectiveCamera;
 }
 
+namespace ForgeSim::Renderer
+{
+	class PerspectiveCamera;
+	struct AxisAlignedBoundingBox;
+}
+
 namespace ForgeSim::Sandbox
 {
 	struct SandboxObject;
+
+	struct SandboxDebugUIContext
+	{
+		SandboxObject* selectedObject = nullptr;
+
+		const Core::RuntimeDiagnosticsSnapshot*
+			diagnosticsSnapshot = nullptr;
+		
+		const Renderer::PerspectiveCamera& camera;
+		const Renderer::AxisAlignedBoundingBox& modelBounds;
+	};
 
 	class SandboxDebugUI final
 	{
@@ -39,11 +56,7 @@ namespace ForgeSim::Sandbox
 			SandboxDebugUI&&) = delete;
 
 		void BeginFrame();
-		void Draw(
-			SandboxObject* selectedObject,
-			const Core::RuntimeDiagnosticsSnapshot*
-			diagnosticsSnapshot,
-			const Renderer::PerspectiveCamera& camera);
+		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
 		[[nodiscard]] bool WantsMouseCapture()
