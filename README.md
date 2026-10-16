@@ -72,6 +72,10 @@ The Sandbox loads a glTF material gallery that exercises ForgeSim's
 supported metallic-roughness material path using imported scene and
 material data.
 
+The Sandbox currently loads `PbrMaterialGallery.glb` by default.
+Build and launch the Sandbox using the Debug or Release instructions
+under [Building from Source on Windows](#building-from-source-on-windows).
+
 ![ForgeSim metal-plate and lava material samples](docs/images/pbr-material-texture-showcase.png)
 
 The metal-plate and lava samples combine multiple imported material
@@ -91,6 +95,33 @@ Comparison pairs use matching geometry and material settings wherever
 practical so the effect of each material input remains visible.
 
 The Sandbox Debug UI exposes environment visibility, environment intensity, exposure, fallback background color, selection highlighting, grid visibility, bounds visualization, and runtime diagnostics. The visible environment can be disabled independently while image-based lighting remains active.
+
+#### Gallery Organization
+
+The gallery is organized from top to bottom into the following
+material groups:
+
+1. Dielectric and metallic spheres with progressively changing
+   roughness values.
+2. Base-color factor samples demonstrating imported material colors.
+3. Base-color texture samples, including missing-texture fallback
+   behavior.
+4. Normal-mapping samples comparing materials with and without an
+   active normal texture.
+5. Ambient-occlusion samples comparing materials with and without an
+   occlusion texture.
+6. Emissive samples comparing disabled and enabled emissive material
+   inputs.
+7. Combined showcase materials using multiple imported texture maps,
+   including a metal plate and an emissive lava surface.
+
+The simpler comparison pairs isolate individual material properties.
+The combined showcase materials demonstrate how those properties work
+together under ForgeSim's PBR and image-based-lighting paths.
+
+Materials that omit optional textures also verify that ForgeSim uses
+safe default resources rather than producing invalid shading or
+requiring every glTF texture slot to be populated.
 
 ## Rendering Color Management
 
