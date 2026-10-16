@@ -116,26 +116,23 @@ int main()
 		}
 	}
 
-	// Finding an object by ID should provide mutable access to
-	// that object without modifying other objects.
+	// Finding an object by ID should provide mutable access
+	// to the scene-owned object.
 	{
 		SandboxScene scene;
 
 		const auto objects = scene.Objects();
 
-		if (objects.size() < 2)
+		if (objects.size() != 1)
 		{
 			std::cerr <<
-				"Sandbox scene did not contain enough test objects.\n";
+				"Sandbox scene did not contain exactly one object.\n";
 
 			return EXIT_FAILURE;
 		}
 
 		const SandboxObjectId selectedId =
-			objects[0].id;
-
-		const glm::vec3 unchangedPosition =
-			objects[1].transform.position;
+			objects.front().id;
 
 		SandboxObject* selectedObject =
 			scene.FindObject(selectedId);
@@ -161,11 +158,13 @@ int main()
 			return EXIT_FAILURE;
 		}
 
-		if (scene.Objects()[1].transform.position !=
-			unchangedPosition)
+		const SandboxObjectId missingId =
+			selectedId + 1;
+
+		if (scene.FindObject(missingId) != nullptr)
 		{
 			std::cerr <<
-				"Editing one object modified another object.\n";
+				"An unknown Sandbox object ID was found.\n";
 
 			return EXIT_FAILURE;
 		}

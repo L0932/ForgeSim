@@ -2,7 +2,7 @@
 
 #include "SandboxObject.hpp"
 
-#include <array>
+#include <vector>
 #include <span>
 
 namespace ForgeSim::Sandbox
@@ -25,6 +25,6 @@ namespace ForgeSim::Sandbox
 			SandboxObjectId objectId) const noexcept;
 
 	private:
-		std::array<SandboxObject, 3> m_Objects;
+		std::vector<SandboxObject> m_Objects;
 	};
 }
