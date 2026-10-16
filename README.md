@@ -66,6 +66,30 @@ Rendering features include:
 - Single-sided and double-sided material support
 - Runtime shader validation and hot reloading
 
+### PBR Material Validation Gallery
+
+The Sandbox loads a glTF material gallery that exercises ForgeSim's
+supported metallic-roughness material path using imported scene and
+material data.
+
+![ForgeSim metal-plate and lava material samples](docs/images/pbr-material-texture-showcase.png)
+
+The metal-plate and lava samples combine multiple imported material
+textures, demonstrating how ForgeSim's individual PBR inputs work
+together in complete materials.
+
+The gallery includes:
+
+- Dielectric and metallic spheres across a roughness range.
+- Base-color factor samples.
+- Base-color texture and missing-texture comparisons.
+- Normal-map, ambient-occlusion, and emissive comparisons.
+- Safe fallback behavior for optional material textures.
+- Metal-plate and lava materials combining multiple texture inputs.
+
+Comparison pairs use matching geometry and material settings wherever
+practical so the effect of each material input remains visible.
+
 The Sandbox Debug UI exposes environment visibility, environment intensity, exposure, fallback background color, selection highlighting, grid visibility, bounds visualization, and runtime diagnostics. The visible environment can be disabled independently while image-based lighting remains active.
 
 ## Rendering Color Management

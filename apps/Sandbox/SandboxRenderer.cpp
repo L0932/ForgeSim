@@ -582,7 +582,7 @@ namespace ForgeSim::Sandbox
 	SandboxRenderer::SandboxRenderer(
 		const SandboxRendererSpecification& specification)
 		: m_ObjectSceneAsset(
-			LoadObjectScene("MetalRoughSpheresNoTextures.glb"))
+			LoadObjectScene(specification.sceneFilename))
 		, m_ObjectLocalBounds(
 			CalculateSceneBounds(
 				m_ObjectSceneAsset))

@@ -25,7 +25,7 @@ namespace ForgeSim::Sandbox
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
 		, m_Scene()
-		, m_Renderer()
+		, m_Renderer(spec.rendererSpec)
 		, m_DebugUI(m_Window)
 	{
 	}

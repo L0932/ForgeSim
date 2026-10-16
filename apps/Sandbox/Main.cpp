@@ -17,6 +17,10 @@ int main()
 					.height = 720,
 					.title = "ForgeSim Sandbox",
 					.verticalSync = true
+				},
+				.rendererSpec = {
+					.sceneFilename =
+						"PbrMaterialGallery.glb"
 				}
 			}
 		};

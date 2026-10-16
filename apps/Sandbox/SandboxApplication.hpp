@@ -17,6 +17,7 @@ namespace ForgeSim::Sandbox
 	struct SandboxApplicationSpecification
 	{
 		Platform::WindowSpecification windowSpec;
+		SandboxRendererSpecification rendererSpec;
 	};
 
 	class SandboxApplication final

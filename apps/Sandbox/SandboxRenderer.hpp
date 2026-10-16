@@ -77,6 +77,10 @@ namespace ForgeSim::Sandbox
 
 	struct SandboxRendererSpecification
 	{
+		std::filesystem::path sceneFilename{
+			"MetalRoughSpheresNoTextures.glb"
+		};
+
 		std::optional<std::filesystem::path>
 			environmentFilename =
 			std::filesystem::path{
