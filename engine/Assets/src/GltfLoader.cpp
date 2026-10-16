@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -176,7 +177,9 @@ namespace ForgeSim::Assets
 
 		[[nodiscard]] MeshData LoadPrimitiveGeometry(
 			const cgltf_primitive& primitive,
-			const std::filesystem::path& path)
+			const std::filesystem::path& path,
+			std::size_t meshIndex,
+			std::size_t primitiveIndex)
 		{
 			if (primitive.targets_count != 0)
 			{
@@ -526,9 +529,24 @@ namespace ForgeSim::Assets
 				primitive.material != nullptr &&
 				primitive.material->normal_texture.texture != nullptr;
 
-			GenerateMissingNormalsAndTangents(
-				meshData,
-				requiresTangents);
+			try
+			{
+				GenerateMissingNormalsAndTangents(
+					meshData,
+					requiresTangents);
+			}
+			catch (const std::exception& exception)
+			{
+				throw std::runtime_error(
+					"Failed to generate mesh attributes for glTF asset '" +
+					path.string() +
+					"', mesh " +
+					std::to_string(meshIndex) +
+					", primitive " +
+					std::to_string(primitiveIndex) +
+					": " +
+					exception.what());
+			}
 
 			return meshData;
 		}
@@ -1036,7 +1054,9 @@ namespace ForgeSim::Assets
 
 		return LoadPrimitiveGeometry(
 			sourceMesh.primitives[0],
-			path);
+			path,
+			0,
+			0);
 	}
 
 	SceneAsset LoadGltfScene(
@@ -1171,7 +1191,9 @@ namespace ForgeSim::Assets
 					.geometry =
 						LoadPrimitiveGeometry(
 							sourcePrimitive,
-							path),
+							path,
+							static_cast<std::size_t>(meshIndex),
+							static_cast<std::size_t>(primitiveIndex)),
 					.materialIndex =
 						sourcePrimitive.material != nullptr
 						? std::optional<MaterialIndex>{

@@ -787,6 +787,162 @@ int main()
 			}
 		}
 
+		// Attribute-generation failures should identify the source asset,
+		// mesh, and primitive through both public loading paths.
+		{
+			const std::filesystem::path assetPath =
+				assetDirectory / "DegenerateTriangle.gltf";
+
+			for (const bool loadAsScene : { false, true })
+			{
+				bool exceptionWasThrown = false;
+
+				try
+				{
+					if (loadAsScene)
+					{
+						static_cast<void>(
+							ForgeSim::Assets::LoadGltfScene(assetPath));
+					}
+					else
+					{
+						static_cast<void>(
+							ForgeSim::Assets::LoadGltfMesh(assetPath));
+					}
+				}
+				catch (const std::runtime_error& exception)
+				{
+					exceptionWasThrown = true;
+
+					const std::string_view message{
+						exception.what()
+					};
+
+					const bool hasExpectedContext =
+						message.find(assetPath.string()) !=
+						std::string_view::npos &&
+						message.find("mesh 0, primitive 0") !=
+						std::string_view::npos &&
+						message.find("Failed to generate mesh attributes") !=
+						std::string_view::npos &&
+						message.find("zero-length") !=
+						std::string_view::npos;
+
+					if (!hasExpectedContext)
+					{
+						std::cerr
+							<< "Attribute-generation error lacked context for "
+							<< (loadAsScene ? "scene" : "mesh")
+							<< " loading: "
+							<< exception.what()
+							<< '\n';
+
+						return EXIT_FAILURE;
+					}
+				}
+
+				if (!exceptionWasThrown)
+				{
+					std::cerr
+						<< "Expected degenerate geometry to fail during "
+						<< (loadAsScene ? "scene" : "mesh")
+						<< " loading\n";
+
+					return EXIT_FAILURE;
+				}
+			}
+		}
+
+		// A material with a normal texture should trigger generation
+		// when the primitive has UVs but no authored tangents.
+		{
+			const std::filesystem::path assetPath =
+				assetDirectory /
+				"TriangleWithNormalMapWithoutTangents.gltf";
+
+			const ForgeSim::Assets::MeshData mesh =
+				ForgeSim::Assets::LoadGltfMesh(assetPath);
+
+			const ForgeSim::Assets::SceneAsset scene =
+				ForgeSim::Assets::LoadGltfScene(assetPath);
+
+			if (scene.meshes.size() != 1 ||
+				scene.meshes[0].primitives.size() != 1 ||
+				scene.materials.size() != 1)
+			{
+				std::cerr
+					<< "Unexpected normal-mapped fixture structure\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& primitive =
+				scene.meshes[0].primitives[0];
+
+			if (!primitive.materialIndex ||
+				*primitive.materialIndex != 0 ||
+				!scene.materials[0].normalTexture)
+			{
+				std::cerr
+					<< "Expected an assigned normal-mapped material\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto checkGeneratedTangents =
+				[](const ForgeSim::Assets::MeshData& geometry)
+				{
+					if (geometry.vertices.size() != 3 ||
+						geometry.indices.size() != 3 ||
+						!geometry.availableAttributes.normals ||
+						!geometry.availableAttributes.textureCoordinates ||
+						!geometry.availableAttributes.tangents)
+					{
+						return false;
+					}
+
+					for (const auto& vertex : geometry.vertices)
+					{
+						for (const float component : vertex.tangent)
+						{
+							if (!std::isfinite(component))
+							{
+								return false;
+							}
+						}
+
+						const float lengthSquared =
+							vertex.tangent[0] * vertex.tangent[0] +
+							vertex.tangent[1] * vertex.tangent[1] +
+							vertex.tangent[2] * vertex.tangent[2];
+
+						const float normalDotTangent =
+							vertex.normal[0] * vertex.tangent[0] +
+							vertex.normal[1] * vertex.tangent[1] +
+							vertex.normal[2] * vertex.tangent[2];
+
+						if (std::abs(lengthSquared - 1.0f) > 1e-5f ||
+							std::abs(normalDotTangent) > 1e-5f ||
+							std::abs(std::abs(vertex.tangent[3]) - 1.0f) > 1e-5f)
+						{
+							return false;
+						}
+					}
+
+					return true;
+				};
+
+			if (!checkGeneratedTangents(mesh) ||
+				!checkGeneratedTangents(primitive.geometry))
+			{
+				std::cerr
+					<< "Expected valid generated tangents through "
+					<< "both normal-mapped loading paths\n";
+
+				return EXIT_FAILURE;
+			}
+		}
+
 		return EXIT_SUCCESS;
 	}
 	catch (const std::exception& exception)
