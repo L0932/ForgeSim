@@ -2,13 +2,23 @@
 
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
 
 #include <ForgeSim/Core/Log.hpp>
 
-int main()
+int main(
+	int argumentCount,
+	char* arguments[])
 {
 	try {
 		ForgeSim::Core::LogInfo("Starting ForgeSim Sandbox Application");
+
+		const std::filesystem::path sceneFilename =
+			argumentCount > 1
+			? std::filesystem::path{ arguments[1] }
+			: std::filesystem::path{
+				"PbrMaterialGallery.glb"
+		};
 
 		ForgeSim::Sandbox::SandboxApplication app {
 			ForgeSim::Sandbox::SandboxApplicationSpecification {
@@ -19,8 +29,7 @@ int main()
 					.verticalSync = true
 				},
 				.rendererSpec = {
-					.sceneFilename =
-						"PbrMaterialGallery.glb"
+					.sceneFilename = sceneFilename
 				}
 			}
 		};

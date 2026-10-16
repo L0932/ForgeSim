@@ -167,3 +167,20 @@ missing-texture rendering behavior.
 - Third-party attribution: None
 - License: No separate public license is currently granted
 - Modifications: Embedded in the material-gallery GLB
+
+## Intel Sponza Base Scene
+
+ForgeSim supports the Intel Sponza Base Scene as an optional external
+showcase asset. The scene is used to validate large glTF environments,
+multi-mesh rendering, material and texture handling, scene transforms,
+and image-based lighting.
+
+The asset is not distributed with ForgeSim. Download it from Intel's
+GPU Research Samples page and follow the ForgeSim showcase preparation
+instructions before launching the Sandbox.
+
+- Source: https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html
+- Creator and distributor: Intel Corporation
+- License: Creative Commons Attribution, as stated by Intel's download page
+- ForgeSim modifications: Optional derived copy with texture dimensions reduced to a maximum of 1024 pixels
+- Redistribution: Not included in the ForgeSim repository

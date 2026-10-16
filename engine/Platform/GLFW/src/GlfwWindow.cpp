@@ -72,6 +72,10 @@ namespace ForgeSim::Platform
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
 
+		glfwWindowHint(
+			GLFW_VISIBLE,
+			GLFW_FALSE);
+
 		m_Window = glfwCreateWindow(
 						specification.width, 
 						specification.height, 

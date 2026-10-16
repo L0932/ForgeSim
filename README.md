@@ -123,6 +123,52 @@ Materials that omit optional textures also verify that ForgeSim uses
 safe default resources rather than producing invalid shading or
 requiring every glTF texture slot to be populated.
 
+### Loading an external glTF scene
+
+The Sandbox accepts an optional glTF scene path as its first
+command-line argument. When no path is supplied, it loads the bundled
+PBR material gallery.
+
+```powershell
+& ".\out\build\x64-Debug\apps\Sandbox\ForgeSimSandbox.exe" `
+    "C:\Path\To\Scene.gltf"
+```
+
+#### Intel Sponza showcase
+
+ForgeSim has been validated with Intel's modern Sponza Base Scene.
+The asset is not distributed with ForgeSim and must be downloaded
+separately from Intel's
+[GPU Research Samples](https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html)
+page.
+
+The original package contains high-resolution 4K textures and can
+require substantial loading time and memory. A local 1K development
+copy can be generated with ImageMagick:
+
+```powershell
+Set-ExecutionPolicy `
+    -Scope Process `
+    -ExecutionPolicy Bypass
+
+& ".\tools\Prepare-SponzaTextures.ps1" `
+    -SourceDirectory "C:\Path\To\NewSponza_Main_glTF" `
+    -DestinationDirectory "C:\Path\To\ForgeSimSponza1K" `
+    -MaximumTextureSize 1024
+```
+
+SourceDirectory must contain the scene’s .gltf, .bin, and textures folder. The destination must be outside the source directory.
+
+Launch the prepared scene with:
+
+```powershell
+& ".\out\build\x64-Debug\apps\Sandbox\ForgeSimSandbox.exe" `
+    "C:\Path\To\ForgeSimSponza1K\NewSponza_Main_glTF_003.gltf"
+```
+
+The generated scene copy is intended for local development and should
+not be committed to the ForgeSim repository.
+
 ## Rendering Color Management
 
 ForgeSim performs scene lighting in linear color space.
