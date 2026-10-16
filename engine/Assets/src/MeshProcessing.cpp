@@ -354,9 +354,40 @@ namespace ForgeSim::Assets
 						normal,
 						accumulatedTangent);
 
-				const glm::vec3 tangent =
-					NormalizeGenerated(
+				const float tangentLengthSquared =
+					glm::dot(
+						orthogonalTangent,
 						orthogonalTangent);
+
+				if (!std::isfinite(tangentLengthSquared))
+				{
+					throw std::runtime_error(
+						"Tangent generation produced "
+						"non-finite accumulated tangent data.");
+				}
+
+				constexpr float minimumBasisLengthSquared = 1e-12f;
+
+				glm::vec3 tangent;
+				float handedness = 1.0f;
+
+				if (tangentLengthSquared <= minimumBasisLengthSquared)
+				{
+					// Choose an axis that is not nearly parallel to the normal.
+					// The resulting fallback is deterministic and perpendicular.
+					const glm::vec3 referenceAxis =
+						std::abs(normal.z) < 0.9f
+						? glm::vec3{ 0.0f, 0.0f, 1.0f }
+					: glm::vec3{ 0.0f, 1.0f, 0.0f };
+
+					tangent = NormalizeGenerated(
+						glm::cross(referenceAxis, normal));
+				}
+				else
+				{
+					tangent = NormalizeGenerated(
+						orthogonalTangent);
+				}
 
 				const glm::vec3& bitangent =
 					accumulatedBitangents[vertexIndex];
@@ -364,32 +395,32 @@ namespace ForgeSim::Assets
 				const float bitangentLengthSquared =
 					glm::dot(bitangent, bitangent);
 
-				if (!std::isfinite(
-					bitangentLengthSquared) ||
-					bitangentLengthSquared <= 1e-12f)
-				{
-					throw std::runtime_error(
-						"Cannot determine tangent "
-						"handedness from degenerate "
-						"texture coordinates.");
-				}
-
-				const float handednessValue =
-					glm::dot(
-						glm::cross(normal, tangent),
-						bitangent);
-
-				if (!std::isfinite(handednessValue))
+				if (!std::isfinite(bitangentLengthSquared))
 				{
 					throw std::runtime_error(
 						"Tangent generation produced "
-						"non-finite handedness.");
+						"non-finite accumulated bitangent data.");
 				}
 
-				const float handedness =
-					handednessValue < 0.0f
-					? -1.0f
-					: 1.0f;
+				if (bitangentLengthSquared > minimumBasisLengthSquared)
+				{
+					const float handednessValue =
+						glm::dot(
+							glm::cross(normal, tangent),
+							bitangent);
+
+					if (!std::isfinite(handednessValue))
+					{
+						throw std::runtime_error(
+							"Tangent generation produced "
+							"non-finite handedness.");
+					}
+
+					handedness =
+						handednessValue < 0.0f
+						? -1.0f
+						: 1.0f;
+				}
 
 				generatedTangents.push_back({
 					tangent.x,
@@ -412,7 +443,8 @@ namespace ForgeSim::Assets
 	}
 
 	void GenerateMissingNormalsAndTangents(
-		MeshData& mesh)
+		MeshData& mesh,
+		bool generateTangents)
 	{
 		if (mesh.vertices.empty())
 		{
@@ -440,6 +472,10 @@ namespace ForgeSim::Assets
 		}
 
 		GenerateSmoothNormals(mesh);
-		GenerateTangents(mesh);
+
+		if (generateTangents)
+		{
+			GenerateTangents(mesh);
+		}
 	}
 }

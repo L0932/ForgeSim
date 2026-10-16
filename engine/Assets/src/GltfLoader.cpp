@@ -522,14 +522,13 @@ namespace ForgeSim::Assets
 					path.string());
 			}
 
-			if (meshData.indices.size() % 3 != 0)
-			{
-				throw std::runtime_error(
-					"glTF triangle index count is not divisible by three: " +
-					path.string());
-			}
+			const bool requiresTangents =
+				primitive.material != nullptr &&
+				primitive.material->normal_texture.texture != nullptr;
 
-			GenerateMissingNormalsAndTangents(meshData);
+			GenerateMissingNormalsAndTangents(
+				meshData,
+				requiresTangents);
 
 			return meshData;
 		}

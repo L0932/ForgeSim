@@ -721,6 +721,72 @@ int main()
 			}
 		}
 
+		// UV coordinates alone must not trigger tangent generation.
+		// A material without a normal texture does not require tangents.
+		{
+			const std::filesystem::path assetPath =
+				assetDirectory / "TriangleWithoutTangents.gltf";
+
+			const ForgeSim::Assets::MeshData mesh =
+				ForgeSim::Assets::LoadGltfMesh(assetPath);
+
+			if (mesh.vertices.size() != 3 ||
+				mesh.indices.size() != 3)
+			{
+				std::cerr
+					<< "Expected three vertices and three indices\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (!mesh.availableAttributes.normals ||
+				!mesh.availableAttributes.textureCoordinates ||
+				mesh.availableAttributes.tangents)
+			{
+				std::cerr
+					<< "Expected normals and UVs without generated tangents "
+					<< "for a material without a normal texture\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const ForgeSim::Assets::SceneAsset scene =
+				ForgeSim::Assets::LoadGltfScene(assetPath);
+
+			if (scene.meshes.size() != 1 ||
+				scene.meshes[0].primitives.size() != 1 ||
+				scene.materials.size() != 1)
+			{
+				std::cerr
+					<< "Unexpected scene structure in no-normal-map fixture\n";
+
+				return EXIT_FAILURE;
+			}
+
+			const auto& primitive =
+				scene.meshes[0].primitives[0];
+
+			if (!primitive.materialIndex ||
+				*primitive.materialIndex != 0 ||
+				scene.materials[0].normalTexture)
+			{
+				std::cerr
+					<< "Expected an assigned material without a normal texture\n";
+
+				return EXIT_FAILURE;
+			}
+
+			if (!primitive.geometry.availableAttributes.normals ||
+				!primitive.geometry.availableAttributes.textureCoordinates ||
+				primitive.geometry.availableAttributes.tangents)
+			{
+				std::cerr
+					<< "Scene loading generated unnecessary tangents\n";
+
+				return EXIT_FAILURE;
+			}
+		}
+
 		return EXIT_SUCCESS;
 	}
 	catch (const std::exception& exception)

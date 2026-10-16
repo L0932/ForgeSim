@@ -7,5 +7,6 @@ namespace ForgeSim::Assets
 	// Generates missing geometric attributes when sufficient mesh data
 	// is available. Authored attributes are preserved.
 	void GenerateMissingNormalsAndTangents(
-		MeshData& mesh);
+		MeshData& mesh,
+		bool generateTangents);
 }
