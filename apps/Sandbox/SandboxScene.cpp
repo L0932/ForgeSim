@@ -1,6 +1,8 @@
 #include "SandboxScene.hpp"
 
 #include <algorithm>
+#include <limits>
+#include <stdexcept>
 
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
@@ -19,6 +21,18 @@ namespace ForgeSim::Sandbox
 			}
 		}
 	{}
+
+	DirectionalLight&
+		SandboxScene::MainDirectionalLight() noexcept
+	{
+		return m_DirectionalLight;
+	}
+
+	const DirectionalLight&
+		SandboxScene::MainDirectionalLight() const noexcept
+	{
+		return m_DirectionalLight;
+	}
 
 	std::span<SandboxObject>
 		SandboxScene::Objects() noexcept
@@ -62,5 +76,71 @@ namespace ForgeSim::Sandbox
 		return iterator != m_Objects.end()
 			? &*iterator
 			: nullptr;
+	}
+
+	SceneLightId SandboxScene::AddPointLight()
+	{
+		if (m_NextLightId ==
+			std::numeric_limits<SceneLightId>::max())
+		{
+			throw std::overflow_error(
+				"Scene light ID space is exhausted.");
+		}
+
+		const SceneLightId id = m_NextLightId;
+
+		m_PointLights.push_back(
+			PointLight{
+				.id = id
+			});
+
+		++m_NextLightId;
+
+		return id;
+	}
+
+	SceneLightId SandboxScene::AddSpotLight()
+	{
+		if (m_NextLightId ==
+			std::numeric_limits<SceneLightId>::max())
+		{
+			throw std::overflow_error(
+				"Scene light ID space is exhausted.");
+		}
+
+		const SceneLightId id = m_NextLightId;
+
+		m_SpotLights.push_back(
+			SpotLight{
+				.id = id
+			});
+
+		++m_NextLightId;
+
+		return id;
+	}
+
+	std::span<PointLight>
+		SandboxScene::PointLights() noexcept
+	{
+		return m_PointLights;
+	}
+
+	std::span<const PointLight>
+		SandboxScene::PointLights() const noexcept
+	{
+		return m_PointLights;
+	}
+
+	std::span<SpotLight>
+		SandboxScene::SpotLights() noexcept
+	{
+		return m_SpotLights;
+	}
+
+	std::span<const SpotLight>
+		SandboxScene::SpotLights() const noexcept
+	{
+		return m_SpotLights;
 	}
 }

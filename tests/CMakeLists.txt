@@ -495,6 +495,47 @@ add_test(
 	COMMAND ForgeSimMeshProcessingTests
 )
 
+add_executable(ForgeSimSceneLightTests)
+
+target_sources(
+    ForgeSimSceneLightTests
+    PRIVATE
+        SceneLightTest.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneLightTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneLightTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
+)
+
+target_compile_features(
+    ForgeSimSceneLightTests
+    PRIVATE
+        cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneLightTests)
+
+set_target_properties(
+    ForgeSimSceneLightTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneLight
+    COMMAND ForgeSimSceneLightTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -511,6 +552,7 @@ set_target_properties(
 	ForgeSimImageLoaderTests
 	ForgeSimMaterialDataTests
 	ForgeSimMeshProcessingTests
+	ForgeSimSceneLightTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

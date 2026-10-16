@@ -1160,9 +1160,14 @@ namespace ForgeSim::Sandbox
 			SandboxRendererShaderUniform::lightDirection,
 			light.directionToLight);
 
+		const glm::vec3 lightRadiance =
+			light.enabled
+			? light.color * light.intensity
+			: glm::vec3(0.0f);
+
 		m_ObjectShaderProgram.SetVector3(
 			SandboxRendererShaderUniform::lightRadiance,
-			light.color * light.intensity);
+			lightRadiance);
 
 		m_ObjectShaderProgram.SetVector3(
 			SandboxRendererShaderUniform::selectionColor,

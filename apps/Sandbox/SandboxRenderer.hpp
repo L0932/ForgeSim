@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SandboxObject.hpp"
+#include "SceneLight.hpp"
 #include "ShaderFileMonitor.hpp"
 
 #include <cstddef>
@@ -32,19 +33,6 @@
 
 namespace ForgeSim::Sandbox
 {
-	struct DirectionalLight
-	{
-		// World-space direction from the surface toward the light.
-		glm::vec3 directionToLight{
-			-0.5f,
-			1.0f,
-			0.3f
-		};
-
-		glm::vec3 color{ 1.0f };
-		float intensity = 3.0f;
-	};
-
 	struct SelectionHighlightSettings
 	{
 		bool enabled = true;

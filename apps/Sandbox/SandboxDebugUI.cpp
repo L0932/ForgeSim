@@ -182,6 +182,60 @@ namespace ForgeSim::Sandbox
 			2.0f,
 			"%.2f");
 
+		ImGui::SeparatorText("Directional Light");
+
+		DirectionalLight& light =
+			context.directionalLight;
+
+		ImGui::Text(
+			"Light ID: %llu",
+			static_cast<unsigned long long>(light.id));
+
+		ImGui::Checkbox(
+			"Light enabled",
+			&light.enabled
+		);
+
+		ImGui::ColorEdit3(
+			"Light color",
+			&light.color.x,
+			ImGuiColorEditFlags_Float);
+
+		ImGui::DragFloat(
+			"Light intensity",
+			&light.intensity,
+			0.05f,
+			0.0f,
+			100.0f,
+			"%.2f",
+			ImGuiSliderFlags_AlwaysClamp);
+
+		glm::vec3 directionToLight =
+			light.directionToLight;
+
+		if (ImGui::DragFloat3(
+			"Direction to light",
+			&directionToLight.x,
+			0.01f,
+			-1.0f,
+			1.0f,
+			"%.3f",
+			ImGuiSliderFlags_AlwaysClamp))
+		{
+			const float lengthSquared =
+				glm::dot(directionToLight, directionToLight);
+
+			if (std::isfinite(lengthSquared) &&
+				lengthSquared > 1e-12f)
+			{
+				light.directionToLight =
+					directionToLight / std::sqrt(lengthSquared);
+			}
+		}
+
+		ImGui::TextDisabled(
+			"World-space direction from the surface toward the light.");
+
 		ImGui::SeparatorText("Selection");
 
 		ImGui::Checkbox(

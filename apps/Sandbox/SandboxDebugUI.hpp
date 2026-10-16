@@ -1,5 +1,8 @@
 #pragma once
 
+#include "SceneLight.hpp"
+
+#include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
 
 namespace ForgeSim::Platform
@@ -25,6 +28,7 @@ namespace ForgeSim::Renderer
 
 namespace ForgeSim::Sandbox
 {
+	struct DirectionalLight;
 	struct SandboxObject;
 
 	struct SandboxDebugUIContext
@@ -36,6 +40,7 @@ namespace ForgeSim::Sandbox
 		
 		const Renderer::PerspectiveCamera& camera;
 		const Renderer::AxisAlignedBoundingBox& modelBounds;
+		DirectionalLight& directionalLight;
 	};
 
 	class SandboxDebugUI final
