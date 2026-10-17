@@ -59,6 +59,9 @@ namespace ForgeSim::Sandbox
 		bool showEnvironmentBackground = false;
 		bool showGrid = true;
 		bool showObjectBounds = false;
+		bool showLights = true;
+
+		std::optional<SceneLightId> selectedLightId;
 
 		SelectionHighlightSettings selectionHighlight;
 	};
@@ -102,7 +105,7 @@ namespace ForgeSim::Sandbox
 			const glm::mat4& view,
 			const glm::mat4& projection,
 			const glm::vec3& cameraPosition,
-			const DirectionalLight& light,
+			const SceneLightingView& light,
 			const SandboxRenderSettings& settings);
 
 		void ReloadChangedShaders();
@@ -227,6 +230,8 @@ namespace ForgeSim::Sandbox
 
 		std::vector<Renderer::DebugLineVertex>
 			m_BoundsVertices;
+
+		std::vector<Renderer::DebugLineVertex> m_LightVertices;
 
 		ShaderFileMonitor m_GridShaderMonitor;
 		ForgeSim::Renderer::OpenGL::DebugLineRenderer

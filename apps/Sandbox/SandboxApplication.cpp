@@ -117,6 +117,64 @@ namespace ForgeSim::Sandbox
 			maximumStepsPerFrame
 		};
 
+		// temp for testing
+		if (m_Scene.PointLights().empty())
+		{
+			static_cast<void>(m_Scene.AddPointLight());
+
+			PointLight& pointLight =
+				m_Scene.PointLights().back();
+
+			const float visualizationScale =
+				std::max(modelRadius, 0.001f);
+
+			pointLight.position =
+				modelCenter +
+				glm::vec3{
+					visualizationScale * 0.75f,
+					visualizationScale * 0.5f,
+					0.0f
+			};
+
+			pointLight.range =
+				visualizationScale * 0.5f;
+		}
+
+		// temp for testing
+		if (m_Scene.SpotLights().empty())
+		{
+			static_cast<void>(m_Scene.AddSpotLight());
+
+			SpotLight& spotLight =
+				m_Scene.SpotLights().back();
+
+			const float visualizationScale =
+				std::max(modelRadius, 0.001f);
+
+			spotLight.position =
+				modelCenter +
+				glm::vec3{
+					-visualizationScale * 0.5f,
+					visualizationScale * 0.5f,
+					0.0f
+			};
+
+			spotLight.emissionDirection = {
+				0.0f,
+				-1.0f,
+				0.0f
+			};
+
+			spotLight.range =
+				visualizationScale * 0.35f;
+
+			spotLight.innerConeAngleRadians =
+				glm::radians(15.0f);
+
+			spotLight.outerConeAngleRadians =
+				glm::radians(30.0f);
+		}
+
 		while (!m_Window.ShouldClose())
 		{
 			m_Window.PollEvents();
@@ -284,6 +342,10 @@ namespace ForgeSim::Sandbox
 				.showObjectBounds =
 					m_DebugUI.ShowObjectBounds(),
 
+				.showLights = m_DebugUI.ShowLights(),
+
+				.selectedLightId = m_DebugUI.SelectedLightId(),
+
 				.selectionHighlight = {
 					.enabled =
 						m_DebugUI.SelectionHighlightEnabled(),
@@ -302,7 +364,11 @@ namespace ForgeSim::Sandbox
 				view,
 				projection,
 				camera.Position(),
-				m_Scene.MainDirectionalLight(),
+				SceneLightingView{
+					.directionalLight = m_Scene.MainDirectionalLight(),
+					.pointLights = m_Scene.PointLights(),
+					.spotLights = m_Scene.SpotLights()
+				},
 				renderSettings);
 
 			SandboxObject* selectedObject = nullptr;
@@ -323,7 +389,9 @@ namespace ForgeSim::Sandbox
 							: nullptr,
 					.camera = camera,
 					.modelBounds = m_Renderer.ObjectLocalBounds(),
-					.directionalLight = m_Scene.MainDirectionalLight()
+					.directionalLight = m_Scene.MainDirectionalLight(),
+					.pointLights = m_Scene.PointLights(),
+					.spotLights = m_Scene.SpotLights()
 				}
 			);
 

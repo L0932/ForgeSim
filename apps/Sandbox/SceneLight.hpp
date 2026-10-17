@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <span>
+
 #include <glm/vec3.hpp>
 
 namespace ForgeSim::Sandbox
@@ -67,5 +70,13 @@ namespace ForgeSim::Sandbox
         // 0 <= innerConeAngleRadians < outerConeAngleRadians < pi / 2.
         float innerConeAngleRadians = 0.2617994f; // 15 degrees
         float outerConeAngleRadians = 0.5235988f; // 30 degrees
+    };
+
+    // Borrows scene light data for the duration of rendering.
+    struct SceneLightingView
+    {
+        const DirectionalLight& directionalLight;
+        std::span<const PointLight> pointLights;
+        std::span<const SpotLight> spotLights;
     };
 }

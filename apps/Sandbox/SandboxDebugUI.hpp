@@ -2,6 +2,9 @@
 
 #include "SceneLight.hpp"
 
+#include <optional>
+#include <span>
+
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
 
@@ -41,6 +44,9 @@ namespace ForgeSim::Sandbox
 		const Renderer::PerspectiveCamera& camera;
 		const Renderer::AxisAlignedBoundingBox& modelBounds;
 		DirectionalLight& directionalLight;
+
+		std::span<PointLight> pointLights;
+		std::span<SpotLight> spotLights;
 	};
 
 	class SandboxDebugUI final
@@ -76,6 +82,11 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] bool ShowEnvironmentBackground() const noexcept;
 		[[nodiscard]] bool ShowGrid() const noexcept;
+		[[nodiscard]] bool ShowLights() const noexcept;
+
+		[[nodiscard]] std::optional<SceneLightId>
+			SelectedLightId() const noexcept;
+
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
 
 		[[nodiscard]] bool SelectionHighlightEnabled()
@@ -100,6 +111,7 @@ namespace ForgeSim::Sandbox
 		bool m_IsVisible = true;
 		bool m_ShowEnvironmentBackground = false;
 		bool m_ShowGrid = true;
+		bool m_ShowLights = true;
 		bool m_ShowObjectBounds = false;
 		bool m_RuntimeDiagnosticsEnabled = false;
 
@@ -112,5 +124,7 @@ namespace ForgeSim::Sandbox
 		};
 
 		float m_SelectionHighlightStrength = 0.20f;
+
+		std::optional<SceneLightId> m_SelectedLightId;
 	};
 }

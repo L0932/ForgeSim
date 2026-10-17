@@ -1037,9 +1037,13 @@ namespace ForgeSim::Sandbox
 		const glm::mat4& view,
 		const glm::mat4& projection,
 		const glm::vec3& cameraPosition,
-		const DirectionalLight& light,
+		const SceneLightingView& lighting,
 		const SandboxRenderSettings& settings)
 	{
+
+		const DirectionalLight& light =
+			lighting.directionalLight;
+
 		if (!m_HdrRenderTarget)
 		{
 			m_HdrRenderTarget.emplace(
@@ -1468,6 +1472,135 @@ namespace ForgeSim::Sandbox
 			glDisable(GL_BLEND);
 		}
 
+		m_LightVertices.clear();
+
+		if (settings.showLights)
+		{
+			const auto debugLightColor =
+				[&](SceneLightId id, bool enabled, const glm::vec3& normalColor)
+				{
+					if (settings.selectedLightId &&
+						*settings.selectedLightId == id)
+					{
+						return glm::vec3{ 1.0f, 0.2f, 0.8f };
+					}
+
+					return enabled
+						? normalColor
+						: glm::vec3{ 0.4f };
+				};
+
+			const glm::vec3 extent =
+				m_ObjectLocalBounds.maximum -
+				m_ObjectLocalBounds.minimum;
+
+			const glm::vec3 center =
+				(m_ObjectLocalBounds.minimum +
+					m_ObjectLocalBounds.maximum) * 0.5f;
+
+			const float characteristicSize =
+				std::max({
+					extent.x,
+					extent.y,
+					extent.z,
+					0.001f
+					});
+
+			// Directional lights have no physical position.
+			// Anchor the debug symbol above the imported model bounds.
+			const glm::vec3 arrowOrigin =
+				center +
+				glm::vec3{
+					0.0f,
+					extent.y * 0.5f + characteristicSize * 0.35f,
+					0.0f
+			};
+
+			const glm::vec3 arrowColor =
+				debugLightColor(
+					light.id,
+					light.enabled,
+					glm::vec3{ 1.0f, 0.85f, 0.15f });
+
+			m_LightVertices =
+				Renderer::CreateDirectionalLightLines(
+					Renderer::DirectionArrowSpecification{
+						.origin = arrowOrigin,
+						.direction = -light.directionToLight,
+						.length = characteristicSize * 0.20f,
+						.color = arrowColor,
+						.showArrowheads = false
+					});
+
+			for (const PointLight& pointLight : lighting.pointLights)
+			{
+				const glm::vec3 pointColor =
+					debugLightColor(
+						pointLight.id,
+						pointLight.enabled,
+						glm::vec3{ 0.2f, 0.8f, 1.0f });
+
+				const auto pointVertices =
+					Renderer::CreateWireframeSphereLines(
+						Renderer::WireframeSphereSpecification{
+							.center = pointLight.position,
+							.radius = pointLight.range,
+							.segmentCount = 32,
+							.markerSize = characteristicSize * 0.015f,
+							.color = pointColor
+						});
+
+				m_LightVertices.insert(
+					m_LightVertices.end(),
+					pointVertices.begin(),
+					pointVertices.end());
+			}
+
+			for (const SpotLight& spotLight : lighting.spotLights)
+			{
+				const glm::vec3 spotColor =
+					debugLightColor(
+						spotLight.id,
+						spotLight.enabled,
+						glm::vec3{ 1.0f, 0.45f, 0.15f });
+
+				const auto spotVertices =
+					Renderer::CreateWireframeSpotLightLines(
+						Renderer::WireframeSpotLightSpecification{
+							.position = spotLight.position,
+							.emissionDirection = spotLight.emissionDirection,
+							.range = spotLight.range,
+							.innerConeAngleRadians =
+								spotLight.innerConeAngleRadians,
+							.outerConeAngleRadians =
+								spotLight.outerConeAngleRadians,
+							.segmentCount = 32,
+							.markerSize = characteristicSize * 0.015f,
+							.color = spotColor
+						});
+
+				m_LightVertices.insert(
+					m_LightVertices.end(),
+					spotVertices.begin(),
+					spotVertices.end());
+			}
+
+			const GLboolean depthTestWasEnabled =
+				glIsEnabled(GL_DEPTH_TEST);
+
+			glDisable(GL_DEPTH_TEST);
+
+			m_DebugLineRenderer.Render(
+				m_LightVertices,
+				view,
+				projection);
+
+			if (depthTestWasEnabled == GL_TRUE)
+			{
+				glEnable(GL_DEPTH_TEST);
+			}
+		}
+		
 		if (settings.showObjectBounds &&
 			!m_BoundsVertices.empty())
 		{

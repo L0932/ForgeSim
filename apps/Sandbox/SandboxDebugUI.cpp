@@ -3,9 +3,11 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <chrono>
+#include <cmath>
+#include <cstddef>
 #include <cstdio>
+#include <limits>
 #include <stdexcept>
 
 #include <imgui.h>
@@ -108,6 +110,10 @@ namespace ForgeSim::Sandbox
 			"Show object bounds",
 			&m_ShowObjectBounds);
 
+		ImGui::Checkbox(
+			"Show scene lights",
+			&m_ShowLights);
+
 		ImGui::SeparatorText("Camera");
 
 		const glm::vec3& cameraPosition =
@@ -182,59 +188,353 @@ namespace ForgeSim::Sandbox
 			2.0f,
 			"%.2f");
 
-		ImGui::SeparatorText("Directional Light");
+		ImGui::SeparatorText("Scene Lights");
 
-		DirectionalLight& light =
-			context.directionalLight;
-
-		ImGui::Text(
-			"Light ID: %llu",
-			static_cast<unsigned long long>(light.id));
-
-		ImGui::Checkbox(
-			"Light enabled",
-			&light.enabled
-		);
-
-		ImGui::ColorEdit3(
-			"Light color",
-			&light.color.x,
-			ImGuiColorEditFlags_Float);
-
-		ImGui::DragFloat(
-			"Light intensity",
-			&light.intensity,
-			0.05f,
-			0.0f,
-			100.0f,
-			"%.2f",
-			ImGuiSliderFlags_AlwaysClamp);
-
-		glm::vec3 directionToLight =
-			light.directionToLight;
-
-		if (ImGui::DragFloat3(
-			"Direction to light",
-			&directionToLight.x,
-			0.01f,
-			-1.0f,
-			1.0f,
-			"%.3f",
-			ImGuiSliderFlags_AlwaysClamp))
+		if (ImGui::Selectable(
+			"None",
+			!m_SelectedLightId.has_value()))
 		{
-			const float lengthSquared =
-				glm::dot(directionToLight, directionToLight);
+			m_SelectedLightId.reset();
+		}
 
-			if (std::isfinite(lengthSquared) &&
-				lengthSquared > 1e-12f)
+		const auto drawLightEntry =
+			[&](const char* typeName,
+				std::size_t displayNumber,
+				SceneLightId id)
 			{
-				light.directionToLight =
-					directionToLight / std::sqrt(lengthSquared);
-			}
+				std::array<char, 128> label{};
+
+				// Text before ## is displayed; the stable ID after it
+				// identifies the widget independently of display numbering.
+				std::snprintf(
+					label.data(),
+					label.size(),
+					"%s %zu##SceneLight_%llu",
+					typeName,
+					displayNumber,
+					static_cast<unsigned long long>(id));
+
+				const bool isSelected =
+					m_SelectedLightId &&
+					*m_SelectedLightId == id;
+
+				if (ImGui::Selectable(label.data(), isSelected))
+				{
+					m_SelectedLightId = id;
+				}
+			};
+
+		drawLightEntry(
+			"Directional",
+			1,
+			context.directionalLight.id);
+
+		std::size_t pointNumber = 1;
+
+		for (const PointLight& light : context.pointLights)
+		{
+			drawLightEntry(
+				"Point",
+				pointNumber++,
+				light.id);
+		}
+
+		std::size_t spotNumber = 1;
+
+		for (const SpotLight& light : context.spotLights)
+		{
+			drawLightEntry(
+				"Spot",
+				spotNumber++,
+				light.id);
 		}
 
 		ImGui::TextDisabled(
-			"World-space direction from the surface toward the light.");
+			"Point and spot symbols currently visualize light data only.");
+
+
+		if (m_SelectedLightId &&
+			*m_SelectedLightId == context.directionalLight.id)
+		{
+			ImGui::SeparatorText("Directional Light");
+
+			DirectionalLight& light =
+				context.directionalLight;
+
+			ImGui::Text(
+				"Light ID: %llu",
+				static_cast<unsigned long long>(light.id));
+
+			ImGui::Checkbox(
+				"Light enabled",
+				&light.enabled
+			);
+
+			ImGui::ColorEdit3(
+				"Light color",
+				&light.color.x,
+				ImGuiColorEditFlags_Float);
+
+			ImGui::DragFloat(
+				"Light intensity",
+				&light.intensity,
+				0.05f,
+				0.0f,
+				100.0f,
+				"%.2f",
+				ImGuiSliderFlags_AlwaysClamp);
+
+			glm::vec3 directionToLight =
+				light.directionToLight;
+
+			if (ImGui::DragFloat3(
+				"Direction to light",
+				&directionToLight.x,
+				0.01f,
+				-1.0f,
+				1.0f,
+				"%.3f",
+				ImGuiSliderFlags_AlwaysClamp))
+			{
+				const float lengthSquared =
+					glm::dot(directionToLight, directionToLight);
+
+				if (std::isfinite(lengthSquared) &&
+					lengthSquared > 1e-12f)
+				{
+					light.directionToLight =
+						directionToLight / std::sqrt(lengthSquared);
+				}
+			}
+
+			ImGui::TextDisabled(
+				"World-space direction from the surface toward the light.");
+		}
+
+		for (PointLight& light : context.pointLights)
+		{
+			if (!m_SelectedLightId ||
+				*m_SelectedLightId != light.id)
+			{
+				continue;
+			}
+
+			ImGui::SeparatorText("Selected Point Light");
+
+			ImGui::Checkbox(
+				"Point light enabled",
+				&light.enabled);
+
+			ImGui::ColorEdit3(
+				"Point light color",
+				&light.color.x,
+				ImGuiColorEditFlags_Float);
+
+			ImGui::DragFloat(
+				"Point light intensity",
+				&light.intensity,
+				0.05f,
+				0.0f,
+				100.0f,
+				"%.2f",
+				ImGuiSliderFlags_AlwaysClamp);
+
+			const glm::vec3 extent =
+				context.modelBounds.maximum -
+				context.modelBounds.minimum;
+
+			float positionDragSpeed = 0.001f;
+
+			if (std::isfinite(extent.x) &&
+				std::isfinite(extent.y) &&
+				std::isfinite(extent.z) &&
+				extent.x >= 0.0f &&
+				extent.y >= 0.0f &&
+				extent.z >= 0.0f)
+			{
+				const float characteristicSize =
+					std::max({
+						extent.x,
+						extent.y,
+						extent.z
+						});
+
+				if (characteristicSize > 0.0f)
+				{
+					positionDragSpeed =
+						std::clamp(
+							characteristicSize * 0.001f,
+							0.000001f,
+							10.0f);
+				}
+			}
+
+			ImGui::DragFloat3(
+				"Point light position",
+				&light.position.x,
+				positionDragSpeed,
+				0.0f,
+				0.0f,
+				"%.6f",
+				ImGuiSliderFlags_NoRoundToFormat);
+
+			ImGui::DragFloat(
+				"Point light range",
+				&light.range,
+				positionDragSpeed,
+				0.000001f,
+				std::numeric_limits<float>::max(),
+				"%.6f",
+				ImGuiSliderFlags_AlwaysClamp |
+				ImGuiSliderFlags_NoRoundToFormat);
+
+			ImGui::TextDisabled(
+				"Point illumination is not implemented yet.");
+
+			break;
+		}
+
+		for (SpotLight& light : context.spotLights)
+		{
+			if (!m_SelectedLightId ||
+				*m_SelectedLightId != light.id)
+			{
+				continue;
+			}
+
+			ImGui::SeparatorText("Selected Spot Light");
+
+			ImGui::Checkbox(
+				"Spot light enabled",
+				&light.enabled);
+
+			ImGui::ColorEdit3(
+				"Spot light color",
+				&light.color.x,
+				ImGuiColorEditFlags_Float);
+
+			ImGui::DragFloat(
+				"Spot light intensity",
+				&light.intensity,
+				0.05f,
+				0.0f,
+				100.0f,
+				"%.2f",
+				ImGuiSliderFlags_AlwaysClamp);
+
+			const glm::vec3 extent =
+				context.modelBounds.maximum -
+				context.modelBounds.minimum;
+
+			float positionDragSpeed = 0.001f;
+
+			if (std::isfinite(extent.x) &&
+				std::isfinite(extent.y) &&
+				std::isfinite(extent.z) &&
+				extent.x >= 0.0f &&
+				extent.y >= 0.0f &&
+				extent.z >= 0.0f)
+			{
+				const float characteristicSize =
+					std::max({
+						extent.x,
+						extent.y,
+						extent.z
+						});
+
+				if (characteristicSize > 0.0f)
+				{
+					positionDragSpeed =
+						std::clamp(
+							characteristicSize * 0.001f,
+							0.000001f,
+							10.0f);
+				}
+			}
+
+			ImGui::DragFloat3(
+				"Spot light position",
+				&light.position.x,
+				positionDragSpeed,
+				0.0f,
+				0.0f,
+				"%.6f",
+				ImGuiSliderFlags_NoRoundToFormat);
+
+			glm::vec3 emissionDirection =
+				light.emissionDirection;
+
+			if (ImGui::DragFloat3(
+				"Emission direction",
+				&emissionDirection.x,
+				0.01f,
+				-1.0f,
+				1.0f,
+				"%.3f",
+				ImGuiSliderFlags_AlwaysClamp))
+			{
+				const float lengthSquared =
+					glm::dot(emissionDirection, emissionDirection);
+
+				if (std::isfinite(lengthSquared) &&
+					lengthSquared > 1e-12f)
+				{
+					light.emissionDirection =
+						emissionDirection / std::sqrt(lengthSquared);
+				}
+			}
+
+			ImGui::DragFloat(
+				"Spot light range",
+				&light.range,
+				positionDragSpeed,
+				0.000001f,
+				std::numeric_limits<float>::max(),
+				"%.6f",
+				ImGuiSliderFlags_AlwaysClamp |
+				ImGuiSliderFlags_NoRoundToFormat);
+
+			constexpr float minimumConeGapDegrees = 0.1f;
+			constexpr float maximumOuterConeDegrees = 89.0f;
+
+			float innerConeDegrees =
+				glm::degrees(light.innerConeAngleRadians);
+
+			float outerConeDegrees =
+				glm::degrees(light.outerConeAngleRadians);
+
+			if (ImGui::SliderFloat(
+				"Inner cone half-angle",
+				&innerConeDegrees,
+				0.0f,
+				outerConeDegrees - minimumConeGapDegrees,
+				"%.1f deg",
+				ImGuiSliderFlags_AlwaysClamp))
+			{
+				light.innerConeAngleRadians =
+					glm::radians(innerConeDegrees);
+			}
+
+			if (ImGui::SliderFloat(
+				"Outer cone half-angle",
+				&outerConeDegrees,
+				innerConeDegrees + minimumConeGapDegrees,
+				maximumOuterConeDegrees,
+				"%.1f deg",
+				ImGuiSliderFlags_AlwaysClamp))
+			{
+				light.outerConeAngleRadians =
+					glm::radians(outerConeDegrees);
+			}
+
+			ImGui::TextDisabled(
+				"Angles are measured from the emission axis.");
+
+			ImGui::TextDisabled(
+				"Spot illumination is not implemented yet.");
+
+			break;
+		}
 
 		ImGui::SeparatorText("Selection");
 
@@ -440,6 +740,17 @@ namespace ForgeSim::Sandbox
 	bool SandboxDebugUI::ShowGrid() const noexcept
 	{
 		return m_ShowGrid;
+	}
+
+	bool SandboxDebugUI::ShowLights() const noexcept
+	{
+		return m_ShowLights;
+	}
+
+	std::optional<SceneLightId>
+		SandboxDebugUI::SelectedLightId() const noexcept
+	{
+		return m_SelectedLightId;
 	}
 
 	bool SandboxDebugUI::ShowObjectBounds() const noexcept
