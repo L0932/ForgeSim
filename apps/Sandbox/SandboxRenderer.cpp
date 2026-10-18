@@ -1,3 +1,4 @@
+#include "LightDebugLayout.hpp"
 #include "SandboxRenderer.hpp"
 
 #include <algorithm>
@@ -1490,31 +1491,8 @@ namespace ForgeSim::Sandbox
 						: glm::vec3{ 0.4f };
 				};
 
-			const glm::vec3 extent =
-				m_ObjectLocalBounds.maximum -
-				m_ObjectLocalBounds.minimum;
-
-			const glm::vec3 center =
-				(m_ObjectLocalBounds.minimum +
-					m_ObjectLocalBounds.maximum) * 0.5f;
-
-			const float characteristicSize =
-				std::max({
-					extent.x,
-					extent.y,
-					extent.z,
-					0.001f
-					});
-
-			// Directional lights have no physical position.
-			// Anchor the debug symbol above the imported model bounds.
-			const glm::vec3 arrowOrigin =
-				center +
-				glm::vec3{
-					0.0f,
-					extent.y * 0.5f + characteristicSize * 0.35f,
-					0.0f
-			};
+			const LightDebugLayout layout =
+				CalculateLightDebugLayout(m_ObjectLocalBounds);
 
 			const glm::vec3 arrowColor =
 				debugLightColor(
@@ -1525,11 +1503,12 @@ namespace ForgeSim::Sandbox
 			m_LightVertices =
 				Renderer::CreateDirectionalLightLines(
 					Renderer::DirectionArrowSpecification{
-						.origin = arrowOrigin,
+						.origin = layout.directionalAnchor,
 						.direction = -light.directionToLight,
-						.length = characteristicSize * 0.20f,
+						.length = layout.directionalLength,
 						.color = arrowColor,
-						.showArrowheads = false
+						.showArrowheads = false,
+						.markerSize = layout.markerSize
 					});
 
 			for (const PointLight& pointLight : lighting.pointLights)
@@ -1546,7 +1525,7 @@ namespace ForgeSim::Sandbox
 							.center = pointLight.position,
 							.radius = pointLight.range,
 							.segmentCount = 32,
-							.markerSize = characteristicSize * 0.015f,
+							.markerSize = layout.markerSize,
 							.color = pointColor
 						});
 
@@ -1575,7 +1554,7 @@ namespace ForgeSim::Sandbox
 							.outerConeAngleRadians =
 								spotLight.outerConeAngleRadians,
 							.segmentCount = 32,
-							.markerSize = characteristicSize * 0.015f,
+							.markerSize = layout.markerSize,
 							.color = spotColor
 						});
 

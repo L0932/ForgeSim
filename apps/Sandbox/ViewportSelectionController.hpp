@@ -1,8 +1,10 @@
 #pragma once 
 
-#include "SandboxObject.hpp"
+#pragma once
 
-#include <optional>
+#include "SandboxObject.hpp"
+#include "SceneSelection.hpp"
+
 #include <span>
 
 #include <glm/mat4x4.hpp>
@@ -23,17 +25,9 @@ namespace ForgeSim::Sandbox
 			const glm::mat4& view,
 			const glm::mat4& projection,
 			const Renderer::AxisAlignedBoundingBox& localBounds,
-			std::span<const SandboxObject> objects);
-
-		[[nodiscard]] std::optional<SandboxObjectId>
-			SelectedObjectId() const noexcept;
-
-		[[nodiscard]] bool IsSelected(
-			SandboxObjectId objectId) const noexcept;
-
-		void Clear() noexcept;
-
-	private:
-		std::optional<SandboxObjectId> m_SelectedObjectId;
+			std::span<const SandboxObject> objects,
+			std::span<const LightPickTarget> lightTargets,
+			SceneSelection& selection,
+			bool pickingSuppressed = false);
 	};
 }

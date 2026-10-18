@@ -10,6 +10,60 @@
 
 namespace ForgeSim::Renderer
 {
+	void AppendMarkerLines(
+		std::vector<DebugLineVertex>& vertices,
+		const glm::vec3& center,
+		float markerSize,
+		const glm::vec3& color)
+	{
+		if (!std::isfinite(markerSize) ||
+			markerSize < 0.0f)
+		{
+			throw std::invalid_argument(
+				"Marker size must be finite and nonnegative.");
+		}
+
+		if (markerSize == 0.0f)
+		{
+			return;
+		}
+
+		const std::array<glm::vec3, 3> axes{
+			glm::vec3{ markerSize, 0.0f, 0.0f },
+			glm::vec3{ 0.0f, markerSize, 0.0f },
+			glm::vec3{ 0.0f, 0.0f, markerSize }
+		};
+
+		for (const glm::vec3& axis : axes)
+		{
+			const glm::vec3 start = center - axis;
+			const glm::vec3 end = center + axis;
+
+			for (int component = 0; component < 3; ++component)
+			{
+				if (!std::isfinite(start[component]) ||
+					!std::isfinite(end[component]))
+				{
+					throw std::invalid_argument(
+						"Marker coordinates exceed "
+						"the supported numeric range.");
+				}
+			}
+
+			vertices.push_back(
+				DebugLineVertex{
+					.position = start,
+					.color = color
+				});
+
+			vertices.push_back(
+				DebugLineVertex{
+					.position = end,
+					.color = color
+				});
+		}
+	}
+
 	std::vector<DebugLineVertex>
 		CreateReferenceGridLines(
 			const ReferenceGridSpecification& specification)
@@ -418,6 +472,12 @@ namespace ForgeSim::Renderer
 				rayVertices.end());
 		}
 
+		AppendMarkerLines(
+			vertices,
+			specification.origin,
+			specification.markerSize,
+			specification.color);
+
 		return vertices;
 	}
 
@@ -526,21 +586,11 @@ namespace ForgeSim::Renderer
 			}
 		}
 
-		if (specification.markerSize > 0.0f)
-		{
-			const std::array<glm::vec3, 3> markerAxes{
-				glm::vec3{ specification.markerSize, 0.0f, 0.0f },
-				glm::vec3{ 0.0f, specification.markerSize, 0.0f },
-				glm::vec3{ 0.0f, 0.0f, specification.markerSize }
-			};
-
-			for (const glm::vec3& axis : markerAxes)
-			{
-				appendLine(
-					specification.center - axis,
-					specification.center + axis);
-			}
-		}
+		AppendMarkerLines(
+			vertices,
+			specification.center,
+			specification.markerSize,
+			specification.color);
 
 		return vertices;
 	}
@@ -712,21 +762,11 @@ namespace ForgeSim::Renderer
 		appendCone(specification.outerConeAngleRadians);
 		appendCone(specification.innerConeAngleRadians);
 
-		if (specification.markerSize > 0.0f)
-		{
-			const std::array<glm::vec3, 3> axes{
-				glm::vec3{ specification.markerSize, 0.0f, 0.0f },
-				glm::vec3{ 0.0f, specification.markerSize, 0.0f },
-				glm::vec3{ 0.0f, 0.0f, specification.markerSize }
-			};
-
-			for (const glm::vec3& axis : axes)
-			{
-				appendLine(
-					specification.position - axis,
-					specification.position + axis);
-			}
-		}
+		AppendMarkerLines(
+			vertices,
+			specification.position,
+			specification.markerSize,
+			specification.color);
 
 		return vertices;
 	}

@@ -536,6 +536,129 @@ add_test(
     COMMAND ForgeSimSceneLightTests
 )
 
+add_executable(ForgeSimSceneSelectionTests)
+
+target_sources(
+    ForgeSimSceneSelectionTests
+    PRIVATE
+        SceneSelectionTest.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneSelectionTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneSelectionTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
+)
+
+target_compile_features(
+    ForgeSimSceneSelectionTests
+    PRIVATE
+        cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneSelectionTests)
+
+set_target_properties(
+    ForgeSimSceneSelectionTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneSelection
+    COMMAND ForgeSimSceneSelectionTests
+)
+
+add_executable(ForgeSimLightPickingTests)
+
+target_sources(
+    ForgeSimLightPickingTests
+    PRIVATE
+        LightPickingTest.cpp
+)
+
+target_include_directories(
+    ForgeSimLightPickingTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimLightPickingTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
+)
+
+target_compile_features(
+    ForgeSimLightPickingTests
+    PRIVATE
+        cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimLightPickingTests)
+
+set_target_properties(
+    ForgeSimLightPickingTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.LightPicking
+    COMMAND ForgeSimLightPickingTests
+)
+
+add_executable(ForgeSimSceneSelectionValidationTests)
+
+target_sources(
+	ForgeSimSceneSelectionValidationTests
+	PRIVATE
+		SceneSelectionValidationTest.cpp
+		${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+)
+
+target_include_directories(
+	ForgeSimSceneSelectionValidationTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimSceneSelectionValidationTests
+	PRIVATE
+		ForgeSim::Renderer
+		glm::glm
+)
+
+target_compile_features(
+	ForgeSimSceneSelectionValidationTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(
+	ForgeSimSceneSelectionValidationTests
+)
+
+set_target_properties(
+	ForgeSimSceneSelectionValidationTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.SceneSelectionValidation
+	COMMAND ForgeSimSceneSelectionValidationTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -553,6 +676,9 @@ set_target_properties(
 	ForgeSimMaterialDataTests
 	ForgeSimMeshProcessingTests
 	ForgeSimSceneLightTests
+	ForgeSimSceneSelectionTests
+	ForgeSimLightPickingTests
+	ForgeSimSceneSelectionValidationTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

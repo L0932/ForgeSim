@@ -1,12 +1,19 @@
+#include "LightDebugLayout.hpp"
+#include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
+#include "SceneSelection.hpp"
+#include "SceneSelectionValidation.hpp"
 #include "FreeCameraController.hpp"
 #include "ViewportSelectionController.hpp"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <glm/mat4x4.hpp>
 #include <glm/trigonometric.hpp>
@@ -93,6 +100,7 @@ namespace ForgeSim::Sandbox
 			}
 		};
 
+		SceneSelection selection;
 		ViewportSelectionController selectionController;
 
 		ForgeSim::Core::Timer timer;
@@ -175,6 +183,8 @@ namespace ForgeSim::Sandbox
 				glm::radians(30.0f);
 		}
 
+		std::vector<LightPickTarget> lightPickTargets;
+
 		while (!m_Window.ShouldClose())
 		{
 			m_Window.PollEvents();
@@ -185,6 +195,48 @@ namespace ForgeSim::Sandbox
 			}
 
 			m_Renderer.ReloadChangedShaders();
+
+			lightPickTargets.clear();
+
+			if (m_DebugUI.ShowLights())
+			{
+				const LightDebugLayout layout =
+					CalculateLightDebugLayout(
+						m_Renderer.ObjectLocalBounds());
+
+				lightPickTargets.push_back(
+					LightPickTarget{
+						.id = m_Scene.MainDirectionalLight().id,
+						.bounds = {
+							.center = layout.directionalAnchor,
+							.radius = layout.pickRadius
+						}
+					});
+
+				for (const PointLight& light : m_Scene.PointLights())
+				{
+					lightPickTargets.push_back(
+						LightPickTarget{
+							.id = light.id,
+							.bounds = {
+								.center = light.position,
+								.radius = layout.pickRadius
+							}
+						});
+				}
+
+				for (const SpotLight& light : m_Scene.SpotLights())
+				{
+					lightPickTargets.push_back(
+						LightPickTarget{
+							.id = light.id,
+							.bounds = {
+								.center = light.position,
+								.radius = layout.pickRadius
+							}
+						});
+				}
+			}
 
 			const ForgeSim::Platform::InputState& input =
 				m_Window.GetInputState();
@@ -304,18 +356,21 @@ namespace ForgeSim::Sandbox
 			const glm::mat4 projection =
 				camera.ProjectionMatrix(aspectRatio);
 
-			if (!uiWantsMouse)
-			{
-				selectionController.Update(
-					input,
-					m_Window.GetWindowExtent(),
-					framebufferExtent,
-					view,
-					projection,
-					m_Renderer.ObjectLocalBounds(),
-					m_Scene.Objects()
-				);
-			}
+			ClearMissingSceneSelection(
+				selection,
+				m_Scene);
+
+			selectionController.Update(
+				input,
+				m_Window.GetWindowExtent(),
+				framebufferExtent,
+				view,
+				projection,
+				m_Renderer.ObjectLocalBounds(),
+				m_Scene.Objects(),
+				lightPickTargets,
+				selection,
+				uiWantsMouse);
 
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =
@@ -344,7 +399,7 @@ namespace ForgeSim::Sandbox
 
 				.showLights = m_DebugUI.ShowLights(),
 
-				.selectedLightId = m_DebugUI.SelectedLightId(),
+				.selectedLightId = selection.SelectedLightId(),
 
 				.selectionHighlight = {
 					.enabled =
@@ -360,7 +415,7 @@ namespace ForgeSim::Sandbox
 
 			m_Renderer.Render(
 				m_Scene.Objects(),
-				selectionController.SelectedObjectId(),
+				selection.SelectedObjectId(),
 				view,
 				projection,
 				camera.Position(),
@@ -371,18 +426,10 @@ namespace ForgeSim::Sandbox
 				},
 				renderSettings);
 
-			SandboxObject* selectedObject = nullptr;
-
-			if (const auto selectedObjectID =
-				selectionController.SelectedObjectId())
-			{
-				selectedObject =
-					m_Scene.FindObject(*selectedObjectID);
-			}
-
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
-					.selectedObject = selectedObject,
+					.scene = m_Scene,
+					.selection = selection,
 					.diagnosticsSnapshot =
 						latestDiagnosticsSnapshot 
 							? &*latestDiagnosticsSnapshot 

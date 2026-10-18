@@ -1,4 +1,5 @@
 #include "SandboxDebugUI.hpp"
+#include "SandboxScene.hpp"
 #include "SandboxObject.hpp"
 
 #include <algorithm>
@@ -75,9 +76,6 @@ namespace ForgeSim::Sandbox
 
 	void SandboxDebugUI::Draw(const SandboxDebugUIContext& context)
 	{
-		SandboxObject* selectedObject =
-			context.selectedObject;
-
 		const Core::RuntimeDiagnosticsSnapshot*
 			diagnosticsSnapshot =
 			context.diagnosticsSnapshot;
@@ -192,9 +190,9 @@ namespace ForgeSim::Sandbox
 
 		if (ImGui::Selectable(
 			"None",
-			!m_SelectedLightId.has_value()))
+			context.selection.Empty()))
 		{
-			m_SelectedLightId.reset();
+			context.selection.Clear();
 		}
 
 		const auto drawLightEntry =
@@ -214,13 +212,11 @@ namespace ForgeSim::Sandbox
 					displayNumber,
 					static_cast<unsigned long long>(id));
 
-				const bool isSelected =
-					m_SelectedLightId &&
-					*m_SelectedLightId == id;
-
-				if (ImGui::Selectable(label.data(), isSelected))
+				if (ImGui::Selectable(
+					label.data(), 
+					context.selection.IsLightSelected(id)))
 				{
-					m_SelectedLightId = id;
+					context.selection.SelectLight(id);
 				}
 			};
 
@@ -253,8 +249,8 @@ namespace ForgeSim::Sandbox
 			"Point and spot symbols currently visualize light data only.");
 
 
-		if (m_SelectedLightId &&
-			*m_SelectedLightId == context.directionalLight.id)
+		if (context.selection.IsLightSelected(
+			context.directionalLight.id))
 		{
 			ImGui::SeparatorText("Directional Light");
 
@@ -313,8 +309,7 @@ namespace ForgeSim::Sandbox
 
 		for (PointLight& light : context.pointLights)
 		{
-			if (!m_SelectedLightId ||
-				*m_SelectedLightId != light.id)
+			if (!context.selection.IsLightSelected(light.id))
 			{
 				continue;
 			}
@@ -396,8 +391,7 @@ namespace ForgeSim::Sandbox
 
 		for (SpotLight& light : context.spotLights)
 		{
-			if (!m_SelectedLightId ||
-				*m_SelectedLightId != light.id)
+			if (!context.selection.IsLightSelected(light.id))
 			{
 				continue;
 			}
@@ -617,6 +611,20 @@ namespace ForgeSim::Sandbox
 				droppedMilliseconds);
 		}
 
+		SandboxObject* selectedObject = nullptr;
+
+		if (const auto objectId =
+			context.selection.SelectedObjectId())
+		{
+			selectedObject =
+				context.scene.FindObject(*objectId);
+
+			if (selectedObject == nullptr)
+			{
+				context.selection.Clear();
+			}
+		}
+
 		ImGui::SeparatorText("Selected Object");
 
 		if (selectedObject == nullptr)
@@ -745,12 +753,6 @@ namespace ForgeSim::Sandbox
 	bool SandboxDebugUI::ShowLights() const noexcept
 	{
 		return m_ShowLights;
-	}
-
-	std::optional<SceneLightId>
-		SandboxDebugUI::SelectedLightId() const noexcept
-	{
-		return m_SelectedLightId;
 	}
 
 	bool SandboxDebugUI::ShowObjectBounds() const noexcept

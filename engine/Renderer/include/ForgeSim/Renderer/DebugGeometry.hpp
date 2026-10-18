@@ -22,6 +22,8 @@ namespace ForgeSim::Renderer
 		glm::vec3 color{ 1.0f };
 
 		bool showArrowheads = true;
+
+		float markerSize = 0.0f;
 	};
 
 	struct WireframeSphereSpecification

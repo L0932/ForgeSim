@@ -1,9 +1,17 @@
+#include "LightPicking.hpp"
+#include "SandboxObject.hpp"
+#include "SceneSelection.hpp"
 #include "ViewportSelectionController.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
+#include <span>
 
+#include <ForgeSim/Platform/GlfwWindow.hpp>
+#include <ForgeSim/Platform/InputState.hpp>
+#include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/Picking.hpp>
 
 namespace ForgeSim::Sandbox
@@ -15,8 +23,16 @@ namespace ForgeSim::Sandbox
 		const glm::mat4& view,
 		const glm::mat4& projection,
 		const Renderer::AxisAlignedBoundingBox& localBounds,
-		std::span<const SandboxObject> objects)
+		std::span<const SandboxObject> objects,
+		std::span<const LightPickTarget> lightTargets,
+		SceneSelection& selection,
+		bool pickingSuppressed)
 	{
+		if (pickingSuppressed)
+		{
+			return;
+		}
+
 		const auto leftMouseState =
 			input.GetMouseButtonState(
 				Platform::MouseButton::Left);
@@ -63,6 +79,15 @@ namespace ForgeSim::Sandbox
 				view,
 				projection);
 
+		// Light markers are debug overlays and take precedence over
+		// object bounds, including when geometry lies in front of them.
+		if (const auto lightHit =
+			PickClosestLight(pickingRay, lightTargets))
+		{
+			selection.SelectLight(lightHit->id);
+			return;
+		}
+
 		std::optional<SandboxObjectId> closestObjectId;
 		float closestDistance =
 			std::numeric_limits<float>::max();
@@ -83,26 +108,13 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		// An empty click intentionally clears the selection.
-		m_SelectedObjectId = closestObjectId;
-	}
-
-	std::optional<SandboxObjectId>
-		ViewportSelectionController::SelectedObjectId()
-		const noexcept
-	{
-		return m_SelectedObjectId;
-	}
-
-	bool ViewportSelectionController::IsSelected(
-		SandboxObjectId objectId) const noexcept
-	{
-		return m_SelectedObjectId &&
-			*m_SelectedObjectId == objectId;
-	}
-
-	void ViewportSelectionController::Clear() noexcept
-	{
-		m_SelectedObjectId.reset();
+		if (closestObjectId)
+		{
+			selection.SelectObject(*closestObjectId);
+		}
+		else
+		{
+			selection.Clear();
+		}
 	}
 }

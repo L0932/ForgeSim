@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SceneLight.hpp"
+#include "SceneSelection.hpp"
 
 #include <optional>
 #include <span>
@@ -31,12 +32,15 @@ namespace ForgeSim::Renderer
 
 namespace ForgeSim::Sandbox
 {
+	class SandboxScene;
+
 	struct DirectionalLight;
 	struct SandboxObject;
 
 	struct SandboxDebugUIContext
 	{
-		SandboxObject* selectedObject = nullptr;
+		SandboxScene& scene;
+		SceneSelection& selection;
 
 		const Core::RuntimeDiagnosticsSnapshot*
 			diagnosticsSnapshot = nullptr;
@@ -84,9 +88,6 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool ShowGrid() const noexcept;
 		[[nodiscard]] bool ShowLights() const noexcept;
 
-		[[nodiscard]] std::optional<SceneLightId>
-			SelectedLightId() const noexcept;
-
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
 
 		[[nodiscard]] bool SelectionHighlightEnabled()
@@ -124,7 +125,5 @@ namespace ForgeSim::Sandbox
 		};
 
 		float m_SelectionHighlightStrength = 0.20f;
-
-		std::optional<SceneLightId> m_SelectedLightId;
 	};
 }

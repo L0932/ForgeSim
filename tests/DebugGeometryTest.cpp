@@ -793,5 +793,118 @@ int main()
 		}
 	}
 
+	// Directional markers add exactly three world-axis lines,
+	// independently of the light direction and arrowhead setting.
+	{
+		using ForgeSim::Renderer::CreateDirectionalLightLines;
+
+		for (const bool showArrowheads : { false, true })
+		{
+			DirectionArrowSpecification specification{
+				.origin = { 1.0f, 2.0f, 3.0f },
+				.direction = { 1.0f, -2.0f, 3.0f },
+				.length = 2.0f,
+				.color = { 0.25f, 0.5f, 0.75f },
+				.showArrowheads = showArrowheads
+			};
+
+			const auto withoutMarker =
+				CreateDirectionalLightLines(specification);
+
+			specification.markerSize = 0.1f;
+
+			const auto withMarker =
+				CreateDirectionalLightLines(specification);
+
+			if (withMarker.size() != withoutMarker.size() + 6)
+			{
+				std::cerr
+					<< "Directional marker must add six vertices\n";
+				return EXIT_FAILURE;
+			}
+
+			for (std::size_t index = 0;
+				index < withoutMarker.size();
+				++index)
+			{
+				if (!NearlyEqual(
+					withMarker[index].position,
+					withoutMarker[index].position) ||
+					!NearlyEqual(
+						withMarker[index].color,
+						withoutMarker[index].color))
+				{
+					std::cerr
+						<< "Marker changed existing directional geometry\n";
+					return EXIT_FAILURE;
+				}
+			}
+
+			for (int axis = 0; axis < 3; ++axis)
+			{
+				glm::vec3 offset{ 0.0f };
+				offset[axis] = specification.markerSize;
+
+				const std::size_t index =
+					withoutMarker.size() +
+					static_cast<std::size_t>(axis) * 2;
+
+				if (!NearlyEqual(
+					withMarker[index].position,
+					specification.origin - offset) ||
+					!NearlyEqual(
+						withMarker[index + 1].position,
+						specification.origin + offset) ||
+					!NearlyEqual(
+						withMarker[index].color,
+						specification.color) ||
+					!NearlyEqual(
+						withMarker[index + 1].color,
+						specification.color))
+				{
+					std::cerr
+						<< "Directional marker endpoints or color incorrect\n";
+					return EXIT_FAILURE;
+				}
+			}
+		}
+	}
+
+	// Invalid directional marker sizes must be rejected.
+	{
+		using ForgeSim::Renderer::CreateDirectionalLightLines;
+
+		const std::array<float, 3> invalidSizes{
+			-0.1f,
+			std::numeric_limits<float>::quiet_NaN(),
+			std::numeric_limits<float>::infinity()
+		};
+
+		for (const float markerSize : invalidSizes)
+		{
+			DirectionArrowSpecification specification;
+			specification.markerSize = markerSize;
+
+			bool exceptionWasThrown = false;
+
+			try
+			{
+				static_cast<void>(
+					CreateDirectionalLightLines(specification));
+			}
+			catch (const std::invalid_argument&)
+			{
+				exceptionWasThrown = true;
+			}
+
+			if (!exceptionWasThrown)
+			{
+				std::cerr
+					<< "Invalid directional marker size was accepted\n";
+				return EXIT_FAILURE;
+			}
+		}
+	}
+
 	return EXIT_SUCCESS;
 }
