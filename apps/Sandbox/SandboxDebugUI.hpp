@@ -76,7 +76,8 @@ namespace ForgeSim::Sandbox
 		void EndFrame();
 
 		[[nodiscard]] TransformEditorUIState DrawTransformEditorControls(
-			bool editingActive);
+			bool editingActive,
+			bool navigationActive);
 
 		[[nodiscard]] bool WantsMouseCapture()
 			const noexcept;

@@ -38,10 +38,13 @@ target_sources(
 	ForgeSimSandbox
 	PRIVATE
 		Main.cpp
+		LightGizmoTransform.hpp
+		LightGizmoTransform.cpp
 		SandboxApplication.hpp
 		SandboxApplication.cpp
 		SandboxDebugUI.hpp
 		SandboxDebugUI.cpp
+		SandboxObject.hpp
 		SandboxRenderer.hpp
 		SandboxRenderer.cpp
 		SandboxScene.hpp
@@ -56,7 +59,6 @@ target_sources(
 		FreeCameraController.cpp
 		GizmoTransform.hpp
 		GizmoTransform.cpp
-		SandboxObject.hpp
 		Transform.hpp
 		Transform.cpp
 		ViewportSelectionController.hpp

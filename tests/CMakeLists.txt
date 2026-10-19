@@ -739,6 +739,51 @@ set_target_properties(
 		FOLDER "ForgeSim/Tests"
 )
 
+add_executable(
+	ForgeSimLightGizmoTransformTests
+	LightGizmoTransformTest.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
+
+target_include_directories(
+	ForgeSimLightGizmoTransformTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimLightGizmoTransformTests
+	PRIVATE
+		ForgeSim::Renderer
+		glm::glm
+)
+
+target_compile_definitions(
+	ForgeSimLightGizmoTransformTests
+	PRIVATE
+		GLM_ENABLE_EXPERIMENTAL
+)
+
+target_compile_features(
+	ForgeSimLightGizmoTransformTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimLightGizmoTransformTests)
+
+set_target_properties(
+	ForgeSimLightGizmoTransformTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.LightGizmoTransform
+	COMMAND ForgeSimLightGizmoTransformTests
+)
+
 add_test(
 	NAME ForgeSim.Sandbox.SceneEditHistory
 	COMMAND ForgeSimSceneEditHistoryTests
@@ -766,6 +811,7 @@ set_target_properties(
 	ForgeSimSceneSelectionValidationTests
 	ForgeSimGizmoTransformTests
 	ForgeSimSceneEditHistoryTests
+	ForgeSimLightGizmoTransformTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

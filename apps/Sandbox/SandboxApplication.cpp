@@ -259,7 +259,9 @@ namespace ForgeSim::Sandbox
 
 			const TransformEditorUIState editorUI =
 				m_DebugUI.DrawTransformEditorControls(
-					transformEditor.IsActive());
+					transformEditor.IsActive(),
+					input.GetMouseButtonState(
+						Platform::MouseButton::Right).held);
 
 			runtimeDiagnostics.SetEnabled(
 				m_DebugUI.RuntimeDiagnosticsEnabled());
@@ -360,7 +362,8 @@ namespace ForgeSim::Sandbox
 					" ms");
 			}
 
-			if (!uiWantsMouse &&
+			if (rightMouseDown && 
+				!uiWantsMouse &&
 				!uiWantsKeyboard &&
 				!transformEditor.IsActive() &&
 				!leftMouseDown)				

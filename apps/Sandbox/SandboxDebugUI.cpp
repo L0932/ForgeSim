@@ -54,12 +54,40 @@ namespace ForgeSim::Sandbox
 	}
 
 	TransformEditorUIState SandboxDebugUI::DrawTransformEditorControls(
-		bool editingActive)
+		bool editingActive,
+		bool navigationActive)
 	{
 		auto& state = m_TransformEditorState;
 
 		state.undoRequested = false;
 		state.redoRequested = false;
+
+		const ImGuiIO& io = ImGui::GetIO();
+
+		const bool operationShortcutsAllowed =
+			!editingActive &&
+			!navigationActive &&
+			!io.WantTextInput &&
+			!ImGui::IsAnyItemActive() &&
+			!io.KeyCtrl &&
+			!io.KeyAlt &&
+			!io.KeyShift;
+
+		if (operationShortcutsAllowed)
+		{
+			if (ImGui::IsKeyPressed(ImGuiKey_W, false))
+			{
+				state.operation = GizmoOperation::Translate;
+			}
+			else if (ImGui::IsKeyPressed(ImGuiKey_E, false))
+			{
+				state.operation = GizmoOperation::Rotate;
+			}
+			else if (ImGui::IsKeyPressed(ImGuiKey_R, false))
+			{
+				state.operation = GizmoOperation::Scale;
+			}
+		}
 
 		if (ImGui::Begin("Transform Gizmo"))
 		{
@@ -68,7 +96,7 @@ namespace ForgeSim::Sandbox
 			ImGui::BeginDisabled(editingActive);
 
 			if (ImGui::RadioButton(
-				"Translate",
+				"Translate (W)",
 				state.operation == GizmoOperation::Translate))
 			{
 				state.operation = GizmoOperation::Translate;
@@ -77,7 +105,7 @@ namespace ForgeSim::Sandbox
 			ImGui::SameLine();
 
 			if (ImGui::RadioButton(
-				"Rotate",
+				"Rotate (E)",
 				state.operation == GizmoOperation::Rotate))
 			{
 				state.operation = GizmoOperation::Rotate;
@@ -86,7 +114,7 @@ namespace ForgeSim::Sandbox
 			ImGui::SameLine();
 
 			if (ImGui::RadioButton(
-				"Scale",
+				"Scale (R)",
 				state.operation == GizmoOperation::Scale))
 			{
 				state.operation = GizmoOperation::Scale;
@@ -121,8 +149,6 @@ namespace ForgeSim::Sandbox
 		}
 
 		ImGui::End();
-
-		const ImGuiIO& io = ImGui::GetIO();
 
 		// Let active UI controls handle their own keyboard input.
 		if (!editingActive &&
