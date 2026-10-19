@@ -1,9 +1,11 @@
+#include "FreeCameraController.hpp"
 #include "LightDebugLayout.hpp"
 #include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
+#include "SceneTransformEditor.hpp"
 #include "SceneSelection.hpp"
 #include "SceneSelectionValidation.hpp"
-#include "FreeCameraController.hpp"
+#include "TransformEditorUIState.hpp"
 #include "ViewportSelectionController.hpp"
 
 #include <algorithm>
@@ -102,6 +104,7 @@ namespace ForgeSim::Sandbox
 
 		SceneSelection selection;
 		ViewportSelectionController selectionController;
+		SceneTransformEditor transformEditor;
 
 		ForgeSim::Core::Timer timer;
 		ForgeSim::Core::RuntimeDiagnostics runtimeDiagnostics;
@@ -252,6 +255,11 @@ namespace ForgeSim::Sandbox
 			}
 
 			m_DebugUI.BeginFrame();
+			transformEditor.BeginFrame();
+
+			const TransformEditorUIState editorUI =
+				m_DebugUI.DrawTransformEditorControls(
+					transformEditor.IsActive());
 
 			runtimeDiagnostics.SetEnabled(
 				m_DebugUI.RuntimeDiagnosticsEnabled());
@@ -267,6 +275,14 @@ namespace ForgeSim::Sandbox
 			const bool uiWantsKeyboard =
 				m_DebugUI.WantsKeyboardCapture();
 
+			const bool leftMouseDown =
+				input.GetMouseButtonState(
+					Platform::MouseButton::Left).held;
+
+			const bool rightMouseDown =
+				input.GetMouseButtonState(
+					Platform::MouseButton::Right).held;
+
 			if (const auto requestedCursorMode =
 				cameraController.RequestedCursorMode(input))
 			{
@@ -274,7 +290,10 @@ namespace ForgeSim::Sandbox
 					*requestedCursorMode ==
 					ForgeSim::Platform::CursorMode::Normal;
 
-				if (!uiWantsMouse || isReleaseRequest)
+				if (isReleaseRequest ||
+					(!uiWantsMouse &&
+						!transformEditor.IsActive() &&
+						!leftMouseDown))
 				{
 					m_Window.SetCursorMode(requestedCursorMode.value());
 				}
@@ -342,7 +361,9 @@ namespace ForgeSim::Sandbox
 			}
 
 			if (!uiWantsMouse &&
-				!uiWantsKeyboard)
+				!uiWantsKeyboard &&
+				!transformEditor.IsActive() &&
+				!leftMouseDown)				
 			{
 				cameraController.Update(
 					camera,
@@ -360,6 +381,36 @@ namespace ForgeSim::Sandbox
 				selection,
 				m_Scene);
 
+			transformEditor.Update(
+				SceneTransformEditorContext{
+					.scene = m_Scene,
+					.selection = selection,
+					.view = view,
+					.projection = projection,
+					.operation = editorUI.operation,
+					.space = editorUI.space,
+					.showLights = m_DebugUI.ShowLights(),
+					.navigationActive = rightMouseDown,
+					.directionalAnchor =
+						CalculateLightDebugLayout(
+							m_Renderer.ObjectLocalBounds()).directionalAnchor
+				});
+
+			if (editorUI.undoRequested)
+			{
+				static_cast<void>(transformEditor.Undo(m_Scene));
+			}
+			else if (editorUI.redoRequested)
+			{
+				static_cast<void>(transformEditor.Redo(m_Scene));
+			}
+
+			const bool pickingSuppressed =
+				uiWantsMouse ||
+				transformEditor.SuppressesPicking();
+
+
+
 			selectionController.Update(
 				input,
 				m_Window.GetWindowExtent(),
@@ -370,7 +421,7 @@ namespace ForgeSim::Sandbox
 				m_Scene.Objects(),
 				lightPickTargets,
 				selection,
-				uiWantsMouse);
+				pickingSuppressed);
 
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =

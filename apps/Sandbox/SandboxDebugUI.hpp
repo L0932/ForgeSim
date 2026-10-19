@@ -2,6 +2,7 @@
 
 #include "SceneLight.hpp"
 #include "SceneSelection.hpp"
+#include "TransformEditorUIState.hpp"
 
 #include <optional>
 #include <span>
@@ -74,6 +75,9 @@ namespace ForgeSim::Sandbox
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
+		[[nodiscard]] TransformEditorUIState DrawTransformEditorControls(
+			bool editingActive);
+
 		[[nodiscard]] bool WantsMouseCapture()
 			const noexcept;
 
@@ -125,5 +129,7 @@ namespace ForgeSim::Sandbox
 		};
 
 		float m_SelectionHighlightStrength = 0.20f;
+
+		TransformEditorUIState m_TransformEditorState;
 	};
 }

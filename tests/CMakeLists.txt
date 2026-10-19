@@ -659,6 +659,91 @@ add_test(
 	COMMAND ForgeSimSceneSelectionValidationTests
 )
 
+add_executable(
+	ForgeSimGizmoTransformTests
+	GizmoTransformTest.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
+
+target_include_directories(
+	ForgeSimGizmoTransformTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimGizmoTransformTests
+	PRIVATE
+		ForgeSim::Renderer
+		glm::glm
+)
+
+target_compile_definitions(
+	ForgeSimGizmoTransformTests
+	PRIVATE
+		GLM_ENABLE_EXPERIMENTAL
+)
+
+target_compile_features(
+	ForgeSimGizmoTransformTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimGizmoTransformTests)
+
+set_target_properties(
+	ForgeSimGizmoTransformTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.GizmoTransform
+	COMMAND ForgeSimGizmoTransformTests
+)
+
+add_executable(
+	ForgeSimSceneEditHistoryTests
+	SceneEditHistoryTest.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
+
+target_include_directories(
+	ForgeSimSceneEditHistoryTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimSceneEditHistoryTests
+	PRIVATE
+		ForgeSim::Renderer
+		glm::glm
+)
+
+target_compile_features(
+	ForgeSimSceneEditHistoryTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneEditHistoryTests)
+
+set_target_properties(
+	ForgeSimSceneEditHistoryTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.SceneEditHistory
+	COMMAND ForgeSimSceneEditHistoryTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -679,6 +764,8 @@ set_target_properties(
 	ForgeSimSceneSelectionTests
 	ForgeSimLightPickingTests
 	ForgeSimSceneSelectionValidationTests
+	ForgeSimGizmoTransformTests
+	ForgeSimSceneEditHistoryTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

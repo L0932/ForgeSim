@@ -167,6 +167,60 @@ set_target_properties(
 		FOLDER "ThirdParty"
 )
 
+# ImGuizmo
+
+if(FORGESIM_BUILD_SANDBOX)
+    FetchContent_Declare(
+        imguizmo
+        GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
+        GIT_TAG 105e4fde45e4e74aae8973d98750820ef7aca7e2
+
+        # Populate sources without running upstream's CMake project.
+        SOURCE_SUBDIR forgesim-source-only
+    )
+
+    FetchContent_MakeAvailable(imguizmo)
+
+    add_library(ForgeSimImGuizmo STATIC)
+
+    add_library(
+        ForgeSim::ImGuizmo
+        ALIAS
+            ForgeSimImGuizmo
+    )
+
+    target_sources(
+        ForgeSimImGuizmo
+        PRIVATE
+            "${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp"
+    )
+
+    target_include_directories(
+        ForgeSimImGuizmo
+        SYSTEM
+        PUBLIC
+            "${imguizmo_SOURCE_DIR}/src"
+    )
+
+    target_link_libraries(
+        ForgeSimImGuizmo
+        PUBLIC
+            ForgeSim::ImGui
+    )
+
+    target_compile_features(
+        ForgeSimImGuizmo
+        PRIVATE
+            cxx_std_20
+    )
+
+    set_target_properties(
+        ForgeSimImGuizmo
+        PROPERTIES
+            FOLDER "ThirdParty"
+    )
+endif()
+
 # stb_image
 
 FetchContent_Declare(

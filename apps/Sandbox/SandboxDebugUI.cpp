@@ -53,6 +53,99 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
+	TransformEditorUIState SandboxDebugUI::DrawTransformEditorControls(
+		bool editingActive)
+	{
+		auto& state = m_TransformEditorState;
+
+		state.undoRequested = false;
+		state.redoRequested = false;
+
+		if (ImGui::Begin("Transform Gizmo"))
+		{
+			// Keep the operation and coordinate space stable
+			// throughout an active drag.
+			ImGui::BeginDisabled(editingActive);
+
+			if (ImGui::RadioButton(
+				"Translate",
+				state.operation == GizmoOperation::Translate))
+			{
+				state.operation = GizmoOperation::Translate;
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::RadioButton(
+				"Rotate",
+				state.operation == GizmoOperation::Rotate))
+			{
+				state.operation = GizmoOperation::Rotate;
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::RadioButton(
+				"Scale",
+				state.operation == GizmoOperation::Scale))
+			{
+				state.operation = GizmoOperation::Scale;
+			}
+
+			ImGui::BeginDisabled(
+				state.operation == GizmoOperation::Scale);
+
+			if (ImGui::RadioButton(
+				"World",
+				state.space == GizmoSpace::World))
+			{
+				state.space = GizmoSpace::World;
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::RadioButton(
+				"Local",
+				state.space == GizmoSpace::Local))
+			{
+				state.space = GizmoSpace::Local;
+			}
+
+			ImGui::EndDisabled();
+			ImGui::EndDisabled();
+
+			if (state.operation == GizmoOperation::Scale)
+			{
+				ImGui::TextDisabled("Scale uses local axes.");
+			}
+		}
+
+		ImGui::End();
+
+		const ImGuiIO& io = ImGui::GetIO();
+
+		// Let active UI controls handle their own keyboard input.
+		if (!editingActive &&
+			!ImGui::IsAnyItemActive() &&
+			!io.WantTextInput &&
+			io.KeyCtrl &&
+			!io.KeyAlt)
+		{
+			const bool zPressed =
+				ImGui::IsKeyPressed(ImGuiKey_Z, false);
+
+			state.undoRequested =
+				!io.KeyShift && zPressed;
+
+			state.redoRequested =
+				(io.KeyShift && zPressed) ||
+				(!io.KeyShift &&
+					ImGui::IsKeyPressed(ImGuiKey_Y, false));
+		}
+
+		return state;
+	}
+
 	SandboxDebugUI::~SandboxDebugUI()
 	{
 		ImGui_ImplOpenGL3_Shutdown();

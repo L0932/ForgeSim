@@ -29,6 +29,7 @@ add_dependencies(
 target_compile_definitions(
 	ForgeSimSandbox
 	PRIVATE
+	    GLM_ENABLE_EXPERIMENTAL
 		FORGESIM_SANDBOX_ASSET_DIRECTORY="${CMAKE_CURRENT_BINARY_DIR}/assets"
 		FORGESIM_SANDBOX_SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
 )
@@ -45,15 +46,23 @@ target_sources(
 		SandboxRenderer.cpp
 		SandboxScene.hpp
 		SandboxScene.cpp
+		SceneEditHistory.hpp
+		SceneEditHistory.cpp
+		SceneTransformEditor.hpp
+		SceneTransformEditor.cpp
 		ShaderFileMonitor.hpp
 		ShaderFileMonitor.cpp
 		FreeCameraController.hpp
 		FreeCameraController.cpp
+		GizmoTransform.hpp
+		GizmoTransform.cpp
 		SandboxObject.hpp
 		Transform.hpp
 		Transform.cpp
 		ViewportSelectionController.hpp
 		ViewportSelectionController.cpp
+		ViewportTransformGizmo.hpp
+		ViewportTransformGizmo.cpp
 )
 
 target_compile_features(
@@ -72,6 +81,7 @@ target_link_libraries(
 		ForgeSim::RendererOpenGL
 		ForgeSim::Glad
 		ForgeSim::ImGui
+		ForgeSim::ImGuizmo
 		glm::glm-header-only
 )
 
