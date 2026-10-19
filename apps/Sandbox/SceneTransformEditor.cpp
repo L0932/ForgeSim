@@ -23,6 +23,39 @@ namespace ForgeSim::Sandbox
 			return transform;
 		}
 
+		[[nodiscard]] bool SupportsOperation(
+			const SandboxObject&,
+			GizmoOperation operation)
+		{
+			return operation == GizmoOperation::Translate ||
+				operation == GizmoOperation::Rotate ||
+				operation == GizmoOperation::Scale;
+		}
+
+		[[nodiscard]] bool SupportsOperation(
+			const PointLight&,
+			GizmoOperation operation)
+		{
+			return operation == GizmoOperation::Translate;
+		}
+
+		[[nodiscard]] bool SupportsOperation(
+			const SpotLight&,
+			GizmoOperation operation)
+		{
+			return operation == GizmoOperation::Translate ||
+				operation == GizmoOperation::Rotate;
+		}
+
+		[[nodiscard]] bool SupportsOperation(
+			const DirectionalLight&,
+			GizmoOperation operation)
+		{
+			// Translation will be enabled once marker position
+			// is stored and shared with rendering and picking.
+			return operation == GizmoOperation::Rotate;
+		}
+
 		template<typename Target>
 		[[nodiscard]] bool TryReadTransform(
 			const Target& target,
@@ -190,9 +223,16 @@ namespace ForgeSim::Sandbox
 		Transform after = before;
 		glm::mat4 matrix = before.ModelMatrix();
 
-		m_Interaction = DrawGizmo(matrix, context);
+		const bool operationSupported =
+			SupportsOperation(target, context.operation);
 
-		if (!m_Interaction.changed ||
+		m_Interaction = DrawGizmo(
+			matrix,
+			context,
+			operationSupported);
+
+		if (!operationSupported ||
+			!m_Interaction.changed ||
 			!TryApplyGizmoTransform(
 				after,
 				matrix,
@@ -232,7 +272,8 @@ namespace ForgeSim::Sandbox
 
 	GizmoInteraction SceneTransformEditor::DrawGizmo(
 		glm::mat4& matrix,
-		const SceneTransformEditorContext& context)
+		const SceneTransformEditorContext& context,
+		bool operationSupported)
 	{
 		return m_Gizmo.DrawInMainViewport(
 			ViewportTransformGizmoContext{
@@ -242,8 +283,8 @@ namespace ForgeSim::Sandbox
 				.operation = context.operation,
 				.space = context.space,
 				.enabled =
-					m_WasActive ||
-					!context.navigationActive
+					operationSupported &&
+					(m_WasActive || !context.navigationActive)
 			},
 			m_WasActive);
 	}
@@ -353,40 +394,36 @@ namespace ForgeSim::Sandbox
 			context.selection.SelectedLightId();
 			lightId && context.showLights)
 		{
-			if (context.operation == GizmoOperation::Rotate)
-			{
-				DirectionalLight& light =
-					context.scene.MainDirectionalLight();
+			DirectionalLight& directional =
+				context.scene.MainDirectionalLight();
 
-				if (light.id == *lightId)
-				{
-					EditTarget(light, context);
-				}
+			if (directional.id == *lightId)
+			{
+				EditTarget(directional, context);
 			}
-
-			if (context.operation == GizmoOperation::Translate)
+			else
 			{
-				for (PointLight& light :
-					context.scene.PointLights())
+				bool found = false;
+
+				for (PointLight& light : context.scene.PointLights())
 				{
 					if (light.id == *lightId)
 					{
 						EditTarget(light, context);
+						found = true;
 						break;
 					}
 				}
-			}
 
-			if (context.operation == GizmoOperation::Translate ||
-				context.operation == GizmoOperation::Rotate)
-			{
-				for (SpotLight& light :
-					context.scene.SpotLights())
+				if (!found)
 				{
-					if (light.id == *lightId)
+					for (SpotLight& light : context.scene.SpotLights())
 					{
-						EditTarget(light, context);
-						break;
+						if (light.id == *lightId)
+						{
+							EditTarget(light, context);
+							break;
+						}
 					}
 				}
 			}

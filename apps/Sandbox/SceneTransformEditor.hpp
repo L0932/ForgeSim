@@ -50,7 +50,8 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] GizmoInteraction DrawGizmo(
 			glm::mat4& matrix,
-			const SceneTransformEditorContext& context);
+			const SceneTransformEditorContext& context,
+			bool operationSupported);
 
 		void FinishEdit();
 
