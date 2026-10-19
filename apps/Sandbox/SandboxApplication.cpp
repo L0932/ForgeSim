@@ -37,6 +37,10 @@ namespace ForgeSim::Sandbox
 		, m_Renderer(spec.rendererSpec)
 		, m_DebugUI(m_Window)
 	{
+
+		m_Scene.MainDirectionalLight().position =
+			CalculateLightDebugLayout(
+				m_Renderer.ObjectLocalBounds()).directionalAnchor;
 	}
 
 	void SandboxApplication::Run()
@@ -211,7 +215,7 @@ namespace ForgeSim::Sandbox
 					LightPickTarget{
 						.id = m_Scene.MainDirectionalLight().id,
 						.bounds = {
-							.center = layout.directionalAnchor,
+							.center = m_Scene.MainDirectionalLight().position,
 							.radius = layout.pickRadius
 						}
 					});
@@ -393,10 +397,7 @@ namespace ForgeSim::Sandbox
 					.operation = editorUI.operation,
 					.space = editorUI.space,
 					.showLights = m_DebugUI.ShowLights(),
-					.navigationActive = rightMouseDown,
-					.directionalAnchor =
-						CalculateLightDebugLayout(
-							m_Renderer.ObjectLocalBounds()).directionalAnchor
+					.navigationActive = rightMouseDown
 				});
 
 			if (editorUI.undoRequested)

@@ -264,12 +264,53 @@ namespace
 			directional.directionToLight == directionAfter,
 			"Directional redo restored the wrong direction.");
 	}
+
+	void TestDirectionalPositionHistory()
+	{
+		SandboxScene scene;
+		SceneEditHistory history;
+
+		DirectionalLight& light =
+			scene.MainDirectionalLight();
+
+		const glm::vec3 before = light.position;
+		const glm::vec3 after{ 4.0f, 5.0f, 6.0f };
+
+		light.position = after;
+
+		history.RecordApplied(DirectionalLightPositionEdit{
+			.lightId = light.id,
+			.before = before,
+			.after = after
+			});
+
+		// Position undo/redo must preserve independently edited
+		// lighting properties.
+		light.directionToLight = { 0.0f, 0.0f, 1.0f };
+		light.intensity = 7.0f;
+
+		Require(history.Undo(scene), "Directional position undo failed.");
+		Require(
+			light.position == before,
+			"Directional position undo restored the wrong position.");
+
+		Require(history.Redo(scene), "Directional position redo failed.");
+		Require(
+			light.position == after,
+			"Directional position redo restored the wrong position.");
+
+		Require(
+			light.directionToLight == glm::vec3{ 0.0f, 0.0f, 1.0f } &&
+			light.intensity == 7.0f,
+			"Position history changed lighting properties.");
+	}
 }
 
 int main()
 {
 	try
 	{
+		TestDirectionalPositionHistory();
 		TestMixedHistory();
 		TestNewEditDiscardsRedo();
 		TestMissingLightDoesNotRestoreObject();

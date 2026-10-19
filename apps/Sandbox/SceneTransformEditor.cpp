@@ -33,6 +33,14 @@ namespace ForgeSim::Sandbox
 		}
 
 		[[nodiscard]] bool SupportsOperation(
+			const DirectionalLight&,
+			GizmoOperation operation)
+		{
+			return operation == GizmoOperation::Translate ||
+				operation == GizmoOperation::Rotate;
+		}
+
+		[[nodiscard]] bool SupportsOperation(
 			const PointLight&,
 			GizmoOperation operation)
 		{
@@ -47,15 +55,6 @@ namespace ForgeSim::Sandbox
 				operation == GizmoOperation::Rotate;
 		}
 
-		[[nodiscard]] bool SupportsOperation(
-			const DirectionalLight&,
-			GizmoOperation operation)
-		{
-			// Translation will be enabled once marker position
-			// is stored and shared with rendering and picking.
-			return operation == GizmoOperation::Rotate;
-		}
-
 		template<typename Target>
 		[[nodiscard]] bool TryReadTransform(
 			const Target& target,
@@ -63,6 +62,16 @@ namespace ForgeSim::Sandbox
 		{
 			transform = ReadTransform(target);
 			return true;
+		}
+
+		[[nodiscard]] bool TryReadTransform(
+			const DirectionalLight& light,
+			Transform& transform)
+		{
+			return TryCreateLightGizmoTransform(
+				light.position,
+				-light.directionToLight,
+				transform);
 		}
 
 		[[nodiscard]] bool TryReadTransform(
@@ -75,24 +84,28 @@ namespace ForgeSim::Sandbox
 				transform);
 		}
 
-		[[nodiscard]] bool TryReadTransform(
-			const DirectionalLight& light,
-			Transform& transform)
-		{
-			// Local -Z follows emission, which is opposite
-			// to the scene's directionToLight convention.
-			return TryCreateLightGizmoTransform(
-				glm::vec3{ 0.0f },
-				-light.directionToLight,
-				transform);
-		}
-
 		void WriteTransform(
 			SandboxObject& object,
 			const Transform& transform,
 			GizmoOperation)
 		{
 			object.transform = transform;
+		}
+
+		void WriteTransform(
+			DirectionalLight& light,
+			const Transform& transform,
+			GizmoOperation operation)
+		{
+			if (operation == GizmoOperation::Translate)
+			{
+				light.position = transform.position;
+			}
+			else if (operation == GizmoOperation::Rotate)
+			{
+				light.directionToLight =
+					-LightGizmoEmissionDirection(transform);
+			}
 		}
 
 		void WriteTransform(
@@ -119,18 +132,6 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		void WriteTransform(
-			DirectionalLight& light,
-			const Transform& transform,
-			GizmoOperation operation)
-		{
-			if (operation == GizmoOperation::Rotate)
-			{
-				light.directionToLight =
-					-LightGizmoEmissionDirection(transform);
-			}
-		}
-
 		[[nodiscard]] SceneEdit MakeEdit(
 			const SandboxObject& object,
 			const Transform& before,
@@ -141,6 +142,28 @@ namespace ForgeSim::Sandbox
 				.objectId = object.id,
 				.before = before,
 				.after = after
+			};
+		}
+
+		[[nodiscard]] SceneEdit MakeEdit(
+			const DirectionalLight& light,
+			const Transform& before,
+			const Transform& after,
+			GizmoOperation operation)
+		{
+			if (operation == GizmoOperation::Translate)
+			{
+				return DirectionalLightPositionEdit{
+					.lightId = light.id,
+					.before = before.position,
+					.after = after.position
+				};
+			}
+
+			return DirectionalLightDirectionEdit{
+				.lightId = light.id,
+				.before = light.directionToLight,
+				.after = -LightGizmoEmissionDirection(after)
 			};
 		}
 
@@ -182,19 +205,6 @@ namespace ForgeSim::Sandbox
 				}
 			};
 		}
-
-		[[nodiscard]] SceneEdit MakeEdit(
-			const DirectionalLight& light,
-			const Transform&,
-			const Transform& after,
-			GizmoOperation)
-		{
-			return DirectionalLightDirectionEdit{
-				.lightId = light.id,
-				.before = light.directionToLight,
-				.after = -LightGizmoEmissionDirection(after)
-			};
-		}
 	}
 
 	void SceneTransformEditor::BeginFrame()
@@ -212,12 +222,6 @@ namespace ForgeSim::Sandbox
 		if (!TryReadTransform(target, before))
 		{
 			return;
-		}
-
-		if constexpr (
-			std::is_same_v<Target, DirectionalLight>)
-		{
-			before.position = context.directionalAnchor;
 		}
 
 		Transform after = before;
@@ -360,17 +364,15 @@ namespace ForgeSim::Sandbox
 						}
 					}
 					else if constexpr (
-						std::is_same_v<
-						Edit,
-						DirectionalLightDirectionEdit>)
+						std::is_same_v<Edit, DirectionalLightDirectionEdit> ||
+						std::is_same_v<Edit, DirectionalLightPositionEdit>)
 					{
 						if (context.showLights &&
-							context.operation ==
-							GizmoOperation::Rotate)
+							(context.operation == GizmoOperation::Translate ||
+								context.operation == GizmoOperation::Rotate))
 						{
 							DirectionalLight& light =
-								context.scene
-								.MainDirectionalLight();
+								context.scene.MainDirectionalLight();
 
 							if (light.id == edit.lightId)
 							{

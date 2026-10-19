@@ -85,6 +85,25 @@ namespace ForgeSim::Sandbox
 			return true;
 		}
 
+		[[nodiscard]] bool ApplyEdit(
+			SandboxScene& scene,
+			const DirectionalLightPositionEdit& edit,
+			bool useAfter)
+		{
+			DirectionalLight& light =
+				scene.MainDirectionalLight();
+
+			if (light.id != edit.lightId)
+			{
+				return false;
+			}
+
+			light.position =
+				useAfter ? edit.after : edit.before;
+
+			return true;
+		}
+
 		[[nodiscard]] bool ApplySceneEdit(
 			SandboxScene& scene,
 			const SceneEdit& edit,

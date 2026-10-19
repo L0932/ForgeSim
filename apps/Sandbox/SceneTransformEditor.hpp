@@ -21,8 +21,6 @@ namespace ForgeSim::Sandbox
 
 		bool showLights = true;
 		bool navigationActive = false;
-
-		glm::vec3 directionalAnchor{ 0.0f };
 	};
 
 	class SceneTransformEditor final

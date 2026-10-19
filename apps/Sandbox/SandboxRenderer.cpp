@@ -1503,7 +1503,7 @@ namespace ForgeSim::Sandbox
 			m_LightVertices =
 				Renderer::CreateDirectionalLightLines(
 					Renderer::DirectionArrowSpecification{
-						.origin = layout.directionalAnchor,
+						.origin = light.position,
 						.direction = -light.directionToLight,
 						.length = layout.directionalLength,
 						.color = arrowColor,

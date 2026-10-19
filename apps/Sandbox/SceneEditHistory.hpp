@@ -43,11 +43,19 @@ namespace ForgeSim::Sandbox
 		glm::vec3 after;
 	};
 
+	struct DirectionalLightPositionEdit
+	{
+		SceneLightId lightId;
+		glm::vec3 before;
+		glm::vec3 after;
+	};
+
 	using SceneEdit = std::variant<
 		ObjectTransformEdit,
 		PointLightPositionEdit,
 		SpotLightPoseEdit,
-		DirectionalLightDirectionEdit>;
+		DirectionalLightDirectionEdit,
+		DirectionalLightPositionEdit>;
 
 	class SceneEditHistory final
 	{

@@ -17,6 +17,9 @@ namespace ForgeSim::Sandbox
         SceneLightId id = InvalidSceneLightId;
         bool enabled = true;
 
+        // World-space editor position; does not affect illumination.
+        glm::vec3 position{ 0.0f };
+
         // World-space direction from the surface toward the light.
         glm::vec3 directionToLight{
             -0.5f,

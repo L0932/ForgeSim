@@ -87,6 +87,13 @@ namespace ForgeSim::Sandbox
 			{
 				state.operation = GizmoOperation::Scale;
 			}
+			else if (ImGui::IsKeyPressed(ImGuiKey_X, false))
+			{
+				state.space =
+					state.space == GizmoSpace::World
+					? GizmoSpace::Local
+					: GizmoSpace::World;
+			}
 		}
 
 		if (ImGui::Begin("Transform Gizmo"))
