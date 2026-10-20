@@ -789,6 +789,43 @@ add_test(
 	COMMAND ForgeSimSceneEditHistoryTests
 )
 
+add_executable(
+	ForgeSimLightSubmissionTests
+	LightSubmissionTest.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/LightSubmission.cpp
+)
+
+target_include_directories(
+	ForgeSimLightSubmissionTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimLightSubmissionTests
+	PRIVATE
+		glm::glm
+)
+
+target_compile_features(
+	ForgeSimLightSubmissionTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimLightSubmissionTests)
+
+set_target_properties(
+	ForgeSimLightSubmissionTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.LightSubmission
+	COMMAND ForgeSimLightSubmissionTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -812,6 +849,7 @@ set_target_properties(
 	ForgeSimGizmoTransformTests
 	ForgeSimSceneEditHistoryTests
 	ForgeSimLightGizmoTransformTests
+	ForgeSimLightSubmissionTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

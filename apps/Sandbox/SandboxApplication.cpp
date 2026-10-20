@@ -132,7 +132,6 @@ namespace ForgeSim::Sandbox
 			maximumStepsPerFrame
 		};
 
-		// temp for testing
 		if (m_Scene.PointLights().empty())
 		{
 			static_cast<void>(m_Scene.AddPointLight());
@@ -153,9 +152,10 @@ namespace ForgeSim::Sandbox
 
 			pointLight.range =
 				visualizationScale * 0.5f;
+
+			pointLight.intensity = 10.0f;
 		}
 
-		// temp for testing
 		if (m_Scene.SpotLights().empty())
 		{
 			static_cast<void>(m_Scene.AddSpotLight());
@@ -188,6 +188,8 @@ namespace ForgeSim::Sandbox
 
 			spotLight.outerConeAngleRadians =
 				glm::radians(30.0f);
+
+			spotLight.intensity = 10.0f;
 		}
 
 		std::vector<LightPickTarget> lightPickTargets;

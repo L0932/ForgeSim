@@ -239,9 +239,7 @@ float DistanceAttenuation(
 	float range)
 {
 	float distanceToLight = sqrt(distanceSquared);
-
-	float normalizedDistance =
-		distanceToLight / range;
+	float normalizedDistance = distanceToLight / range;
 
 	float normalizedDistanceSquared =
 		normalizedDistance * normalizedDistance;
@@ -253,11 +251,15 @@ float DistanceAttenuation(
 				normalizedDistanceSquared,
 			0.0);
 
-	const float minimumDistanceSquared = 0.0001;
+	// Artistic softening radius, measured in world units.
+	const float softeningDistance = 1.0;
+	const float softeningDistanceSquared =
+		softeningDistance * softeningDistance;
 
 	return
-		rangeFade * rangeFade /
-		max(distanceSquared, minimumDistanceSquared);
+		rangeFade * rangeFade *
+		softeningDistanceSquared /
+		(distanceSquared + softeningDistanceSquared);
 }
 
 void main()

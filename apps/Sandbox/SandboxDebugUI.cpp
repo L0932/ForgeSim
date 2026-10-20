@@ -371,10 +371,6 @@ namespace ForgeSim::Sandbox
 				light.id);
 		}
 
-		ImGui::TextDisabled(
-			"Point and spot symbols currently visualize light data only.");
-
-
 		if (context.selection.IsLightSelected(
 			context.directionalLight.id))
 		{
@@ -508,9 +504,6 @@ namespace ForgeSim::Sandbox
 				"%.6f",
 				ImGuiSliderFlags_AlwaysClamp |
 				ImGuiSliderFlags_NoRoundToFormat);
-
-			ImGui::TextDisabled(
-				"Point illumination is not implemented yet.");
 
 			break;
 		}
@@ -649,9 +642,6 @@ namespace ForgeSim::Sandbox
 
 			ImGui::TextDisabled(
 				"Angles are measured from the emission axis.");
-
-			ImGui::TextDisabled(
-				"Spot illumination is not implemented yet.");
 
 			break;
 		}
