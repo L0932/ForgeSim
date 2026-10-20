@@ -51,6 +51,10 @@ target_sources(
 		SandboxScene.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
+		SceneLightEditing.hpp
+		SceneLightEditing.cpp
+		SceneLightValidation.hpp
+		SceneLightValidation.cpp
 		SceneTransformEditor.hpp
 		SceneTransformEditor.cpp
 		ShaderFileMonitor.hpp

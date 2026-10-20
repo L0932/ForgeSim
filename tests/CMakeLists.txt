@@ -793,6 +793,7 @@ add_executable(
 	ForgeSimLightSubmissionTests
 	LightSubmissionTest.cpp
 	${PROJECT_SOURCE_DIR}/apps/Sandbox/LightSubmission.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
 )
 
 target_include_directories(
@@ -826,6 +827,44 @@ add_test(
 	COMMAND ForgeSimLightSubmissionTests
 )
 
+add_executable(
+	ForgeSimSceneLightValidationTests
+	SceneLightValidationTest.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightEditing.cpp
+)
+
+target_include_directories(
+	ForgeSimSceneLightValidationTests
+	PRIVATE
+		${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+	ForgeSimSceneLightValidationTests
+	PRIVATE
+		glm::glm
+)
+
+target_compile_features(
+	ForgeSimSceneLightValidationTests
+	PRIVATE
+		cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneLightValidationTests)
+
+set_target_properties(
+	ForgeSimSceneLightValidationTests
+	PROPERTIES
+		FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+	NAME ForgeSim.Sandbox.SceneLightValidation
+	COMMAND ForgeSimSceneLightValidationTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -835,6 +874,7 @@ set_target_properties(
 	ForgeSimPerspectiveCameraTests
 	ForgeSimPlatformGLFWTests
 	ForgeSimRendererPickingTests
+	ForgeSimSceneLightValidationTests
 	ForgeSimTransformTests
 	ForgeSimDebugGeometryTests
 	ForgeSimShaderFileMonitorTests

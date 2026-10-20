@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SceneLight.hpp"
+#include "SceneLightValidation.hpp"
 #include "SceneSelection.hpp"
 #include "TransformEditorUIState.hpp"
 
@@ -132,5 +133,7 @@ namespace ForgeSim::Sandbox
 		float m_SelectionHighlightStrength = 0.20f;
 
 		TransformEditorUIState m_TransformEditorState;
+
+		std::optional<LightValidationError> m_LightValidationError;
 	};
 }
