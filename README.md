@@ -67,7 +67,7 @@ Rendering features include:
 - Base-color, metallic-roughness, normal, occlusion, and emissive textures
 - Safe fallback textures and glTF-compatible material defaults
 - Generated normals and tangents where supported source data is missing
-- Directional direct lighting using a Cook-Torrance BRDF
+- Directional, point, and spot direct lighting using a shared Cook-Torrance BRDF
 - Diffuse irradiance and prefiltered specular image-based lighting
 - Split-sum BRDF lookup texture generation
 - HDR equirectangular environment conversion to cubemaps
