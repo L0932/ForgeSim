@@ -25,22 +25,35 @@ The long-term goal is not to reproduce the feature set of a general-purpose comm
 
 ## Current Status
 
+## Current Status
+
 ForgeSim is currently in Phase 3: Textured Assets and PBR Scene Rendering.
 
 The current Sandbox demonstrates:
 
 - Fixed-timestep simulation scheduling with bounded catch-up
 - Interactive free-camera navigation
-- Object selection and editable transforms
+- Unified object and light selection through viewport picking and Debug UI controls
+- Viewport transform gizmos with local/world modes and keyboard shortcuts
+- Undo and redo for gizmo edits across objects and lights
 - glTF 2.0 scene loading with multiple meshes, primitives, materials, and node transforms
 - File-backed images and GLSL shaders with shader hot reloading
 - Metallic-roughness physically based rendering
-- Direct lighting and image-based lighting
+- Directional, point, and spot illumination through a shared Cook-Torrance BRDF
+- Point-light distance and range attenuation
+- Spot-light distance attenuation and smooth inner/outer cone falloff
+- Editable light properties and selectable viewport light visualizations
+- Diffuse and specular image-based lighting
 - HDR scene rendering, exposure control, tone mapping, and sRGB output
 - Configurable HDR environment backgrounds
 - Alpha masking, alpha blending, and double-sided materials
 - Reference-grid and bounding-box debug rendering
 - Dear ImGui rendering controls and runtime diagnostics
+- Headless tests for light submission, selection, transform conversion, and edit history
+
+Point and spot lighting currently uses documented artistic attenuation.
+Physical light-unit and exposure calibration are planned follow-up work.
+Point and spot lights do not yet cast shadows.
 
 ## Rendering Features
 
