@@ -35,6 +35,33 @@ uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
 uniform vec3 uLightRadiance;
 
+const int maximumPointLights = 16;
+
+struct PointLightData
+{
+	vec3 position;
+	vec3 radiance;
+	float range;
+};
+
+uniform int uPointLightCount;
+uniform PointLightData uPointLights[maximumPointLights];
+
+const int maximumSpotLights = 16;
+
+struct SpotLightData
+{
+	vec3 position;
+	vec3 emissionDirection;
+	vec3 radiance;
+	float range;
+	float innerConeCos;
+	float outerConeCos;
+};
+
+uniform int uSpotLightCount;
+uniform SpotLightData uSpotLights[maximumSpotLights];
+
 uniform float uEnvironmentIntensity;
 uniform samplerCube uDiffuseIrradianceMap;
 uniform samplerCube uPrefilteredSpecularMap;
@@ -139,6 +166,100 @@ vec3 FresnelSchlickRoughness(
 			5.0);
 }
 
+vec3 EvaluateDirectLighting(
+	vec3 normal,
+	vec3 viewDirection,
+	vec3 lightDirection,
+	vec3 radiance,
+	vec3 baseColor,
+	float metallic,
+	float roughness,
+	vec3 reflectanceAtNormalIncidence)
+{
+	float normalDotView =
+		max(dot(normal, viewDirection), 0.0);
+
+	float normalDotLight =
+		max(dot(normal, lightDirection), 0.0);
+
+	if (normalDotView <= 0.0 || normalDotLight <= 0.0)
+	{
+		return vec3(0.0);
+	}
+
+	vec3 halfwayDirection =
+		normalize(viewDirection + lightDirection);
+
+	float normalDistribution =
+		DistributionGGX(
+			normal,
+			halfwayDirection,
+			roughness);
+
+	float geometry =
+		GeometrySmith(
+			normal,
+			viewDirection,
+			lightDirection,
+			roughness);
+
+	vec3 fresnel =
+		FresnelSchlick(
+			max(
+				dot(halfwayDirection, viewDirection),
+				0.0),
+			reflectanceAtNormalIncidence);
+
+	float denominator =
+		max(
+			4.0 * normalDotView * normalDotLight,
+			0.0001);
+
+	vec3 specular =
+		normalDistribution *
+		geometry *
+		fresnel /
+		denominator;
+
+	vec3 diffuseFraction =
+		(vec3(1.0) - fresnel) *
+		(1.0 - metallic);
+
+	return
+		(
+			diffuseFraction * baseColor / pi +
+			specular
+		) *
+		radiance *
+		normalDotLight;
+}
+
+float DistanceAttenuation(
+	float distanceSquared,
+	float range)
+{
+	float distanceToLight = sqrt(distanceSquared);
+
+	float normalizedDistance =
+		distanceToLight / range;
+
+	float normalizedDistanceSquared =
+		normalizedDistance * normalizedDistance;
+
+	float rangeFade =
+		max(
+			1.0 -
+				normalizedDistanceSquared *
+				normalizedDistanceSquared,
+			0.0);
+
+	const float minimumDistanceSquared = 0.0001;
+
+	return
+		rangeFade * rangeFade /
+		max(distanceSquared, minimumDistanceSquared);
+}
+
 void main()
 {
 	vec4 sampledBaseColor =
@@ -217,14 +338,6 @@ void main()
 			uCameraPosition -
 			vWorldPosition);
 
-	vec3 lightDirection =
-		normalize(uLightDirection);
-
-	vec3 halfwayDirection =
-		normalize(
-			viewDirection +
-			lightDirection);
-
 	vec4 sampledMetallicRoughness =
 		texture(
 			uMetallicRoughnessTexture,
@@ -251,67 +364,118 @@ void main()
 			sampledBaseColor.rgb,
 			metallic);
 
-	float normalDistribution =
-		DistributionGGX(
-			normal,
-			halfwayDirection,
-			roughness);
-
-	float geometry =
-		GeometrySmith(
-			normal,
-			viewDirection,
-			lightDirection,
-			roughness);
-
-	vec3 fresnel =
-		FresnelSchlick(
-			max(
-				dot(
-					halfwayDirection,
-					viewDirection),
-				0.0),
-			reflectanceAtNormalIncidence);
-
-	vec3 specular =
-		normalDistribution *
-		geometry *
-		fresnel;
-
+	// Also used by the environment-lighting calculations below.
 	float normalDotView =
-		max(
-			dot(normal, viewDirection),
-			0.0);
-
-	float normalDotLight =
-		max(
-			dot(normal, lightDirection),
-			0.0);
-
-	float denominator =
-		max(
-			4.0 *
-			normalDotView *
-			normalDotLight,
-			0.0001);
-
-	specular /= denominator;
-
-	vec3 reflectedFraction = fresnel;
-
-	vec3 diffuseFraction =
-		(vec3(1.0) - reflectedFraction) *
-		(1.0 - metallic);
+		max(dot(normal, viewDirection), 0.0);
 
 	vec3 directLighting =
-		(
-			diffuseFraction *
-			sampledBaseColor.rgb /
-			pi +
-			specular
-		) *
-		uLightRadiance *
-		normalDotLight;
+		EvaluateDirectLighting(
+			normal,
+			viewDirection,
+			normalize(uLightDirection),
+			uLightRadiance,
+			sampledBaseColor.rgb,
+			metallic,
+			roughness,
+			reflectanceAtNormalIncidence);
+
+	for (int index = 0; index < uPointLightCount; ++index)
+	{
+		PointLightData light = uPointLights[index];
+
+		// Surface-to-light vector, matching the BRDF convention.
+		vec3 toLight =
+			light.position - vWorldPosition;
+
+		float distanceSquared = dot(toLight, toLight);
+
+		// Exactly at the light, the direction is undefined.
+		if (distanceSquared <= 1e-12 ||
+			sqrt(distanceSquared) >= light.range)
+		{
+			continue;
+		}
+
+		vec3 lightDirection =
+			toLight * inversesqrt(distanceSquared);
+
+		float attenuation =
+			DistanceAttenuation(
+				distanceSquared,
+				light.range);
+
+		vec3 incomingRadiance =
+			light.radiance * attenuation;
+
+		directLighting +=
+			EvaluateDirectLighting(
+				normal,
+				viewDirection,
+				lightDirection,
+				incomingRadiance,
+				sampledBaseColor.rgb,
+				metallic,
+				roughness,
+				reflectanceAtNormalIncidence);
+	}
+
+	for (int index = 0; index < uSpotLightCount; ++index)
+	{
+		SpotLightData light = uSpotLights[index];
+
+		vec3 toLight =
+			light.position - vWorldPosition;
+
+		float distanceSquared =
+			dot(toLight, toLight);
+
+		if (distanceSquared <= 1e-12 ||
+			sqrt(distanceSquared) >= light.range)
+		{
+			continue;
+		}
+
+		// Surface toward the light.
+		vec3 lightDirection =
+			toLight * inversesqrt(distanceSquared);
+
+		// Compare emission with the opposite direction:
+		// light toward the surface.
+		float coneCos =
+			dot(light.emissionDirection, -lightDirection);
+
+		float coneAttenuation =
+			smoothstep(
+				light.outerConeCos,
+				light.innerConeCos,
+				coneCos);
+
+		if (coneAttenuation <= 0.0)
+		{
+			continue;
+		}
+
+		float distanceAttenuation =
+			DistanceAttenuation(
+				distanceSquared,
+				light.range);
+
+		vec3 incomingRadiance =
+			light.radiance *
+			distanceAttenuation *
+			coneAttenuation;
+
+		directLighting +=
+			EvaluateDirectLighting(
+				normal,
+				viewDirection,
+				lightDirection,
+				incomingRadiance,
+				sampledBaseColor.rgb,
+				metallic,
+				roughness,
+				reflectanceAtNormalIncidence);
+	}
 
 	float sampledOcclusion =
 		texture(

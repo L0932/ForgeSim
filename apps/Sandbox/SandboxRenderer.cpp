@@ -1,4 +1,5 @@
 #include "LightDebugLayout.hpp"
+#include "LightSubmission.hpp"
 #include "SandboxRenderer.hpp"
 
 #include <algorithm>
@@ -126,6 +127,12 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view maximumSpecularLod =
 				"uMaximumSpecularLod";
 
+			constexpr std::string_view pointLightCount =
+				"uPointLightCount";
+
+			constexpr std::string_view spotLightCount =
+				"uSpotLightCount";
+
 			constexpr std::array required{
 				model,
 				view,
@@ -153,7 +160,9 @@ namespace ForgeSim::Sandbox
 				environmentIntensity,
 				prefilteredSpecularMap,
 				brdfLookupTexture,
-				maximumSpecularLod
+				maximumSpecularLod,
+				pointLightCount,
+				spotLightCount
 			};
 
 		}
@@ -1032,6 +1041,90 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
+	void SandboxRenderer::UploadPointLights(
+		std::span<const PointLight> lights)
+	{
+		const PointLightSubmission submission =
+			PreparePointLights(lights);
+
+		for (std::size_t index = 0;
+			index < submission.count;
+			++index)
+		{
+			const PreparedPointLight& light =
+				submission.lights[index];
+
+			const std::string prefix =
+				"uPointLights[" +
+				std::to_string(index) +
+				"].";
+
+			m_ObjectShaderProgram.SetVector3(
+				prefix + "position",
+				light.position);
+
+			m_ObjectShaderProgram.SetVector3(
+				prefix + "radiance",
+				light.radiance);
+
+			m_ObjectShaderProgram.SetFloat(
+				prefix + "range",
+				light.range);
+		}
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::pointLightCount,
+			static_cast<int>(submission.count));
+	}
+
+	void SandboxRenderer::UploadSpotLights(
+		std::span<const SpotLight> lights)
+	{
+		const SpotLightSubmission submission =
+			PrepareSpotLights(lights);
+
+		for (std::size_t index = 0;
+			index < submission.count;
+			++index)
+		{
+			const PreparedSpotLight& light =
+				submission.lights[index];
+
+			const std::string prefix =
+				"uSpotLights[" +
+				std::to_string(index) +
+				"].";
+
+			m_ObjectShaderProgram.SetVector3(
+				prefix + "position",
+				light.position);
+
+			m_ObjectShaderProgram.SetVector3(
+				prefix + "emissionDirection",
+				light.emissionDirection);
+
+			m_ObjectShaderProgram.SetVector3(
+				prefix + "radiance",
+				light.radiance);
+
+			m_ObjectShaderProgram.SetFloat(
+				prefix + "range",
+				light.range);
+
+			m_ObjectShaderProgram.SetFloat(
+				prefix + "innerConeCos",
+				light.innerConeCos);
+
+			m_ObjectShaderProgram.SetFloat(
+				prefix + "outerConeCos",
+				light.outerConeCos);
+		}
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::spotLightCount,
+			static_cast<int>(submission.count));
+	}
+
 	void SandboxRenderer::Render(
 		std::span<const SandboxObject> objects,
 		std::optional<SandboxObjectId> selectedObjectId,
@@ -1173,6 +1266,9 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetVector3(
 			SandboxRendererShaderUniform::lightRadiance,
 			lightRadiance);
+
+		UploadPointLights(lighting.pointLights);
+		UploadSpotLights(lighting.spotLights);
 
 		m_ObjectShaderProgram.SetVector3(
 			SandboxRendererShaderUniform::selectionColor,

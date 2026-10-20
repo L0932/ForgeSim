@@ -127,6 +127,12 @@ namespace ForgeSim::Sandbox
 			const glm::mat4& objectTransform,
 			bool isSelected);
 
+		void UploadPointLights(
+			std::span<const PointLight> lights);
+
+		void UploadSpotLights(
+			std::span<const SpotLight> lights);
+
 		struct RenderSubmission
 		{
 			const Renderer::OpenGL::GpuMesh* mesh = nullptr;
