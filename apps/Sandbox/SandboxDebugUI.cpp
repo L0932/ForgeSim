@@ -62,6 +62,10 @@ namespace ForgeSim::Sandbox
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+
+		ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
 		ImGui::StyleColorsDark();
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
@@ -225,6 +229,13 @@ namespace ForgeSim::Sandbox
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+
+		// Submit before any windows that may dock into this workspace.
+		// The empty center remains transparent to the scene behind it.
+		ImGui::DockSpaceOverViewport(
+			0,
+			ImGui::GetMainViewport(),
+			ImGuiDockNodeFlags_PassthruCentralNode);
 
 		if (ImGui::IsKeyPressed(
 			ImGuiKey_F1,

@@ -3,6 +3,7 @@
 #include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
 #include "SceneDocumentIO.hpp"
+#include "SceneFilePanel.hpp"
 #include "SceneTransformEditor.hpp"
 #include "SceneSelection.hpp"
 #include "SceneSelectionValidation.hpp"
@@ -17,6 +18,8 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <glm/mat4x4.hpp>
@@ -35,62 +38,74 @@ namespace ForgeSim::Sandbox
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_Scene(
-			spec.initialScene
-				? SandboxScene( *spec.initialScene )
-				: SandboxScene{})
 		, m_Renderer(spec.rendererSpec)
 		, m_DebugUI(m_Window)
-		, m_ProjectRoot(
+		, m_LoadedScene(spec.initialScene.has_value())
+	{
+		const std::filesystem::path projectRoot =
 			std::filesystem::weakly_canonical(
 				std::filesystem::absolute(
 					spec.projectRoot.value_or(
-					std::filesystem::path{
-						FORGESIM_SANDBOX_ASSET_DIRECTORY
-					}.parent_path()))))
-		, m_LoadedScene(spec.initialScene.has_value())
-	{
+						std::filesystem::path{
+							FORGESIM_SANDBOX_ASSET_DIRECTORY
+						}.parent_path())));
+
+		SandboxScene initialScene =
+			spec.initialScene
+			? SandboxScene{ *spec.initialScene }
+		: SandboxScene{};
 
 		if (!m_LoadedScene)
 		{
-			SandboxObject& object = m_Scene.Objects().front();
+			SandboxObject& object =
+				initialScene.Objects().front();
 
-			object.name =
-				m_Renderer.ObjectModelPath().stem().string();
-
-			const std::filesystem::path relativeModelPath =
+			const std::u8string name =
 				m_Renderer.ObjectModelPath()
-				.lexically_relative(m_ProjectRoot);
+				.stem().generic_u8string();
+
+			object.name.assign(name.begin(), name.end());
 
 			const std::u8string reference =
-				relativeModelPath.generic_u8string();
+				m_Renderer.ObjectModelPath()
+				.lexically_relative(projectRoot)
+				.generic_u8string();
 
 			object.modelPath.assign(
 				reference.begin(),
 				reference.end());
 
-			m_Scene.MainDirectionalLight().position =
+			initialScene.MainDirectionalLight().position =
 				CalculateLightDebugLayout(
 					m_Renderer.ObjectLocalBounds()).directionalAnchor;
 		}
 
-		Core::LogInfo(
-			"Scene project root: " + m_ProjectRoot.string());
+		SceneDocument document = initialScene.ToDocument();
 
-		for (const SandboxObject& object : m_Scene.Objects())
+		if (!m_LoadedScene)
 		{
-			Core::LogInfo(
-				"Scene model reference: " + object.modelPath);
+			const std::u8string modelName =
+				m_Renderer.ObjectModelPath().filename().generic_u8string();
+
+			document.name.assign(
+				modelName.begin(),
+				modelName.end());
 		}
+
+		m_EditorSession = std::make_unique<EditorSession>(
+			document,
+			projectRoot,
+			spec.scenePath);
+
+		Core::LogInfo(
+			"Scene project root: " + projectRoot.string());
 	}
 
 	void SandboxApplication::SaveScene(
-		const std::filesystem::path& path) const
+		const std::filesystem::path& path)
 	{
-		SaveSceneDocument(
-			m_Scene.ToDocument(),
-			path,
-			m_ProjectRoot);
+		m_EditorSession->SaveAs(
+			std::filesystem::absolute(path));
 	}
 
 	void SandboxApplication::Run()
@@ -102,12 +117,14 @@ namespace ForgeSim::Sandbox
 		}
 
 		m_RunAttempted = true;
+		
+		SandboxScene& scene = m_EditorSession->Scene();
 
 		m_Window.Show();
 
 		const Renderer::AxisAlignedBoundingBox bounds =
 			CalculateSceneBounds(
-				m_Scene.Objects(),
+				scene.Objects(),
 				m_Renderer.ObjectLocalBounds());
 
 		const glm::vec3 modelCenter =
@@ -199,12 +216,12 @@ namespace ForgeSim::Sandbox
 			maximumStepsPerFrame
 		};
 
-		if (!m_LoadedScene && m_Scene.PointLights().empty())
+		if (!m_LoadedScene && scene.PointLights().empty())
 		{
-			static_cast<void>(m_Scene.AddPointLight());
+			static_cast<void>(scene.AddPointLight());
 
 			PointLight& pointLight =
-				m_Scene.PointLights().back();
+				scene.PointLights().back();
 
 			const float visualizationScale =
 				std::max(modelRadius, 0.001f);
@@ -223,12 +240,12 @@ namespace ForgeSim::Sandbox
 			pointLight.intensity = 10.0f;
 		}
 
-		if (!m_LoadedScene && m_Scene.SpotLights().empty())
+		if (!m_LoadedScene && scene.SpotLights().empty())
 		{
-			static_cast<void>(m_Scene.AddSpotLight());
+			static_cast<void>(scene.AddSpotLight());
 
 			SpotLight& spotLight =
-				m_Scene.SpotLights().back();
+				scene.SpotLights().back();
 
 			const float visualizationScale =
 				std::max(modelRadius, 0.001f);
@@ -259,16 +276,61 @@ namespace ForgeSim::Sandbox
 			spotLight.intensity = 10.0f;
 		}
 
+		if (!m_LoadedScene)
+		{
+			m_EditorSession->ResetChangeBaseline();
+		}
+
 		std::vector<LightPickTarget> lightPickTargets;
 
-		while (!m_Window.ShouldClose())
+		SceneFilePanel sceneFilePanel;
+		std::string sceneFileMessage;
+
+		enum class PendingSceneAction
+		{
+			None,
+			New,
+			Open,
+			Close
+		};
+
+		PendingSceneAction pendingAction =
+			PendingSceneAction::None;
+
+		std::filesystem::path pendingOpenPath;
+
+		// Committing a prepared session must not fail after the model changes.
+		static_assert(
+			std::is_nothrow_move_assignable_v<EditorSession>);
+
+		bool exitRequested = false;
+
+		while (!exitRequested)
 		{
 			m_Window.PollEvents();
 
 			if (m_Window.ShouldClose())
 			{
-				break;
+				m_Window.SetShouldClose(false);
+
+				// Keep an existing confirmation bound to its operation.
+				if (pendingAction == PendingSceneAction::None)
+				{
+					if (!m_EditorSession->HasUnsavedChanges())
+					{
+						break;
+					}
+
+					sceneFileMessage.clear();
+					pendingAction = PendingSceneAction::Close;
+				}
+
+				m_Window.SetCursorMode(
+					Platform::CursorMode::Normal);
 			}
+
+			const bool changePending =
+				pendingAction != PendingSceneAction::None;
 
 			m_Renderer.ReloadChangedShaders();
 
@@ -282,14 +344,14 @@ namespace ForgeSim::Sandbox
 
 				lightPickTargets.push_back(
 					LightPickTarget{
-						.id = m_Scene.MainDirectionalLight().id,
+						.id = scene.MainDirectionalLight().id,
 						.bounds = {
-							.center = m_Scene.MainDirectionalLight().position,
+							.center = scene.MainDirectionalLight().position,
 							.radius = layout.pickRadius
 						}
 					});
 
-				for (const PointLight& light : m_Scene.PointLights())
+				for (const PointLight& light : scene.PointLights())
 				{
 					lightPickTargets.push_back(
 						LightPickTarget{
@@ -301,7 +363,7 @@ namespace ForgeSim::Sandbox
 						});
 				}
 
-				for (const SpotLight& light : m_Scene.SpotLights())
+				for (const SpotLight& light : scene.SpotLights())
 				{
 					lightPickTargets.push_back(
 						LightPickTarget{
@@ -333,6 +395,7 @@ namespace ForgeSim::Sandbox
 			const TransformEditorUIState editorUI =
 				m_DebugUI.DrawTransformEditorControls(
 					transformEditor.IsActive(),
+					changePending||
 					input.GetMouseButtonState(
 						Platform::MouseButton::Right).held);
 
@@ -343,6 +406,49 @@ namespace ForgeSim::Sandbox
 			{
 				latestDiagnosticsSnapshot.reset();
 			}
+
+			std::string scenePathText;
+			std::string sceneDisplayName = scene.Name();
+
+			if (m_EditorSession->ScenePath())
+			{
+				const auto& path = *m_EditorSession->ScenePath();
+
+				const std::u8string utf8Path =
+					path.generic_u8string();
+
+				scenePathText.assign(
+					utf8Path.begin(),
+					utf8Path.end());
+
+				const std::u8string utf8Name =
+					path.filename().generic_u8string();
+
+				sceneDisplayName.assign(
+					utf8Name.begin(),
+					utf8Name.end());
+			}
+
+			const SceneFileRequest fileRequest =
+				sceneFilePanel.Draw(
+					SceneFilePanelContext{
+						.sceneName = sceneDisplayName,
+						.scenePath = scenePathText,
+						.message = sceneFileMessage,
+						.dirty =
+							m_EditorSession->HasUnsavedChanges(),
+						.editingActive = transformEditor.IsActive(),
+						.navigationActive =
+							input.GetMouseButtonState(
+								Platform::MouseButton::Right).held,
+						.confirmationPending = changePending,
+						.pendingActionText =
+							pendingAction == PendingSceneAction::New
+								? "creating a new scene"
+								: pendingAction == PendingSceneAction::Open
+									? "opening another scene"
+									: "closing"
+					});
 
 			const bool uiWantsMouse =
 				m_DebugUI.WantsMouseCapture();
@@ -366,7 +472,8 @@ namespace ForgeSim::Sandbox
 					ForgeSim::Platform::CursorMode::Normal;
 
 				if (isReleaseRequest ||
-					(!uiWantsMouse &&
+					(!changePending&&
+						!uiWantsMouse &&
 						!transformEditor.IsActive() &&
 						!leftMouseDown))
 				{
@@ -435,7 +542,8 @@ namespace ForgeSim::Sandbox
 					" ms");
 			}
 
-			if (rightMouseDown && 
+			if (rightMouseDown &&
+				!changePending&&
 				!uiWantsMouse &&
 				!uiWantsKeyboard &&
 				!transformEditor.IsActive() &&
@@ -455,34 +563,33 @@ namespace ForgeSim::Sandbox
 
 			ClearMissingSceneSelection(
 				selection,
-				m_Scene);
+				scene);
 
 			transformEditor.Update(
 				SceneTransformEditorContext{
-					.scene = m_Scene,
+					.scene = scene,
 					.selection = selection,
 					.view = view,
 					.projection = projection,
 					.operation = editorUI.operation,
 					.space = editorUI.space,
 					.showLights = m_DebugUI.ShowLights(),
-					.navigationActive = rightMouseDown
+					.navigationActive = changePending|| rightMouseDown
 				});
 
-			if (editorUI.undoRequested)
+			if (!changePending&& editorUI.undoRequested)
 			{
-				static_cast<void>(transformEditor.Undo(m_Scene));
+				static_cast<void>(transformEditor.Undo(scene));
 			}
-			else if (editorUI.redoRequested)
+			else if (!changePending&& editorUI.redoRequested)
 			{
-				static_cast<void>(transformEditor.Redo(m_Scene));
+				static_cast<void>(transformEditor.Redo(scene));
 			}
 
 			const bool pickingSuppressed =
 				uiWantsMouse ||
+				changePending||
 				transformEditor.SuppressesPicking();
-
-
 
 			selectionController.Update(
 				input,
@@ -491,7 +598,7 @@ namespace ForgeSim::Sandbox
 				view,
 				projection,
 				m_Renderer.ObjectLocalBounds(),
-				m_Scene.Objects(),
+				scene.Objects(),
 				lightPickTargets,
 				selection,
 				pickingSuppressed);
@@ -538,21 +645,21 @@ namespace ForgeSim::Sandbox
 			};
 
 			m_Renderer.Render(
-				m_Scene.Objects(),
+				scene.Objects(),
 				selection.SelectedObjectId(),
 				view,
 				projection,
 				camera.Position(),
 				SceneLightingView{
-					.directionalLight = m_Scene.MainDirectionalLight(),
-					.pointLights = m_Scene.PointLights(),
-					.spotLights = m_Scene.SpotLights()
+					.directionalLight = scene.MainDirectionalLight(),
+					.pointLights = scene.PointLights(),
+					.spotLights = scene.SpotLights()
 				},
 				renderSettings);
 
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
-					.scene = m_Scene,
+					.scene = scene,
 					.selection = selection,
 					.diagnosticsSnapshot =
 						latestDiagnosticsSnapshot 
@@ -560,11 +667,220 @@ namespace ForgeSim::Sandbox
 							: nullptr,
 					.camera = camera,
 					.modelBounds = m_Renderer.ObjectLocalBounds(),
-					.directionalLight = m_Scene.MainDirectionalLight(),
-					.pointLights = m_Scene.PointLights(),
-					.spotLights = m_Scene.SpotLights()
+					.directionalLight = scene.MainDirectionalLight(),
+					.pointLights = scene.PointLights(),
+					.spotLights = scene.SpotLights()
 				}
 			);
+
+			if (fileRequest.action != SceneFileAction::None)
+			{
+				try
+				{
+					bool completePendingAction = false;
+
+					switch (fileRequest.action)
+					{
+					case SceneFileAction::New:
+						if (transformEditor.IsActive() || changePending)
+						{
+							break;
+						}
+
+						sceneFileMessage.clear();
+						pendingAction = PendingSceneAction::New;
+
+						if (!m_EditorSession->HasUnsavedChanges())
+						{
+							completePendingAction = true;
+						}
+						break;
+
+					case SceneFileAction::Open:
+					{
+						if (transformEditor.IsActive() || changePending)
+						{
+							break;
+						}
+
+						const std::u8string utf8Path{
+							fileRequest.path.begin(),
+							fileRequest.path.end()
+						};
+
+						pendingOpenPath =
+							std::filesystem::path{ utf8Path };
+
+						sceneFileMessage.clear();
+						pendingAction = PendingSceneAction::Open;
+
+						if (!m_EditorSession->HasUnsavedChanges())
+						{
+							completePendingAction = true;
+						}
+
+						break;
+					}
+
+					case SceneFileAction::Save:
+						if (transformEditor.IsActive() || changePending)
+						{
+							break;
+						}
+
+						if (m_EditorSession->ScenePath())
+						{
+							m_EditorSession->Save();
+							sceneFileMessage = "Scene saved.";
+						}
+						else
+						{
+							sceneFileMessage =
+								"Enter a Save As path, then click Save As.";
+						}
+						break;
+
+					case SceneFileAction::SaveAs:
+					{
+						if (transformEditor.IsActive() || changePending)
+						{
+							break;
+						}
+
+						const std::u8string utf8Path{
+							fileRequest.path.begin(),
+							fileRequest.path.end()
+						};
+
+						m_EditorSession->SaveAs(
+							std::filesystem::path{ utf8Path });
+
+						sceneFileMessage = "Scene saved.";
+						break;
+					}
+
+					case SceneFileAction::SaveAndContinue:
+						if (pendingAction == PendingSceneAction::None)
+						{
+							break;
+						}
+
+						if (transformEditor.IsActive())
+						{
+							sceneFileMessage =
+								"Finish the transform edit before saving.";
+							break;
+						}
+
+						if (m_EditorSession->ScenePath())
+						{
+							m_EditorSession->Save();
+						}
+						else
+						{
+							const std::u8string utf8Path{
+								fileRequest.path.begin(),
+								fileRequest.path.end()
+							};
+
+							m_EditorSession->SaveAs(
+								std::filesystem::path{ utf8Path });
+						}
+
+						completePendingAction = true;
+						break;
+
+					case SceneFileAction::DiscardAndContinue:
+						if (pendingAction == PendingSceneAction::Close)
+						{
+							m_SaveOnExit = false;
+						}
+
+						completePendingAction =
+							pendingAction != PendingSceneAction::None;
+						break;
+
+					case SceneFileAction::CancelPending:
+						pendingAction = PendingSceneAction::None;
+						pendingOpenPath.clear();
+						sceneFileMessage.clear();
+						break;
+
+					case SceneFileAction::None:
+						break;
+					}
+
+					if (completePendingAction)
+					{
+						if (pendingAction == PendingSceneAction::Close)
+						{
+							exitRequested = true;
+						}
+						else if (
+							pendingAction == PendingSceneAction::New)
+						{
+							EditorSession replacement =
+								m_EditorSession->PrepareNew();
+
+							// Keep the EditorSession and its SandboxScene
+							// at their existing addresses.
+							*m_EditorSession = std::move(replacement);
+
+							selection.Clear();
+							transformEditor.ClearHistory();
+							lightPickTargets.clear();
+
+							pendingAction = PendingSceneAction::None;
+							sceneFileMessage = "New scene created.";
+						}
+						else if (pendingAction == PendingSceneAction::Open)
+						{
+							try
+							{
+								// Read after Save and Continue, so opening the same
+								// file uses the version that was just saved.
+								EditorSession replacement =
+									m_EditorSession->PrepareOpen(pendingOpenPath);
+
+								const auto modelPath =
+									replacement.SharedModelPath();
+
+								if (modelPath)
+								{
+									// Import and GPU upload finish before committing
+									// the replacement session.
+									m_Renderer.LoadObjectModel(*modelPath);
+								}
+
+								// Empty scenes render no objects and can retain
+								// the renderer's existing unused model resources.
+								*m_EditorSession = std::move(replacement);
+
+								selection.Clear();
+								transformEditor.ClearHistory();
+								lightPickTargets.clear();
+
+								pendingAction = PendingSceneAction::None;
+								pendingOpenPath.clear();
+								sceneFileMessage = "Scene opened.";
+							}
+							catch (...)
+							{
+								// End the pending operation. The outer handler
+								// displays the loading error.
+								pendingAction = PendingSceneAction::None;
+								pendingOpenPath.clear();
+								throw;
+							}
+						}
+					}
+				}
+				catch (const std::exception& exception)
+				{
+					sceneFileMessage = exception.what();
+					Core::LogError(sceneFileMessage);
+				}
+			}
 
 			m_DebugUI.EndFrame();
 

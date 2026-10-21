@@ -57,6 +57,8 @@ namespace ForgeSim::Platform
 
 		[[nodiscard]] bool ShouldClose() const;
 
+		void SetShouldClose(bool shouldClose);
+
 		[[nodiscard]] FramebufferExtent 
 			GetFramebufferExtent() const;
 

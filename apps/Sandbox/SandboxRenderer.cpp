@@ -677,306 +677,13 @@ namespace ForgeSim::Sandbox
 			LoadTextFile(
 				m_ToneMappingShaderMonitor.FragmentShaderPath()))
 	{
-		// Upload imported mesh primitives once.
-		std::size_t primitiveCount = 0;
 
-		for (const Assets::SceneMeshData& mesh :
-			m_ObjectSceneAsset.meshes)
-		{
-			primitiveCount += mesh.primitives.size();
-		}
-
-		m_GpuPrimitiveResources.reserve(primitiveCount);
-
-		for (Assets::SceneMeshIndex meshIndex = 0;
-			meshIndex < m_ObjectSceneAsset.meshes.size();
-			++meshIndex)
-		{
-			const Assets::SceneMeshData& sceneMesh =
-				m_ObjectSceneAsset.meshes[meshIndex];
-
-			for (const Assets::MeshPrimitiveData& primitive :
-				sceneMesh.primitives)
-			{
-				m_GpuPrimitiveResources.push_back(
-					GpuPrimitiveResource{
-						.mesh =
-							Renderer::OpenGL::GpuMesh{
-								primitive.geometry
-							},
-						.sceneMeshIndex = meshIndex,
-						.materialIndex =
-							primitive.materialIndex
-					});
-			}
-		}
-
-		if (m_GpuPrimitiveResources.empty())
-		{
-			throw std::runtime_error(
-				"Cannot render a scene without mesh primitives.");
-		}
-
-		const Assets::TextureResources& textureResources =
-			m_ObjectSceneAsset.textureResources;
-
-		// A source texture may need both an sRGB and a linear GPU copy.
-		m_GpuTextures.reserve(
-			textureResources.textures.size() * 2);
-
-		m_GpuSamplers.reserve(
-			textureResources.samplers.size());
-
-		for (const Assets::SamplerData& sampler :
-			textureResources.samplers)
-		{
-			m_GpuSamplers.emplace_back(
-				CreateSamplerSpecification(sampler));
-		}
-
-		const auto resolveGpuTexture =
-			[this, &textureResources](
-				std::size_t textureIndex,
-				Renderer::OpenGL::TextureColorSpace colorSpace)
-			-> const Renderer::OpenGL::Texture2D*
-			{
-				if (textureIndex >=
-					textureResources.textures.size())
-				{
-					throw std::runtime_error(
-						"Material references an invalid texture.");
-				}
-
-				const auto existingTexture =
-					std::find_if(
-						m_GpuTextures.begin(),
-						m_GpuTextures.end(),
-						[textureIndex, colorSpace](
-							const GpuTextureResource& resource)
-						{
-							return
-								resource.sourceTextureIndex ==
-								textureIndex &&
-								resource.colorSpace ==
-								colorSpace;
-
-						});
-
-				if (existingTexture != m_GpuTextures.end())
-				{
-					return &existingTexture->texture;
-				}
-
-				const Assets::TextureData& texture =
-					textureResources.textures[textureIndex];
-
-				if (texture.imageIndex >=
-					textureResources.images.size())
-				{
-					throw std::runtime_error(
-						"Texture references an invalid image index.");
-				}
-
-				const Assets::ImageData& image =
-					textureResources.images[texture.imageIndex];
-
-				if (!image.IsValid())
-				{
-					throw std::runtime_error(
-						"Cannot upload an invalid texture image.");
-				}
-
-				m_GpuTextures.push_back(
-					GpuTextureResource{
-						.sourceTextureIndex = textureIndex,
-						.colorSpace = colorSpace,
-						.texture =
-							Renderer::OpenGL::Texture2D{
-								image.width,
-								image.height,
-								image.pixels,
-								colorSpace
-							}
-					});
-
-				return &m_GpuTextures.back().texture;
-			};
-
-
-		const auto resolveTextureBinding =
-			[this, &textureResources, &resolveGpuTexture](
-				const std::optional<
-				Assets::MaterialTextureReference>& reference,
-				const Renderer::OpenGL::Texture2D& fallbackTexture,
-				Renderer::OpenGL::TextureColorSpace colorSpace)
-			-> GpuTextureBinding
-			{
-				GpuTextureBinding binding{
-					.texture = &fallbackTexture,
-					.sampler = &m_DefaultSampler
-				};
-
-				if (!reference)
-				{
-					return binding;
-				}
-
-				if (reference->textureCoordinateSet != 0)
-				{
-					throw std::runtime_error(
-						"Only texture-coordinate set zero "
-						"is currently supported.");
-				}
-
-				if (reference->textureIndex >=
-					textureResources.textures.size())
-				{
-					throw std::runtime_error(
-						"Material references an invalid texture.");
-				}
-
-				const Assets::TextureData& texture =
-					textureResources.textures[
-						reference->textureIndex];
-
-				binding.texture =
-					resolveGpuTexture(
-						reference->textureIndex,
-						colorSpace);
-
-				if (texture.samplerIndex)
-				{
-					if (*texture.samplerIndex >=
-						m_GpuSamplers.size())
-					{
-						throw std::runtime_error(
-							"Texture references an invalid sampler.");
-					}
-
-					binding.sampler =
-						&m_GpuSamplers[
-							*texture.samplerIndex];
-				}
-
-				return binding;
-			};
-
-
-		m_GpuMaterialResources.reserve(
-			m_ObjectSceneAsset.materials.size());
-
-		for (const Assets::MaterialData& material :
-			m_ObjectSceneAsset.materials)
-		{
-			const auto& metallicRoughness =
-				material.metallicRoughness;
-
-			const auto& baseColorFactor =
-				metallicRoughness.baseColorFactor;
-
-			std::optional<Assets::MaterialTextureReference>
-				normalTextureReference;
-
-			float normalScale = 1.0f;
-
-			if (material.normalTexture)
-			{
-				normalTextureReference =
-					material.normalTexture->texture;
-
-				normalScale =
-					material.normalTexture->scale;
-			}
-
-			std::optional<Assets::MaterialTextureReference>
-				occlusionTextureReference;
-
-			float occlusionStrength = 1.0f;
-
-			if (material.occlusionTexture)
-			{
-				occlusionTextureReference =
-					material.occlusionTexture->texture;
-
-				occlusionStrength =
-					material.occlusionTexture->strength;
-			}
-
-			std::optional<Assets::MaterialTextureReference>
-				emissiveTextureReference;
-
-			if (material.emissiveTexture)
-			{
-				emissiveTextureReference =
-					*material.emissiveTexture;
-			}
-
-			const glm::vec3 emissiveFactor{
-				material.emissiveFactor[0],
-				material.emissiveFactor[1],
-				material.emissiveFactor[2]
-			};
-
-			GpuMaterialResource gpuMaterial{
-				.baseColor =
-					resolveTextureBinding(
-						metallicRoughness.baseColorTexture,
-						m_FallbackWhiteTexture,
-						Renderer::OpenGL::TextureColorSpace::Srgb),
-
-				.metallicRoughness =
-					resolveTextureBinding(
-						metallicRoughness.metallicRoughnessTexture,
-						m_FallbackWhiteTexture,
-						Renderer::OpenGL::TextureColorSpace::Linear),
-
-				.normal =
-					resolveTextureBinding(
-						normalTextureReference,
-						m_FallbackNormalTexture,
-						Renderer::OpenGL::TextureColorSpace::Linear),
-
-				.occlusion =
-					resolveTextureBinding(
-						occlusionTextureReference,
-						m_FallbackWhiteTexture,
-						Renderer::OpenGL::TextureColorSpace::Linear),
-
-				.emissive =
-					resolveTextureBinding(
-						emissiveTextureReference,
-						m_FallbackWhiteTexture,
-						Renderer::OpenGL::TextureColorSpace::Srgb),
-
-				.baseColorFactor = glm::vec4{
-					baseColorFactor[0],
-					baseColorFactor[1],
-					baseColorFactor[2],
-					baseColorFactor[3]
-				},
-
-				.emissiveFactor = emissiveFactor,
-
-				.metallicFactor =
-					metallicRoughness.metallicFactor,
-
-				.roughnessFactor =
-					metallicRoughness.roughnessFactor,
-
-				.normalScale = normalScale,
-
-				.occlusionStrength = occlusionStrength,
-
-				.alphaMode = material.alphaMode,
-
-				.alphaCutoff = material.alphaCutoff,
-
-				.doubleSided = material.doubleSided
-			};
-
-			m_GpuMaterialResources.push_back(
-				gpuMaterial);
-		}
+		UploadObjectModelResources(
+			m_ObjectSceneAsset,
+			m_GpuPrimitiveResources,
+			m_GpuTextures,
+			m_GpuSamplers,
+			m_GpuMaterialResources);
 
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
@@ -1126,6 +833,315 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::spotLightCount,
 			static_cast<int>(submission.count));
+	}
+
+	void SandboxRenderer::UploadObjectModelResources(
+		const Assets::SceneAsset& sceneAsset,
+		std::vector<GpuPrimitiveResource>& primitives,
+		std::vector<GpuTextureResource>& textures,
+		std::vector<Renderer::OpenGL::Sampler>& samplers,
+		std::vector<GpuMaterialResource>& materials)
+	{
+				// Upload imported mesh primitives once.
+		std::size_t primitiveCount = 0;
+
+		for (const Assets::SceneMeshData& mesh :
+			sceneAsset.meshes)
+		{
+			primitiveCount += mesh.primitives.size();
+		}
+
+		primitives.reserve(primitiveCount);
+
+		for (Assets::SceneMeshIndex meshIndex = 0;
+			meshIndex < sceneAsset.meshes.size();
+			++meshIndex)
+		{
+			const Assets::SceneMeshData& sceneMesh =
+				sceneAsset.meshes[meshIndex];
+
+			for (const Assets::MeshPrimitiveData& primitive :
+				sceneMesh.primitives)
+			{
+				primitives.push_back(
+					GpuPrimitiveResource{
+						.mesh =
+							Renderer::OpenGL::GpuMesh{
+								primitive.geometry
+							},
+						.sceneMeshIndex = meshIndex,
+						.materialIndex =
+							primitive.materialIndex
+					});
+			}
+		}
+
+		if (primitives.empty())
+		{
+			throw std::runtime_error(
+				"Cannot render a scene without mesh primitives.");
+		}
+
+		const Assets::TextureResources& textureResources =
+			sceneAsset.textureResources;
+
+		// A source texture may need both an sRGB and a linear GPU copy.
+		textures.reserve(
+			textureResources.textures.size() * 2);
+
+		samplers.reserve(
+			textureResources.samplers.size());
+
+		for (const Assets::SamplerData& sampler :
+			textureResources.samplers)
+		{
+			samplers.emplace_back(
+				CreateSamplerSpecification(sampler));
+		}
+
+		const auto resolveGpuTexture =
+			[&textures, &textureResources](
+				std::size_t textureIndex,
+				Renderer::OpenGL::TextureColorSpace colorSpace)
+			-> const Renderer::OpenGL::Texture2D*
+			{
+				if (textureIndex >=
+					textureResources.textures.size())
+				{
+					throw std::runtime_error(
+						"Material references an invalid texture.");
+				}
+
+				const auto existingTexture =
+					std::find_if(
+						textures.begin(),
+						textures.end(),
+						[textureIndex, colorSpace](
+							const GpuTextureResource& resource)
+						{
+							return
+								resource.sourceTextureIndex ==
+								textureIndex &&
+								resource.colorSpace ==
+								colorSpace;
+
+						});
+
+				if (existingTexture != textures.end())
+				{
+					return &existingTexture->texture;
+				}
+
+				const Assets::TextureData& texture =
+					textureResources.textures[textureIndex];
+
+				if (texture.imageIndex >=
+					textureResources.images.size())
+				{
+					throw std::runtime_error(
+						"Texture references an invalid image index.");
+				}
+
+				const Assets::ImageData& image =
+					textureResources.images[texture.imageIndex];
+
+				if (!image.IsValid())
+				{
+					throw std::runtime_error(
+						"Cannot upload an invalid texture image.");
+				}
+
+				textures.push_back(
+					GpuTextureResource{
+						.sourceTextureIndex = textureIndex,
+						.colorSpace = colorSpace,
+						.texture =
+							Renderer::OpenGL::Texture2D{
+								image.width,
+								image.height,
+								image.pixels,
+								colorSpace
+							}
+					});
+
+				return &textures.back().texture;
+			};
+
+
+		const auto resolveTextureBinding =
+			[this, &samplers, &textureResources, &resolveGpuTexture](
+				const std::optional<
+				Assets::MaterialTextureReference>& reference,
+				const Renderer::OpenGL::Texture2D& fallbackTexture,
+				Renderer::OpenGL::TextureColorSpace colorSpace)
+			-> GpuTextureBinding
+			{
+				GpuTextureBinding binding{
+					.texture = &fallbackTexture,
+					.sampler = &m_DefaultSampler
+				};
+
+				if (!reference)
+				{
+					return binding;
+				}
+
+				if (reference->textureCoordinateSet != 0)
+				{
+					throw std::runtime_error(
+						"Only texture-coordinate set zero "
+						"is currently supported.");
+				}
+
+				if (reference->textureIndex >=
+					textureResources.textures.size())
+				{
+					throw std::runtime_error(
+						"Material references an invalid texture.");
+				}
+
+				const Assets::TextureData& texture =
+					textureResources.textures[
+						reference->textureIndex];
+
+				binding.texture =
+					resolveGpuTexture(
+						reference->textureIndex,
+						colorSpace);
+
+				if (texture.samplerIndex)
+				{
+					if (*texture.samplerIndex >=
+						samplers.size())
+					{
+						throw std::runtime_error(
+							"Texture references an invalid sampler.");
+					}
+
+					binding.sampler =
+						&samplers[
+							*texture.samplerIndex];
+				}
+
+				return binding;
+			};
+
+
+		materials.reserve(
+			sceneAsset.materials.size());
+
+		for (const Assets::MaterialData& material :
+			sceneAsset.materials)
+		{
+			const auto& metallicRoughness =
+				material.metallicRoughness;
+
+			const auto& baseColorFactor =
+				metallicRoughness.baseColorFactor;
+
+			std::optional<Assets::MaterialTextureReference>
+				normalTextureReference;
+
+			float normalScale = 1.0f;
+
+			if (material.normalTexture)
+			{
+				normalTextureReference =
+					material.normalTexture->texture;
+
+				normalScale =
+					material.normalTexture->scale;
+			}
+
+			std::optional<Assets::MaterialTextureReference>
+				occlusionTextureReference;
+
+			float occlusionStrength = 1.0f;
+
+			if (material.occlusionTexture)
+			{
+				occlusionTextureReference =
+					material.occlusionTexture->texture;
+
+				occlusionStrength =
+					material.occlusionTexture->strength;
+			}
+
+			std::optional<Assets::MaterialTextureReference>
+				emissiveTextureReference;
+
+			if (material.emissiveTexture)
+			{
+				emissiveTextureReference =
+					*material.emissiveTexture;
+			}
+
+			const glm::vec3 emissiveFactor{
+				material.emissiveFactor[0],
+				material.emissiveFactor[1],
+				material.emissiveFactor[2]
+			};
+
+			GpuMaterialResource gpuMaterial{
+				.baseColor =
+					resolveTextureBinding(
+						metallicRoughness.baseColorTexture,
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Srgb),
+
+				.metallicRoughness =
+					resolveTextureBinding(
+						metallicRoughness.metallicRoughnessTexture,
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Linear),
+
+				.normal =
+					resolveTextureBinding(
+						normalTextureReference,
+						m_FallbackNormalTexture,
+						Renderer::OpenGL::TextureColorSpace::Linear),
+
+				.occlusion =
+					resolveTextureBinding(
+						occlusionTextureReference,
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Linear),
+
+				.emissive =
+					resolveTextureBinding(
+						emissiveTextureReference,
+						m_FallbackWhiteTexture,
+						Renderer::OpenGL::TextureColorSpace::Srgb),
+
+				.baseColorFactor = glm::vec4{
+					baseColorFactor[0],
+					baseColorFactor[1],
+					baseColorFactor[2],
+					baseColorFactor[3]
+				},
+
+				.emissiveFactor = emissiveFactor,
+
+				.metallicFactor =
+					metallicRoughness.metallicFactor,
+
+				.roughnessFactor =
+					metallicRoughness.roughnessFactor,
+
+				.normalScale = normalScale,
+
+				.occlusionStrength = occlusionStrength,
+
+				.alphaMode = material.alphaMode,
+
+				.alphaCutoff = material.alphaCutoff,
+
+				.doubleSided = material.doubleSided
+			};
+
+			materials.push_back(
+				gpuMaterial);
+		}
 	}
 
 	void SandboxRenderer::Render(
@@ -1813,6 +1829,57 @@ namespace ForgeSim::Sandbox
 					std::string{ exception.what() });
 			}
 		}
+	}
+
+	void SandboxRenderer::LoadObjectModel(
+		const std::filesystem::path& path)
+	{
+		if (path.empty() || path.filename().empty())
+		{
+			throw std::invalid_argument(
+				"Model path must name a file.");
+		}
+
+		std::filesystem::path replacementPath =
+			std::filesystem::weakly_canonical(
+				std::filesystem::absolute(path));
+
+		Assets::SceneAsset replacementScene =
+			Assets::LoadGltfScene(replacementPath);
+
+		const Renderer::AxisAlignedBoundingBox replacementBounds =
+			CalculateSceneBounds(replacementScene);
+
+		std::vector<GpuPrimitiveResource> replacementPrimitives;
+		std::vector<GpuTextureResource> replacementTextures;
+		std::vector<Renderer::OpenGL::Sampler> replacementSamplers;
+		std::vector<GpuMaterialResource> replacementMaterials;
+
+		UploadObjectModelResources(
+			replacementScene,
+			replacementPrimitives,
+			replacementTextures,
+			replacementSamplers,
+			replacementMaterials);
+
+		// Everything that can fail during import/upload has completed.
+		static_assert(
+			std::is_nothrow_swappable_v<Assets::SceneAsset>);
+
+		using std::swap;
+
+		m_ObjectModelPath.swap(replacementPath);
+		swap(m_ObjectSceneAsset, replacementScene);
+		m_ObjectLocalBounds = replacementBounds;
+
+		m_GpuPrimitiveResources.swap(replacementPrimitives);
+		m_GpuTextures.swap(replacementTextures);
+		m_GpuSamplers.swap(replacementSamplers);
+		m_GpuMaterialResources.swap(replacementMaterials);
+
+		// Previous submissions contain pointers into the old resources.
+		m_RenderSubmissions.clear();
+		m_BoundsVertices.clear();
 	}
 
 

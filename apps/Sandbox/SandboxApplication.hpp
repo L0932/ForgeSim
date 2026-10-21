@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorSession.hpp"
 #include "SandboxDebugUI.hpp"
 #include "SandboxRenderer.hpp"
 #include "SandboxScene.hpp"
@@ -7,6 +8,7 @@
 #include "SceneDocument.hpp"
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 
 #include <ForgeSim/Assets/MeshData.hpp>
@@ -24,6 +26,7 @@ namespace ForgeSim::Sandbox
 
 		std::optional<SceneDocument> initialScene;
 		std::optional<std::filesystem::path> projectRoot;
+		std::optional<std::filesystem::path> scenePath;
 	};
 
 	class SandboxApplication final
@@ -41,16 +44,21 @@ namespace ForgeSim::Sandbox
 
 		void Run(); // owns the outer interactive loop
 
-		void SaveScene(const std::filesystem::path& path) const;
+		void SaveScene(const std::filesystem::path& path);
+
+		[[nodiscard]] bool ShouldSaveOnExit() const noexcept
+		{
+			return m_SaveOnExit;
+		}
 
 	private:
 		Platform::GlfwWindow m_Window;
-		SandboxScene m_Scene;
 		SandboxRenderer m_Renderer;
 		SandboxDebugUI m_DebugUI;
-		std::filesystem::path m_ProjectRoot;
-		
+		std::unique_ptr<EditorSession> m_EditorSession;
+
 		bool m_LoadedScene = false;
 		bool m_RunAttempted = false;
+		bool m_SaveOnExit = true;
 	};
 }

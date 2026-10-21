@@ -110,6 +110,10 @@ namespace ForgeSim::Sandbox
 
 		void ReloadChangedShaders();
 
+		// Replace the shared model only after all replacement resources are ready.
+		void LoadObjectModel(
+			const std::filesystem::path& path);
+
 		// Temporary integration path while SandboxRenderer owns the shared object mesh.
 		// Move bounds ownership to the mesh resource when objects support distinct meshes.
 		[[nodiscard]]
@@ -186,6 +190,13 @@ namespace ForgeSim::Sandbox
 			float alphaCutoff = 0.5f;
 			bool doubleSided = false;
 		};
+
+		void UploadObjectModelResources(
+			const Assets::SceneAsset& sceneAsset,
+			std::vector<GpuPrimitiveResource>& primitives,
+			std::vector<GpuTextureResource>& textures,
+			std::vector<Renderer::OpenGL::Sampler>& samplers,
+			std::vector<GpuMaterialResource>& materials);
 
 		std::vector<RenderSubmission> m_RenderSubmissions;
 

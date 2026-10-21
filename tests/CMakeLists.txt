@@ -952,6 +952,9 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+	${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
 )
 
 target_include_directories(

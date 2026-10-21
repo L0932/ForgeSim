@@ -321,6 +321,13 @@ namespace ForgeSim::Platform
 		return glfwWindowShouldClose(m_Window);
 	}
 
+	void GlfwWindow::SetShouldClose(bool shouldClose)
+	{
+		glfwSetWindowShouldClose(
+			m_Window,
+			shouldClose ? GLFW_TRUE : GLFW_FALSE);
+	}
+
 	FramebufferExtent GlfwWindow::GetFramebufferExtent() const
 	{
 		FramebufferExtent extent;

@@ -38,6 +38,8 @@ target_sources(
 	ForgeSimSandbox
 	PRIVATE
 		Main.cpp
+		EditorSession.hpp
+        EditorSession.cpp
 		LightGizmoTransform.hpp
 		LightGizmoTransform.cpp
 		SandboxApplication.hpp
@@ -53,6 +55,8 @@ target_sources(
         SceneBounds.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
+		SceneFilePanel.hpp
+        SceneFilePanel.cpp
 		SceneLightEditing.hpp
 		SceneLightEditing.cpp
 		SceneLightValidation.hpp

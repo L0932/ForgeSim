@@ -150,9 +150,9 @@ namespace
         // does. Reject unsupported interactive scenes explicitly.
         if (document.objects.empty())
         {
-            throw std::invalid_argument(
-                "The current Sandbox renderer requires at least "
-                "one object when opening a scene document.");
+            // No object is drawn. Keep the default model resource
+            // available for the current renderer.
+            return fs::path{ "PbrMaterialGallery.glb" };
         }
 
         const std::string& reference =
@@ -228,13 +228,14 @@ int main(int argumentCount, char* arguments[])
                     .sceneFilename = modelFilename
                 },
                 .initialScene = std::move(document),
-                .projectRoot = projectRoot
+                .projectRoot = projectRoot,
+                .scenePath = commandLine.scenePath
             }
         };
 
         app.Run();
 
-        if (commandLine.saveScenePath)
+        if (commandLine.saveScenePath && app.ShouldSaveOnExit())
         {
             app.SaveScene(*commandLine.saveScenePath);
 
