@@ -360,6 +360,14 @@ Unless otherwise explicitly stated, ForgeSim and original material contained in 
 
 Third-party libraries and dependencies remain subject to their respective licenses.
 
-## License
+### Licensing
 
-No public software license has been granted at this stage.
+ForgeSim is currently under active development.
+
+Copyright © 2026 Arnold Lopez. All rights reserved.
+
+The source code is publicly available for viewing and evaluation. No general license to copy, modify, redistribute, or commercially exploit the original ForgeSim code is granted at this time.
+
+Third-party components remain subject to their respective licenses.
+
+A formal licensing model will be announced in the future.
