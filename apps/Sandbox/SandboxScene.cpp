@@ -80,8 +80,7 @@ namespace ForgeSim::Sandbox
 
 	SceneLightId SandboxScene::AddPointLight()
 	{
-		if (m_NextLightId ==
-			std::numeric_limits<SceneLightId>::max())
+		if (m_NextLightId == InvalidSceneLightId)
 		{
 			throw std::overflow_error(
 				"Scene light ID space is exhausted.");
@@ -94,15 +93,17 @@ namespace ForgeSim::Sandbox
 				.id = id
 			});
 
-		++m_NextLightId;
+		m_NextLightId =
+			id == std::numeric_limits<SceneLightId>::max()
+			? InvalidSceneLightId
+			: id + 1;
 
 		return id;
 	}
 
 	SceneLightId SandboxScene::AddSpotLight()
 	{
-		if (m_NextLightId ==
-			std::numeric_limits<SceneLightId>::max())
+		if (m_NextLightId == InvalidSceneLightId)
 		{
 			throw std::overflow_error(
 				"Scene light ID space is exhausted.");
@@ -115,7 +116,10 @@ namespace ForgeSim::Sandbox
 				.id = id
 			});
 
-		++m_NextLightId;
+		m_NextLightId =
+			id == std::numeric_limits<SceneLightId>::max()
+			? InvalidSceneLightId
+			: id + 1;
 
 		return id;
 	}

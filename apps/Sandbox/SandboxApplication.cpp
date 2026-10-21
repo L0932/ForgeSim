@@ -2,6 +2,7 @@
 #include "LightDebugLayout.hpp"
 #include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
+#include "SceneDocumentIO.hpp"
 #include "SceneTransformEditor.hpp"
 #include "SceneSelection.hpp"
 #include "SceneSelectionValidation.hpp"
@@ -12,6 +13,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -33,14 +35,62 @@ namespace ForgeSim::Sandbox
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_Scene()
+		, m_Scene(
+			spec.initialScene
+				? SandboxScene( *spec.initialScene )
+				: SandboxScene{})
 		, m_Renderer(spec.rendererSpec)
 		, m_DebugUI(m_Window)
+		, m_ProjectRoot(
+			std::filesystem::weakly_canonical(
+				std::filesystem::absolute(
+					spec.projectRoot.value_or(
+					std::filesystem::path{
+						FORGESIM_SANDBOX_ASSET_DIRECTORY
+					}.parent_path()))))
+		, m_LoadedScene(spec.initialScene.has_value())
 	{
 
-		m_Scene.MainDirectionalLight().position =
-			CalculateLightDebugLayout(
-				m_Renderer.ObjectLocalBounds()).directionalAnchor;
+		if (!m_LoadedScene)
+		{
+			SandboxObject& object = m_Scene.Objects().front();
+
+			object.name =
+				m_Renderer.ObjectModelPath().stem().string();
+
+			const std::filesystem::path relativeModelPath =
+				m_Renderer.ObjectModelPath()
+				.lexically_relative(m_ProjectRoot);
+
+			const std::u8string reference =
+				relativeModelPath.generic_u8string();
+
+			object.modelPath.assign(
+				reference.begin(),
+				reference.end());
+
+			m_Scene.MainDirectionalLight().position =
+				CalculateLightDebugLayout(
+					m_Renderer.ObjectLocalBounds()).directionalAnchor;
+		}
+
+		Core::LogInfo(
+			"Scene project root: " + m_ProjectRoot.string());
+
+		for (const SandboxObject& object : m_Scene.Objects())
+		{
+			Core::LogInfo(
+				"Scene model reference: " + object.modelPath);
+		}
+	}
+
+	void SandboxApplication::SaveScene(
+		const std::filesystem::path& path) const
+	{
+		SaveSceneDocument(
+			m_Scene.ToDocument(),
+			path,
+			m_ProjectRoot);
 	}
 
 	void SandboxApplication::Run()
@@ -55,22 +105,39 @@ namespace ForgeSim::Sandbox
 
 		m_Window.Show();
 
-		const Renderer::AxisAlignedBoundingBox& bounds =
-			m_Renderer.ObjectLocalBounds();
+		const Renderer::AxisAlignedBoundingBox bounds =
+			CalculateSceneBounds(
+				m_Scene.Objects(),
+				m_Renderer.ObjectLocalBounds());
 
 		const glm::vec3 modelCenter =
 			(bounds.minimum + bounds.maximum) * 0.5f;
 
 		const float modelRadius =
-			glm::length(bounds.maximum - bounds.minimum) * 0.5f;
+			std::max(
+				glm::length(bounds.maximum - bounds.minimum) * 0.5f,
+				0.001f);
 
 		constexpr float verticalFieldOfView =
 			glm::radians(45.0f);
 
+		const auto initialExtent =
+			m_Window.GetFramebufferExtent();
+
+		const float initialAspectRatio =
+			initialExtent.IsDrawable()
+			? static_cast<float>(initialExtent.width) /
+			static_cast<float>(initialExtent.height)
+			: 1.0f;
+
+		// Use the narrower field of view so portrait windows also fit.
+		const float framingHalfAngle =
+			std::atan(
+				std::tan(verticalFieldOfView * 0.5f) *
+				std::min(initialAspectRatio, 1.0f));
+
 		const float cameraDistance =
-			modelRadius /
-			std::tan(verticalFieldOfView * 0.5f) *
-			1.25f;
+			modelRadius / std::sin(framingHalfAngle) * 1.25f;
 
 		const float nearPlane =
 			std::max(modelRadius * 0.01f, 0.001f);
@@ -132,7 +199,7 @@ namespace ForgeSim::Sandbox
 			maximumStepsPerFrame
 		};
 
-		if (m_Scene.PointLights().empty())
+		if (!m_LoadedScene && m_Scene.PointLights().empty())
 		{
 			static_cast<void>(m_Scene.AddPointLight());
 
@@ -156,7 +223,7 @@ namespace ForgeSim::Sandbox
 			pointLight.intensity = 10.0f;
 		}
 
-		if (m_Scene.SpotLights().empty())
+		if (!m_LoadedScene && m_Scene.SpotLights().empty())
 		{
 			static_cast<void>(m_Scene.AddSpotLight());
 

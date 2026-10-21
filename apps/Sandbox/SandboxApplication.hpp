@@ -3,7 +3,10 @@
 #include "SandboxDebugUI.hpp"
 #include "SandboxRenderer.hpp"
 #include "SandboxScene.hpp"
+#include "SceneBounds.hpp"
+#include "SceneDocument.hpp"
 
+#include <filesystem>
 #include <optional>
 
 #include <ForgeSim/Assets/MeshData.hpp>
@@ -18,6 +21,9 @@ namespace ForgeSim::Sandbox
 	{
 		Platform::WindowSpecification windowSpec;
 		SandboxRendererSpecification rendererSpec;
+
+		std::optional<SceneDocument> initialScene;
+		std::optional<std::filesystem::path> projectRoot;
 	};
 
 	class SandboxApplication final
@@ -35,12 +41,16 @@ namespace ForgeSim::Sandbox
 
 		void Run(); // owns the outer interactive loop
 
+		void SaveScene(const std::filesystem::path& path) const;
+
 	private:
 		Platform::GlfwWindow m_Window;
 		SandboxScene m_Scene;
 		SandboxRenderer m_Renderer;
 		SandboxDebugUI m_DebugUI;
-
+		std::filesystem::path m_ProjectRoot;
+		
+		bool m_LoadedScene = false;
 		bool m_RunAttempted = false;
 	};
 }

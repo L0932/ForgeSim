@@ -116,6 +116,9 @@ namespace ForgeSim::Sandbox
 		const Renderer::AxisAlignedBoundingBox&
 			ObjectLocalBounds() const noexcept;
 
+		[[nodiscard]]
+		const std::filesystem::path& ObjectModelPath() const noexcept;
+
 	private:
 
 		void BindMaterial(
@@ -186,6 +189,7 @@ namespace ForgeSim::Sandbox
 
 		std::vector<RenderSubmission> m_RenderSubmissions;
 
+		std::filesystem::path m_ObjectModelPath;
 		Assets::SceneAsset m_ObjectSceneAsset;
 		Renderer::AxisAlignedBoundingBox m_ObjectLocalBounds;
 

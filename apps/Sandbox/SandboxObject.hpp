@@ -3,8 +3,7 @@
 #include "Transform.hpp"
 
 #include <cstdint>
-
-#include <ForgeSim/Renderer/Bounds.hpp>
+#include <string>
 
 namespace ForgeSim::Sandbox
 {
@@ -14,5 +13,10 @@ namespace ForgeSim::Sandbox
 	{
 		SandboxObjectId id;
 		Transform transform;
+
+		std::string name = "Object";
+
+		// Project-relative UTF-8 model reference.
+		std::string modelPath;
 	};
 }

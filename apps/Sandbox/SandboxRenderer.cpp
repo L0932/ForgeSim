@@ -262,7 +262,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] ForgeSim::Assets::SceneAsset LoadObjectScene(
+		[[nodiscard]] std::filesystem::path ResolveObjectModelPath(
 			const std::filesystem::path& filename)
 		{
 			const std::filesystem::path modelPath =
@@ -272,7 +272,8 @@ namespace ForgeSim::Sandbox
 				"models" /
 				filename;
 
-			return ForgeSim::Assets::LoadGltfScene(modelPath);
+			return std::filesystem::weakly_canonical(
+				std::filesystem::absolute(modelPath));
 		}
 
 		[[nodiscard]]
@@ -591,8 +592,10 @@ namespace ForgeSim::Sandbox
 
 	SandboxRenderer::SandboxRenderer(
 		const SandboxRendererSpecification& specification)
-		: m_ObjectSceneAsset(
-			LoadObjectScene(specification.sceneFilename))
+		: m_ObjectModelPath(
+			ResolveObjectModelPath(specification.sceneFilename))
+		, m_ObjectSceneAsset(
+			Assets::LoadGltfScene(m_ObjectModelPath))
 		, m_ObjectLocalBounds(
 			CalculateSceneBounds(
 				m_ObjectSceneAsset))
@@ -1817,6 +1820,12 @@ namespace ForgeSim::Sandbox
 		SandboxRenderer::ObjectLocalBounds() const noexcept
 	{
 		return m_ObjectLocalBounds;
+	}
+
+	const std::filesystem::path&
+		SandboxRenderer::ObjectModelPath() const noexcept
+	{
+		return m_ObjectModelPath;
 	}
 
 	void SandboxRenderer::BindMaterial(

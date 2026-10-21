@@ -865,6 +865,210 @@ add_test(
 	COMMAND ForgeSimSceneLightValidationTests
 )
 
+add_executable(
+    ForgeSimSceneDocumentValidationTests
+    SceneDocumentValidationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneDocumentValidationTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneDocumentValidationTests
+    PRIVATE
+        glm::glm-header-only
+)
+
+target_compile_features(
+    ForgeSimSceneDocumentValidationTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(
+    ForgeSimSceneDocumentValidationTests
+)
+
+set_target_properties(
+    ForgeSimSceneDocumentValidationTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneDocumentValidation
+    COMMAND ForgeSimSceneDocumentValidationTests
+)
+
+add_executable(
+    ForgeSimSceneSerializerTests
+    SceneSerializerTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneSerializerTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneSerializerTests
+    PRIVATE
+        glm::glm-header-only
+        nlohmann_json::nlohmann_json
+)
+
+target_compile_features(
+    ForgeSimSceneSerializerTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(ForgeSimSceneSerializerTests)
+
+set_target_properties(
+    ForgeSimSceneSerializerTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneSerializer
+    COMMAND ForgeSimSceneSerializerTests
+)
+
+add_executable(
+    ForgeSimSceneDocumentIOTests
+    SceneDocumentIOTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneDocumentIOTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneDocumentIOTests
+    PRIVATE
+        glm::glm-header-only
+        nlohmann_json::nlohmann_json
+)
+
+target_compile_features(
+    ForgeSimSceneDocumentIOTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(ForgeSimSceneDocumentIOTests)
+
+set_target_properties(
+    ForgeSimSceneDocumentIOTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneDocumentIO
+    COMMAND ForgeSimSceneDocumentIOTests
+)
+
+add_executable(
+    ForgeSimSandboxSceneDocumentTests
+    SandboxSceneDocumentTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+)
+
+target_include_directories(
+    ForgeSimSandboxSceneDocumentTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSandboxSceneDocumentTests
+    PRIVATE
+        glm::glm-header-only
+        nlohmann_json::nlohmann_json
+)
+
+target_compile_features(
+    ForgeSimSandboxSceneDocumentTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(
+    ForgeSimSandboxSceneDocumentTests
+)
+
+set_target_properties(
+    ForgeSimSandboxSceneDocumentTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneDocumentConversion
+    COMMAND ForgeSimSandboxSceneDocumentTests
+)
+
+add_executable(
+    ForgeSimSceneBoundsTests
+    SceneBoundsTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneBoundsTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneBoundsTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm-header-only
+)
+
+target_compile_features(
+    ForgeSimSceneBoundsTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(ForgeSimSceneBoundsTests)
+
+set_target_properties(
+    ForgeSimSceneBoundsTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneBounds
+    COMMAND ForgeSimSceneBoundsTests
+)
+
 set_target_properties(
 	ForgeSimCoreSmokeTests
 	ForgeSimFixedStepSchedulerTests
@@ -888,8 +1092,13 @@ set_target_properties(
 	ForgeSimSceneSelectionValidationTests
 	ForgeSimGizmoTransformTests
 	ForgeSimSceneEditHistoryTests
+	ForgeSimSceneSerializerTests
 	ForgeSimLightGizmoTransformTests
 	ForgeSimLightSubmissionTests
+	ForgeSimSceneDocumentValidationTests
+	ForgeSimSceneDocumentIOTests
+	ForgeSimSandboxSceneDocumentTests
+	ForgeSimSceneBoundsTests
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )

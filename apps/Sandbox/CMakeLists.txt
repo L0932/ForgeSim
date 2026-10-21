@@ -49,6 +49,8 @@ target_sources(
 		SandboxRenderer.cpp
 		SandboxScene.hpp
 		SandboxScene.cpp
+		SceneBounds.hpp
+        SceneBounds.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
 		SceneLightEditing.hpp
@@ -65,6 +67,14 @@ target_sources(
 		GizmoTransform.cpp
 		LightSubmission.hpp
 		LightSubmission.cpp
+		SandboxSceneDocument.cpp
+		SceneDocument.hpp
+		SceneDocumentIO.hpp
+        SceneDocumentIO.cpp
+		SceneDocumentValidation.hpp
+        SceneDocumentValidation.cpp
+		SceneSerializer.hpp
+        SceneSerializer.cpp
 		Transform.hpp
 		Transform.cpp
 		ViewportSelectionController.hpp
@@ -91,6 +101,7 @@ target_link_libraries(
 		ForgeSim::ImGui
 		ForgeSim::ImGuizmo
 		glm::glm-header-only
+		nlohmann_json::nlohmann_json
 )
 
 forgesim_set_project_warnings(ForgeSimSandbox)

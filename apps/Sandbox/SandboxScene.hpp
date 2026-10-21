@@ -3,15 +3,24 @@
 #include "SandboxObject.hpp"
 #include "SceneLight.hpp"
 
-#include <vector>
 #include <span>
+#include <string>
+#include <vector>
 
 namespace ForgeSim::Sandbox
 {
+	struct SceneDocument;
+
 	class SandboxScene final
 	{
 	public:
 		SandboxScene();
+
+		explicit SandboxScene(const SceneDocument& document);
+
+		[[nodiscard]] SceneDocument ToDocument() const;
+
+		[[nodiscard]] const std::string& Name() const noexcept;
 
 		[[nodiscard]] DirectionalLight&
 			MainDirectionalLight() noexcept;
@@ -48,6 +57,7 @@ namespace ForgeSim::Sandbox
 
 	private:
 		std::vector<SandboxObject> m_Objects;
+		std::string m_Name = "Untitled";
 
 		DirectionalLight m_DirectionalLight{
 			.id = 1,
