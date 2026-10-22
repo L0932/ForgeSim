@@ -46,6 +46,9 @@ namespace ForgeSim::Sandbox
 
 		void SaveScene(const std::filesystem::path& path);
 
+		[[nodiscard]]
+		std::optional<std::filesystem::path> ChooseScenePath(bool saving);
+
 		[[nodiscard]] bool ShouldSaveOnExit() const noexcept
 		{
 			return m_SaveOnExit;

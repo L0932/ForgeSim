@@ -57,9 +57,18 @@ namespace ForgeSim::Sandbox
     {
         SceneFileRequest request;
 
-        const bool savingAllowed =
+        const bool actionsAllowed =
             !context.editingActive &&
-            !context.navigationActive;
+            !context.navigationActive &&
+            !context.confirmationPending;
+
+        const SceneFileAction menuAction =
+            std::exchange(m_MenuAction, SceneFileAction::None);
+
+        if (actionsAllowed)
+        {
+            request.action = menuAction;
+        }
 
         if (ImGui::Begin("Scene File"))
         {
@@ -77,7 +86,7 @@ namespace ForgeSim::Sandbox
             {
                 const std::string path{ context.scenePath };
                 ImGui::TextWrapped("%s", path.c_str());
-            }          
+            }
 
             if (!context.message.empty())
             {
@@ -88,42 +97,9 @@ namespace ForgeSim::Sandbox
 
         ImGui::End();
 
-        const bool actionsAllowed =
-            savingAllowed && !context.confirmationPending;
-
-        const SceneFileAction menuAction =
-            std::exchange(m_MenuAction, SceneFileAction::None);
-
-        bool openRequested = false;
-        bool saveAsRequested = false;
-
-        if (actionsAllowed)
-        {
-            switch (menuAction)
-            {
-            case SceneFileAction::New:
-            case SceneFileAction::Save:
-                request.action = menuAction;
-                break;
-
-            case SceneFileAction::Open:
-                openRequested = true;
-                break;
-
-            case SceneFileAction::SaveAs:
-                saveAsRequested = true;
-                break;
-
-            default:
-                break;
-            }
-        }
-
         const ImGuiIO& io = ImGui::GetIO();
 
         if (request.action == SceneFileAction::None &&
-            !openRequested &&
-            !saveAsRequested &&
             actionsAllowed &&
             !ImGui::IsPopupOpen(
                 nullptr,
@@ -136,98 +112,7 @@ namespace ForgeSim::Sandbox
             !io.KeyShift &&
             ImGui::IsKeyPressed(ImGuiKey_S, false))
         {
-            if (context.scenePath.empty())
-            {
-                saveAsRequested = true;
-            }
-            else
-            {
-                request.action = SceneFileAction::Save;
-            }
-        }
-
-        constexpr const char* openPopup =
-            "Open Scene###SceneOpenDialog";
-
-        constexpr const char* savePopup =
-            "Save Scene As###SceneSaveAsDialog";
-
-        if (openRequested)
-        {
-            ImGui::OpenPopup(openPopup);
-        }
-
-        if (saveAsRequested)
-        {
-            ImGui::OpenPopup(savePopup);
-        }
-
-        if (ImGui::BeginPopupModal(
-            openPopup,
-            nullptr,
-            ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::InputText(
-                "Scene path",
-                m_OpenPath,
-                sizeof(m_OpenPath));
-
-            ImGui::TextDisabled(
-                "Relative paths use the project's scenes folder.");
-
-            ImGui::BeginDisabled(
-                !actionsAllowed || m_OpenPath[0] == '\0');
-
-            if (ImGui::Button("Open"))
-            {
-                request.action = SceneFileAction::Open;
-                request.path = m_OpenPath;
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-
-            if (ImGui::Button("Cancel"))
-            {
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndPopup();
-        }
-
-        if (ImGui::BeginPopupModal(
-            savePopup,
-            nullptr,
-            ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::InputText(
-                "Save path",
-                m_SaveAsPath,
-                sizeof(m_SaveAsPath));
-
-            ImGui::TextDisabled(
-                "Relative paths use the project's scenes folder.");
-
-            ImGui::BeginDisabled(
-                !actionsAllowed || m_SaveAsPath[0] == '\0');
-
-            if (ImGui::Button("Save"))
-            {
-                request.action = SceneFileAction::SaveAs;
-                request.path = m_SaveAsPath;
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-
-            if (ImGui::Button("Cancel"))
-            {
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndPopup();
+            request.action = SceneFileAction::Save;
         }
 
         constexpr const char* popupName =
@@ -257,17 +142,10 @@ namespace ForgeSim::Sandbox
 
             ImGui::TextUnformatted(prompt.c_str());
 
-            const bool needsPath = context.scenePath.empty();
-
-            if (needsPath)
+            if (context.scenePath.empty())
             {
-                ImGui::InputText(
-                    "Save path",
-                    m_SaveAsPath,
-                    sizeof(m_SaveAsPath));
-
                 ImGui::TextDisabled(
-                    "Relative paths use the project's scenes folder.");
+                    "Save and Continue will open a Save dialog.");
             }
             else
             {
@@ -284,23 +162,14 @@ namespace ForgeSim::Sandbox
             ImGui::Separator();
 
             ImGui::BeginDisabled(
-                !savingAllowed ||
-                (needsPath && m_SaveAsPath[0] == '\0'));
+                context.editingActive || context.navigationActive);
 
             if (ImGui::Button("Save and Continue"))
             {
                 request.action = SceneFileAction::SaveAndContinue;
-
-                if (needsPath)
-                {
-                    request.path = m_SaveAsPath;
-                }
-
-                // Keep the popup open until saving succeeds.
             }
 
             ImGui::EndDisabled();
-
             ImGui::SameLine();
 
             if (ImGui::Button("Discard"))

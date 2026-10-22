@@ -9,15 +9,15 @@ add_library(
 target_sources(
     ForgeSimPlatformGLFW
     PRIVATE
+        src/FileDialogs.cpp
         src/GlfwWindow.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
         FILES
+            include/ForgeSim/Platform/FileDialogs.hpp
             include/ForgeSim/Platform/GlfwWindow.hpp
 )
-
-#include <iosteam>
 
 target_link_libraries(
     ForgeSimPlatformGLFW
@@ -28,6 +28,16 @@ target_link_libraries(
         ForgeSim::Glad
         glfw
 )
+
+if(WIN32)
+    target_link_libraries(
+        ForgeSimPlatformGLFW
+        PRIVATE
+            ole32
+            shell32
+            uuid
+    )
+endif()
 
 target_compile_features(
     ForgeSimPlatformGLFW 

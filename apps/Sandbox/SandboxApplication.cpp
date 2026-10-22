@@ -33,6 +33,7 @@
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/Timer.hpp>
+#include <ForgeSim/Platform/FileDialogs.hpp>
 #include <ForgeSim/Platform/InputState.hpp>
 #include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
@@ -102,13 +103,6 @@ namespace ForgeSim::Sandbox
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
-	}
-
-	void SandboxApplication::SaveScene(
-		const std::filesystem::path& path)
-	{
-		m_EditorSession->SaveAs(
-			std::filesystem::absolute(path));
 	}
 
 	void SandboxApplication::Run()
@@ -752,14 +746,15 @@ namespace ForgeSim::Sandbox
 							break;
 						}
 
-						const std::u8string utf8Path{
-							fileRequest.path.begin(),
-							fileRequest.path.end()
-						};
+						const auto path = ChooseScenePath(false);
+						static_cast<void>(timer.Restart());
 
-						pendingOpenPath =
-							std::filesystem::path{ utf8Path };
+						if (!path)
+						{
+							break;
+						}
 
+						pendingOpenPath = *path;
 						sceneFileMessage.clear();
 						pendingAction = PendingSceneAction::Open;
 
@@ -772,6 +767,7 @@ namespace ForgeSim::Sandbox
 					}
 
 					case SceneFileAction::Save:
+					{
 						if (transformEditor.IsActive() || changePending)
 						{
 							break;
@@ -780,14 +776,23 @@ namespace ForgeSim::Sandbox
 						if (m_EditorSession->ScenePath())
 						{
 							m_EditorSession->Save();
-							sceneFileMessage = "Scene saved.";
 						}
 						else
 						{
-							sceneFileMessage =
-								"Enter a Save As path, then click Save As.";
+							const auto path = ChooseScenePath(true);
+							static_cast<void>(timer.Restart());
+
+							if (!path)
+							{
+								break;
+							}
+
+							m_EditorSession->SaveAs(*path);
 						}
+
+						sceneFileMessage = "Scene saved.";
 						break;
+					}
 
 					case SceneFileAction::SaveAs:
 					{
@@ -796,19 +801,21 @@ namespace ForgeSim::Sandbox
 							break;
 						}
 
-						const std::u8string utf8Path{
-							fileRequest.path.begin(),
-							fileRequest.path.end()
-						};
+						const auto path = ChooseScenePath(true);
+						static_cast<void>(timer.Restart());
 
-						m_EditorSession->SaveAs(
-							std::filesystem::path{ utf8Path });
+						if (!path)
+						{
+							break;
+						}
 
+						m_EditorSession->SaveAs(*path);
 						sceneFileMessage = "Scene saved.";
 						break;
 					}
 
 					case SceneFileAction::SaveAndContinue:
+					{
 						if (pendingAction == PendingSceneAction::None)
 						{
 							break;
@@ -827,17 +834,22 @@ namespace ForgeSim::Sandbox
 						}
 						else
 						{
-							const std::u8string utf8Path{
-								fileRequest.path.begin(),
-								fileRequest.path.end()
-							};
+							const auto path = ChooseScenePath(true);
+							static_cast<void>(timer.Restart());
 
-							m_EditorSession->SaveAs(
-								std::filesystem::path{ utf8Path });
+							if (!path)
+							{
+								// Canceling the native picker leaves the
+								// unsaved-changes confirmation pending.
+								break;
+							}
+
+							m_EditorSession->SaveAs(*path);
 						}
 
 						completePendingAction = true;
 						break;
+					}
 
 					case SceneFileAction::DiscardAndContinue:
 						if (pendingAction == PendingSceneAction::Close)
@@ -939,5 +951,42 @@ namespace ForgeSim::Sandbox
 
 			m_Window.SwapBuffers();
 		}
+	}
+
+	void SandboxApplication::SaveScene(
+		const std::filesystem::path& path)
+	{
+		m_EditorSession->SaveAs(
+			std::filesystem::absolute(path));
+	}
+
+	std::optional<std::filesystem::path>
+		SandboxApplication::ChooseScenePath(bool saving)
+	{
+		Platform::FileDialogSpecification specification;
+
+		specification.defaultDirectory =
+			m_EditorSession->ProjectRoot() / "scenes";
+
+		specification.suggestedFileName =
+			m_EditorSession->ScenePath()
+			? m_EditorSession->ScenePath()->filename()
+			: std::filesystem::path{ "Untitled.scene.json" };
+
+		specification.title =
+			saving ? L"Save ForgeSim Scene" : L"Open ForgeSim Scene";
+
+		specification.filterName = L"ForgeSim scene files";
+		specification.filterPattern = L"*.scene.json;*.json";
+		specification.defaultExtension = L"scene.json";
+
+		m_Window.SetCursorMode(Platform::CursorMode::Normal);
+
+		return Platform::ShowFileDialog(
+			m_Window,
+			saving
+			? Platform::FileDialogMode::Save
+			: Platform::FileDialogMode::Open,
+			specification);
 	}
 }
