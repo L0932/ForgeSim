@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorWorkspace.hpp"
 #include "SceneLight.hpp"
 #include "SceneLightValidation.hpp"
 #include "SceneSelection.hpp"
@@ -115,7 +116,6 @@ namespace ForgeSim::Sandbox
 		bool m_ShowLights = true;
 		bool m_ShowObjectBounds = false;
 		bool m_RuntimeDiagnosticsEnabled = false;
-
 		bool m_SelectionHighlightEnabled = true;
 
 		glm::vec3 m_SelectionHighlightColor{
@@ -127,5 +127,7 @@ namespace ForgeSim::Sandbox
 		float m_SelectionHighlightStrength = 0.20f;
 
 		TransformEditorUIState m_TransformEditorState;
+
+		EditorWorkspace m_Workspace;
 	};
 }

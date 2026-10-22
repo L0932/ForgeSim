@@ -40,6 +40,8 @@ target_sources(
 		Main.cpp
 		EditorSession.hpp
         EditorSession.cpp
+		EditorWorkspace.hpp
+		EditorWorkspace.cpp
 		LightGizmoTransform.hpp
 		LightGizmoTransform.cpp
 		SandboxApplication.hpp

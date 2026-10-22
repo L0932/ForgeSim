@@ -33,6 +33,8 @@ namespace ForgeSim::Sandbox
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+		m_Workspace.Initialize();
+
 		ImGui::StyleColorsDark();
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
@@ -411,10 +413,10 @@ namespace ForgeSim::Sandbox
 
 	void SandboxDebugUI::BeginWorkspace()
 	{
-		ImGui::DockSpaceOverViewport(
-			0,
-			ImGui::GetMainViewport(),
-			ImGuiDockNodeFlags_PassthruCentralNode);
+		if (m_Workspace.Draw())
+		{
+			m_IsVisible = true;
+		}
 	}
 
 	glm::vec3 SandboxDebugUI::BackgroundColor()
