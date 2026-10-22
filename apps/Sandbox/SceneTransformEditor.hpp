@@ -16,6 +16,10 @@ namespace ForgeSim::Sandbox
 		const glm::mat4& view;
 		const glm::mat4& projection;
 
+		glm::vec2 viewportPosition{ 0.0f };
+		glm::vec2 viewportSize{ 0.0f };
+		bool viewportHovered = false;
+
 		GizmoOperation operation = GizmoOperation::Translate;
 		GizmoSpace space = GizmoSpace::World;
 

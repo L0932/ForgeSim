@@ -9,6 +9,7 @@
 namespace ForgeSim::Renderer::OpenGL
 {
 	class HdrRenderTarget;
+	class ColorRenderTarget;
 
 	class ToneMappingRenderer final
 	{
@@ -25,7 +26,16 @@ namespace ForgeSim::Renderer::OpenGL
 			std::string_view vertexShaderSource,
 			std::string_view fragmentShaderSource);
 
+		void RenderToTarget(
+			const HdrRenderTarget& source,
+			ColorRenderTarget& destination,
+			float exposure);
+
 	private:
+		void Draw(
+			const HdrRenderTarget& source,
+			float exposure);
+
 		ShaderProgram m_ShaderProgram;
 		Sampler m_Sampler;
 		VertexArray m_VertexArray;

@@ -18,7 +18,7 @@ namespace ForgeSim::Sandbox
 {
 	void ViewportSelectionController::Update(
 		const Platform::InputState& input,
-		Platform::WindowExtent windowExtent,
+		glm::vec2 viewportCursorPixels,
 		Platform::FramebufferExtent framebufferExtent,
 		const glm::mat4& view,
 		const glm::mat4& projection,
@@ -51,29 +51,23 @@ namespace ForgeSim::Sandbox
 			return;
 		}
 
-		if (!windowExtent.IsValid() ||
-			!framebufferExtent.IsDrawable())
+		if (!framebufferExtent.IsDrawable() ||
+			!std::isfinite(viewportCursorPixels.x) ||
+			!std::isfinite(viewportCursorPixels.y) ||
+			viewportCursorPixels.x < 0.0f ||
+			viewportCursorPixels.y < 0.0f ||
+			viewportCursorPixels.x >=
+			static_cast<float>(framebufferExtent.width) ||
+			viewportCursorPixels.y >=
+			static_cast<float>(framebufferExtent.height))
 		{
 			return;
 		}
 
-		const auto cursorPosition =
-			input.GetCursorPosition();
-
-		const double framebufferCursorX =
-			cursorPosition.x *
-			static_cast<double>(framebufferExtent.width) /
-			static_cast<double>(windowExtent.width);
-
-		const double framebufferCursorY =
-			cursorPosition.y *
-			static_cast<double>(framebufferExtent.height) /
-			static_cast<double>(windowExtent.height);
-
 		const Renderer::Ray pickingRay =
 			Renderer::CreateViewportRay(
-				framebufferCursorX,
-				framebufferCursorY,
+				static_cast<double>(viewportCursorPixels.x),
+				static_cast<double>(viewportCursorPixels.y),
 				framebufferExtent.width,
 				framebufferExtent.height,
 				view,

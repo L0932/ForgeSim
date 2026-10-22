@@ -11,6 +11,7 @@ target_sources(
 		ForgeSimRendererOpenGL
 	PRIVATE
 		src/Buffer.cpp
+		src/ColorRenderTarget.cpp
 		src/DebugLineRenderer.cpp
 		src/EnvironmentMapProcessor.cpp
 		src/GpuMesh.cpp
@@ -27,6 +28,7 @@ target_sources(
 		BASE_DIRS include
 		FILES
 			include/ForgeSim/Renderer/OpenGL/Buffer.hpp
+			include/ForgeSim/Renderer/OpenGL/ColorRenderTarget.hpp
 			include/ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/EnvironmentMapProcessor.hpp
 			include/ForgeSim/Renderer/OpenGL/GpuMesh.hpp

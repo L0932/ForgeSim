@@ -8,6 +8,7 @@
 #include "SceneHierarchyPanel.hpp"
 #include "SceneInspectorPanel.hpp"
 #include "SceneTransformEditor.hpp"
+#include "SceneViewportPanel.hpp"
 #include "SceneSelection.hpp"
 #include "SceneSelectionValidation.hpp"
 #include "TransformEditorUIState.hpp"
@@ -253,6 +254,7 @@ namespace ForgeSim::Sandbox
 		SceneFilePanel sceneFilePanel;
 		SceneHierarchyPanel hierarchyPanel;
 		SceneInspectorPanel inspectorPanel;
+		SceneViewportPanel sceneViewportPanel;
 		std::string sceneFileMessage;
 
 		enum class PendingSceneAction
@@ -273,7 +275,8 @@ namespace ForgeSim::Sandbox
 			std::is_nothrow_move_assignable_v<EditorSession>);
 
 		bool exitRequested = false;
-		bool cameraFramingRequested = false;
+		bool cameraFramingRequested = true;
+		bool viewportNavigationActive = false;
 
 		while (!exitRequested)
 		{
@@ -363,47 +366,6 @@ namespace ForgeSim::Sandbox
 				continue;
 			}
 
-			if (cameraFramingRequested)
-			{
-				cameraFramingRequested = false;
-
-				try
-				{
-					const Renderer::AxisAlignedBoundingBox framingBounds =
-						scene.Objects().empty()
-						? emptySceneBounds
-						: CalculateSceneBounds(
-							scene.Objects(),
-							m_Renderer.ObjectLocalBounds());
-
-					const float framingAspectRatio =
-						static_cast<float>(framebufferExtent.width) /
-						static_cast<float>(framebufferExtent.height);
-
-					SceneCameraFraming framing =
-						CreateSceneCameraFraming(
-							framingBounds,
-							framingAspectRatio);
-
-					camera = std::move(framing.camera);
-					cameraController = std::move(framing.controller);
-
-					m_Window.SetCursorMode(
-						Platform::CursorMode::Normal);
-
-					// Exclude synchronous scene/model loading from navigation time.
-					static_cast<void>(timer.Restart());
-				}
-				catch (const std::exception& exception)
-				{
-					sceneFileMessage =
-						"Scene changed, but camera framing failed: " +
-						std::string{ exception.what() };
-
-					Core::LogError(sceneFileMessage);
-				}
-			}
-
 			m_DebugUI.BeginFrame();
 			transformEditor.BeginFrame();
 
@@ -486,11 +448,34 @@ namespace ForgeSim::Sandbox
 							Platform::MouseButton::Right).held
 				});
 
-			const bool uiWantsMouse =
-				m_DebugUI.WantsMouseCapture();
+			const auto windowExtent = m_Window.GetWindowExtent();
 
-			const bool uiWantsKeyboard =
-				m_DebugUI.WantsKeyboardCapture();
+			const glm::vec2 framebufferScale{
+				windowExtent.IsValid()
+					? static_cast<float>(framebufferExtent.width) /
+						static_cast<float>(windowExtent.width)
+					: 1.0f,
+
+				windowExtent.IsValid()
+					? static_cast<float>(framebufferExtent.height) /
+						static_cast<float>(windowExtent.height)
+					: 1.0f
+			};
+
+			const SceneViewportState& viewport =
+				sceneViewportPanel.Begin(framebufferScale);
+
+			if (viewport.IsDrawable())
+			{
+				m_Renderer.PrepareSceneTexture(
+					static_cast<std::uint32_t>(
+						viewport.framebufferExtent.width),
+					static_cast<std::uint32_t>(
+						viewport.framebufferExtent.height));
+
+				sceneViewportPanel.DrawImage(
+					m_Renderer.SceneColorTexture());
+			}
 
 			const bool leftMouseDown =
 				input.GetMouseButtonState(
@@ -500,26 +485,80 @@ namespace ForgeSim::Sandbox
 				input.GetMouseButtonState(
 					Platform::MouseButton::Right).held;
 
-			if (const auto requestedCursorMode =
-				cameraController.RequestedCursorMode(input))
-			{
-				const bool isReleaseRequest =
-					*requestedCursorMode ==
-					ForgeSim::Platform::CursorMode::Normal;
+			const bool previouslyNavigating = viewportNavigationActive;
 
-				if (isReleaseRequest ||
-					(!changePending&&
-						!uiWantsMouse &&
-						!transformEditor.IsActive() &&
-						!leftMouseDown))
-				{
-					m_Window.SetCursorMode(requestedCursorMode.value());
-				}
+			if (!rightMouseDown ||
+				changePending ||
+				!viewport.IsDrawable())
+			{
+				viewportNavigationActive = false;
+			}
+			else if (
+				input.GetMouseButtonState(
+					Platform::MouseButton::Right).pressed &&
+				viewport.hovered &&
+				!transformEditor.IsActive() &&
+				!leftMouseDown)
+			{
+				viewportNavigationActive = true;
+			}
+
+			if (viewportNavigationActive != previouslyNavigating)
+			{
+				m_Window.SetCursorMode(
+					viewportNavigationActive
+					? Platform::CursorMode::Captured
+					: Platform::CursorMode::Normal);
 			}
 
 			const float aspectRatio =
-				static_cast<float>(framebufferExtent.width) /
-				static_cast<float>(framebufferExtent.height);
+				viewport.IsDrawable()
+				? static_cast<float>(
+					viewport.framebufferExtent.width) /
+				static_cast<float>(
+					viewport.framebufferExtent.height)
+				: 1.0f;
+
+			if (cameraFramingRequested && viewport.IsDrawable())
+			{
+				cameraFramingRequested = false;
+
+				try
+				{
+					const Renderer::AxisAlignedBoundingBox framingBounds =
+						scene.Objects().empty()
+						? emptySceneBounds
+						: CalculateSceneBounds(
+							scene.Objects(),
+							m_Renderer.ObjectLocalBounds());
+
+					const float framingAspectRatio = aspectRatio;
+
+					SceneCameraFraming framing =
+						CreateSceneCameraFraming(
+							framingBounds,
+							framingAspectRatio);
+
+					camera = std::move(framing.camera);
+					cameraController = std::move(framing.controller);
+
+					viewportNavigationActive = false;
+
+					m_Window.SetCursorMode(
+						Platform::CursorMode::Normal);
+
+					// Exclude synchronous scene/model loading from navigation time.
+					static_cast<void>(timer.Restart());
+				}
+				catch (const std::exception& exception)
+				{
+					sceneFileMessage =
+						"Scene changed, but camera framing failed: " +
+						std::string{ exception.what() };
+
+					Core::LogError(sceneFileMessage);
+				}
+			}
 
 			const auto frameDelta = timer.Restart();
 
@@ -578,12 +617,10 @@ namespace ForgeSim::Sandbox
 					" ms");
 			}
 
-			if (rightMouseDown &&
-				!changePending&&
-				!uiWantsMouse &&
-				!uiWantsKeyboard &&
+			if (viewportNavigationActive &&
+				!changePending &&
 				!transformEditor.IsActive() &&
-				!leftMouseDown)				
+				!leftMouseDown)
 			{
 				cameraController.Update(
 					camera,
@@ -607,6 +644,9 @@ namespace ForgeSim::Sandbox
 					.selection = selection,
 					.view = view,
 					.projection = projection,
+					.viewportPosition = viewport.position,
+					.viewportSize = viewport.size,
+					.viewportHovered = viewport.hovered && !changePending,
 					.operation = editorUI.operation,
 					.space = editorUI.space,
 					.showLights = m_DebugUI.ShowLights(),
@@ -623,14 +663,15 @@ namespace ForgeSim::Sandbox
 			}
 
 			const bool pickingSuppressed =
-				uiWantsMouse ||
-				changePending||
+				!viewport.hovered ||
+				changePending ||
+				viewportNavigationActive ||
 				transformEditor.SuppressesPicking();
 
 			selectionController.Update(
 				input,
-				m_Window.GetWindowExtent(),
-				framebufferExtent,
+				viewport.cursorPixels,
+				viewport.framebufferExtent,
 				view,
 				projection,
 				m_Renderer.ObjectLocalBounds(),
@@ -642,11 +683,11 @@ namespace ForgeSim::Sandbox
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =
 					static_cast<std::uint32_t>(
-						framebufferExtent.width),
+						viewport.framebufferExtent.width),
 
 				.framebufferHeight =
 					static_cast<std::uint32_t>(
-						framebufferExtent.height),
+						viewport.framebufferExtent.height),
 
 				.backgroundColor =
 					m_DebugUI.BackgroundColor(),
@@ -679,7 +720,9 @@ namespace ForgeSim::Sandbox
 
 					.strength =
 						m_DebugUI.SelectionHighlightStrength()
-					}
+					},
+
+				.renderToTexture = true
 			};
 
 			m_Renderer.Render(
@@ -694,6 +737,8 @@ namespace ForgeSim::Sandbox
 					.spotLights = scene.SpotLights()
 				},
 				renderSettings);
+
+			sceneViewportPanel.End();
 
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
@@ -946,6 +991,10 @@ namespace ForgeSim::Sandbox
 					Core::LogError(sceneFileMessage);
 				}
 			}
+
+			m_Renderer.ClearWindow(
+				static_cast<std::uint32_t>(framebufferExtent.width),
+				static_cast<std::uint32_t>(framebufferExtent.height));
 
 			m_DebugUI.EndFrame();
 

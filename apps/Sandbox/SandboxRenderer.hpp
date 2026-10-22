@@ -20,6 +20,7 @@
 #include <ForgeSim/Renderer/DebugGeometry.hpp>
 #include <ForgeSim/Renderer/Bounds.hpp>
 #include <ForgeSim/Renderer/OpenGL/Buffer.hpp>
+#include <ForgeSim/Renderer/OpenGL/ColorRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/EnvironmentMapProcessor.hpp>
 #include <ForgeSim/Renderer/OpenGL/GpuMesh.hpp>
@@ -65,6 +66,7 @@ namespace ForgeSim::Sandbox
 		std::optional<SceneLightId> selectedLightId;
 
 		SelectionHighlightSettings selectionHighlight;
+		bool renderToTexture = false;
 	};
 
 	struct SandboxRendererSpecification
@@ -115,6 +117,10 @@ namespace ForgeSim::Sandbox
 		void LoadObjectModel(
 			const std::filesystem::path& path);
 
+		// Returns zero until a frame has been rendered to the color target.
+		[[nodiscard]]
+		unsigned int SceneColorTexture() const noexcept;
+
 		// Temporary integration path while SandboxRenderer owns the shared object mesh.
 		// Move bounds ownership to the mesh resource when objects support distinct meshes.
 		[[nodiscard]]
@@ -123,6 +129,14 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]]
 		const std::filesystem::path& ObjectModelPath() const noexcept;
+
+		void PrepareSceneTexture(
+			std::uint32_t width,
+			std::uint32_t height);
+
+		void ClearWindow(
+			std::uint32_t width,
+			std::uint32_t height);
 
 	private:
 
@@ -261,6 +275,9 @@ namespace ForgeSim::Sandbox
 
 		std::optional<Renderer::OpenGL::HdrRenderTarget>
 			m_HdrRenderTarget;
+
+		std::optional<Renderer::OpenGL::ColorRenderTarget>
+			m_ColorRenderTarget;
 
 		ShaderFileMonitor m_ToneMappingShaderMonitor;
 

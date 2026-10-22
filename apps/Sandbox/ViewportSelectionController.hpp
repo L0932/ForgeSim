@@ -1,13 +1,14 @@
 #pragma once 
 
 #pragma once
-
+#include "LightPicking.hpp"
 #include "SandboxObject.hpp"
 #include "SceneSelection.hpp"
 
 #include <span>
 
 #include <glm/mat4x4.hpp>
+#include <glm/vec2.hpp>
 
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Platform/InputState.hpp>
@@ -20,7 +21,7 @@ namespace ForgeSim::Sandbox
 	public:
 		void Update(
 			const Platform::InputState& input,
-			Platform::WindowExtent windowExtent,
+			glm::vec2 viewportCursorPixels,
 			Platform::FramebufferExtent framebufferExtent,
 			const glm::mat4& view,
 			const glm::mat4& projection,

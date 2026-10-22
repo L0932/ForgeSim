@@ -1,3 +1,4 @@
+#include <ForgeSim/Renderer/OpenGL/ColorRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp>
 
 #include <array>
@@ -68,6 +69,32 @@ namespace ForgeSim::Renderer::OpenGL
 			static_cast<GLsizei>(source.Width()),
 			static_cast<GLsizei>(source.Height()));
 
+		Draw(source, exposure);
+	}
+
+	void ToneMappingRenderer::RenderToTarget(
+		const HdrRenderTarget& source,
+		ColorRenderTarget& destination,
+		float exposure)
+	{
+		destination.Resize(source.Width(), source.Height());
+		destination.Bind();
+
+		glViewport(
+			0,
+			0,
+			static_cast<GLsizei>(destination.Width()),
+			static_cast<GLsizei>(destination.Height()));
+
+		Draw(source, exposure);
+
+		HdrRenderTarget::BindDefault();
+	}
+
+	void ToneMappingRenderer::Draw(
+		const HdrRenderTarget& source,
+		float exposure)
+	{
 		const GLboolean depthTestWasEnabled =
 			glIsEnabled(GL_DEPTH_TEST);
 
@@ -76,14 +103,11 @@ namespace ForgeSim::Renderer::OpenGL
 
 		glDisable(GL_DEPTH_TEST);
 
-		// The shader performs the linear-to-sRGB conversion.
+		// The tone-mapping shader already converts linear color to sRGB.
 		glDisable(GL_FRAMEBUFFER_SRGB);
 
-		source.BindColorTexture(
-			hdrTextureUnit);
-
-		m_Sampler.Bind(
-			hdrTextureUnit);
+		source.BindColorTexture(hdrTextureUnit);
+		m_Sampler.Bind(hdrTextureUnit);
 
 		m_ShaderProgram.Bind();
 
@@ -97,10 +121,7 @@ namespace ForgeSim::Renderer::OpenGL
 
 		m_VertexArray.Bind();
 
-		glDrawArrays(
-			GL_TRIANGLES,
-			0,
-			3);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 
 		if (framebufferSrgbWasEnabled == GL_TRUE)
 		{

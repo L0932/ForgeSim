@@ -279,18 +279,20 @@ namespace ForgeSim::Sandbox
 		const SceneTransformEditorContext& context,
 		bool operationSupported)
 	{
-		return m_Gizmo.DrawInMainViewport(
+		return m_Gizmo.Draw(
 			ViewportTransformGizmoContext{
 				.view = context.view,
 				.projection = context.projection,
 				.transform = matrix,
+				.viewportPosition = context.viewportPosition,
+				.viewportSize = context.viewportSize,
 				.operation = context.operation,
 				.space = context.space,
 				.enabled =
 					operationSupported &&
-					(m_WasActive || !context.navigationActive)
-			},
-			m_WasActive);
+					!context.navigationActive &&
+					(m_WasActive || context.viewportHovered)
+			});
 	}
 
 	void SceneTransformEditor::Update(

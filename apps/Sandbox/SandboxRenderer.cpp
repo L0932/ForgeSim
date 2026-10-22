@@ -1153,6 +1153,11 @@ namespace ForgeSim::Sandbox
 		const SceneLightingView& lighting,
 		const SandboxRenderSettings& settings)
 	{
+		if (settings.framebufferWidth == 0 ||
+			settings.framebufferHeight == 0)
+		{
+			return;
+		}
 
 		const DirectionalLight& light =
 			lighting.directionalLight;
@@ -1715,9 +1720,34 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		m_ToneMappingRenderer.RenderToDefaultFramebuffer(
-			*m_HdrRenderTarget,
-			settings.exposure);
+		if (settings.renderToTexture)
+		{
+			if (!m_ColorRenderTarget)
+			{
+				m_ColorRenderTarget.emplace(
+					settings.framebufferWidth,
+					settings.framebufferHeight);
+			}
+
+			// RenderToTarget also resizes the destination when necessary.
+			m_ToneMappingRenderer.RenderToTarget(
+				*m_HdrRenderTarget,
+				*m_ColorRenderTarget,
+				settings.exposure);
+		}
+		else
+		{
+			m_ToneMappingRenderer.RenderToDefaultFramebuffer(
+				*m_HdrRenderTarget,
+				settings.exposure);
+		}
+	}
+
+	unsigned int SandboxRenderer::SceneColorTexture() const noexcept
+	{
+		return m_ColorRenderTarget
+			? m_ColorRenderTarget->ColorTextureHandle()
+			: 0;
 	}
 
 	void SandboxRenderer::ReloadChangedShaders()
@@ -1894,6 +1924,41 @@ namespace ForgeSim::Sandbox
 		SandboxRenderer::ObjectModelPath() const noexcept
 	{
 		return m_ObjectModelPath;
+	}
+
+	void SandboxRenderer::PrepareSceneTexture(
+		std::uint32_t width,
+		std::uint32_t height)
+	{
+		if (width == 0 || height == 0)
+		{
+			return;
+		}
+
+		if (!m_ColorRenderTarget)
+		{
+			m_ColorRenderTarget.emplace(width, height);
+		}
+		else
+		{
+			m_ColorRenderTarget->Resize(width, height);
+		}
+	}
+
+	void SandboxRenderer::ClearWindow(
+		std::uint32_t width,
+		std::uint32_t height)
+	{
+		Renderer::OpenGL::HdrRenderTarget::BindDefault();
+
+		glViewport(
+			0,
+			0,
+			static_cast<GLsizei>(width),
+			static_cast<GLsizei>(height));
+
+		glClearColor(0.025f, 0.025f, 0.025f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 	}
 
 	void SandboxRenderer::BindMaterial(

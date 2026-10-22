@@ -80,7 +80,7 @@ namespace ForgeSim::Sandbox
 
 		// Draw over the scene, beneath ordinary ImGui windows.
 		ImGuizmo::SetDrawlist(
-			ImGui::GetBackgroundDrawList());
+			ImGui::GetWindowDrawList());
 
 		ImGuizmo::SetRect(
 			context.viewportPosition.x,
