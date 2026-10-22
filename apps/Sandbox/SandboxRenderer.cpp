@@ -1607,7 +1607,8 @@ namespace ForgeSim::Sandbox
 				};
 
 			const LightDebugLayout layout =
-				CalculateLightDebugLayout(m_ObjectLocalBounds);
+				CalculateLightDebugLayout(
+					settings.lightDebugBounds.value_or(m_ObjectLocalBounds));
 
 			const glm::vec3 arrowColor =
 				debugLightColor(

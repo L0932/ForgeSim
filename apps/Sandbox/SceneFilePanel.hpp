@@ -39,11 +39,15 @@ namespace ForgeSim::Sandbox
     class SceneFilePanel final
     {
     public:
+        void DrawMenu(bool actionsAllowed, bool hasScenePath);
+
         [[nodiscard]] SceneFileRequest Draw(
             const SceneFilePanelContext& context);
 
     private:
         char m_SaveAsPath[1024]{};
         char m_OpenPath[1024]{};
+
+        SceneFileAction m_MenuAction = SceneFileAction::None;
     };
 }

@@ -61,6 +61,7 @@ namespace ForgeSim::Sandbox
 		bool showObjectBounds = false;
 		bool showLights = true;
 
+		std::optional<Renderer::AxisAlignedBoundingBox> lightDebugBounds;
 		std::optional<SceneLightId> selectedLightId;
 
 		SelectionHighlightSettings selectionHighlight;

@@ -41,18 +41,10 @@ namespace ForgeSim::Sandbox
 
 	struct SandboxDebugUIContext
 	{
-		SandboxScene& scene;
-		SceneSelection& selection;
-
 		const Core::RuntimeDiagnosticsSnapshot*
 			diagnosticsSnapshot = nullptr;
-		
-		const Renderer::PerspectiveCamera& camera;
-		const Renderer::AxisAlignedBoundingBox& modelBounds;
-		DirectionalLight& directionalLight;
 
-		std::span<PointLight> pointLights;
-		std::span<SpotLight> spotLights;
+		const Renderer::PerspectiveCamera& camera;
 	};
 
 	class SandboxDebugUI final
@@ -75,6 +67,8 @@ namespace ForgeSim::Sandbox
 		void BeginFrame();
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
+
+		void BeginWorkspace();
 
 		[[nodiscard]] TransformEditorUIState DrawTransformEditorControls(
 			bool editingActive,
@@ -133,7 +127,5 @@ namespace ForgeSim::Sandbox
 		float m_SelectionHighlightStrength = 0.20f;
 
 		TransformEditorUIState m_TransformEditorState;
-
-		std::optional<LightValidationError> m_LightValidationError;
 	};
 }

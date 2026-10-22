@@ -2,8 +2,11 @@
 #include "LightDebugLayout.hpp"
 #include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
+#include "SceneCameraFraming.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneFilePanel.hpp"
+#include "SceneHierarchyPanel.hpp"
+#include "SceneInspectorPanel.hpp"
 #include "SceneTransformEditor.hpp"
 #include "SceneSelection.hpp"
 #include "SceneSelectionValidation.hpp"
@@ -135,9 +138,6 @@ namespace ForgeSim::Sandbox
 				glm::length(bounds.maximum - bounds.minimum) * 0.5f,
 				0.001f);
 
-		constexpr float verticalFieldOfView =
-			glm::radians(45.0f);
-
 		const auto initialExtent =
 			m_Window.GetFramebufferExtent();
 
@@ -147,48 +147,21 @@ namespace ForgeSim::Sandbox
 			static_cast<float>(initialExtent.height)
 			: 1.0f;
 
-		// Use the narrower field of view so portrait windows also fit.
-		const float framingHalfAngle =
-			std::atan(
-				std::tan(verticalFieldOfView * 0.5f) *
-				std::min(initialAspectRatio, 1.0f));
-
-		const float cameraDistance =
-			modelRadius / std::sin(framingHalfAngle) * 1.25f;
-
-		const float nearPlane =
-			std::max(modelRadius * 0.01f, 0.001f);
-
-		const float farPlane =
-			std::max(
-				cameraDistance + modelRadius * 4.0f,
-				10.0f);
-
-		ForgeSim::Renderer::PerspectiveCamera camera{
-			modelCenter +
-				glm::vec3{
-					0.0f,
-					0.0f,
-					cameraDistance
-				},
-			modelCenter,
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			verticalFieldOfView,
-			nearPlane,
-			farPlane
+		const Renderer::AxisAlignedBoundingBox emptySceneBounds{
+			.minimum = glm::vec3{ -1.0f },
+			.maximum = glm::vec3{ 1.0f }
 		};
 
-		FreeCameraController cameraController{
-			FreeCameraControllerSpecification{
-				.movementSpeed =
-					std::max(
-						cameraDistance * 0.5f,
-						0.01f),
+		SceneCameraFraming initialFraming =
+			CreateSceneCameraFraming(
+				scene.Objects().empty() ? emptySceneBounds : bounds,
+				initialAspectRatio);
 
-				.mouseSensitivity = 0.002f,
-				.maximumDeltaSeconds = 0.1f
-			}
-		};
+		Renderer::PerspectiveCamera camera =
+			std::move(initialFraming.camera);
+
+		FreeCameraController cameraController =
+			std::move(initialFraming.controller);
 
 		SceneSelection selection;
 		ViewportSelectionController selectionController;
@@ -284,6 +257,8 @@ namespace ForgeSim::Sandbox
 		std::vector<LightPickTarget> lightPickTargets;
 
 		SceneFilePanel sceneFilePanel;
+		SceneHierarchyPanel hierarchyPanel;
+		SceneInspectorPanel inspectorPanel;
 		std::string sceneFileMessage;
 
 		enum class PendingSceneAction
@@ -304,6 +279,7 @@ namespace ForgeSim::Sandbox
 			std::is_nothrow_move_assignable_v<EditorSession>);
 
 		bool exitRequested = false;
+		bool cameraFramingRequested = false;
 
 		while (!exitRequested)
 		{
@@ -334,13 +310,17 @@ namespace ForgeSim::Sandbox
 
 			m_Renderer.ReloadChangedShaders();
 
+			const Renderer::AxisAlignedBoundingBox editorBounds =
+				scene.Objects().empty()
+				? emptySceneBounds
+				: m_Renderer.ObjectLocalBounds();
+
 			lightPickTargets.clear();
 
 			if (m_DebugUI.ShowLights())
 			{
 				const LightDebugLayout layout =
-					CalculateLightDebugLayout(
-						m_Renderer.ObjectLocalBounds());
+					CalculateLightDebugLayout(editorBounds);
 
 				lightPickTargets.push_back(
 					LightPickTarget{
@@ -389,8 +369,58 @@ namespace ForgeSim::Sandbox
 				continue;
 			}
 
+			if (cameraFramingRequested)
+			{
+				cameraFramingRequested = false;
+
+				try
+				{
+					const Renderer::AxisAlignedBoundingBox framingBounds =
+						scene.Objects().empty()
+						? emptySceneBounds
+						: CalculateSceneBounds(
+							scene.Objects(),
+							m_Renderer.ObjectLocalBounds());
+
+					const float framingAspectRatio =
+						static_cast<float>(framebufferExtent.width) /
+						static_cast<float>(framebufferExtent.height);
+
+					SceneCameraFraming framing =
+						CreateSceneCameraFraming(
+							framingBounds,
+							framingAspectRatio);
+
+					camera = std::move(framing.camera);
+					cameraController = std::move(framing.controller);
+
+					m_Window.SetCursorMode(
+						Platform::CursorMode::Normal);
+
+					// Exclude synchronous scene/model loading from navigation time.
+					static_cast<void>(timer.Restart());
+				}
+				catch (const std::exception& exception)
+				{
+					sceneFileMessage =
+						"Scene changed, but camera framing failed: " +
+						std::string{ exception.what() };
+
+					Core::LogError(sceneFileMessage);
+				}
+			}
+
 			m_DebugUI.BeginFrame();
 			transformEditor.BeginFrame();
+
+			sceneFilePanel.DrawMenu(
+				!changePending &&
+				!transformEditor.IsActive() &&
+				!input.GetMouseButtonState(
+					Platform::MouseButton::Right).held,
+				m_EditorSession->ScenePath().has_value());
+
+			m_DebugUI.BeginWorkspace();
 
 			const TransformEditorUIState editorUI =
 				m_DebugUI.DrawTransformEditorControls(
@@ -449,6 +479,18 @@ namespace ForgeSim::Sandbox
 									? "opening another scene"
 									: "closing"
 					});
+
+
+			hierarchyPanel.Draw(
+				SceneHierarchyPanelContext{
+					.scene = scene,
+					.selection = selection,
+					.interactionDisabled =
+						changePending ||
+						transformEditor.IsActive() ||
+						input.GetMouseButtonState(
+							Platform::MouseButton::Right).held
+				});
 
 			const bool uiWantsMouse =
 				m_DebugUI.WantsMouseCapture();
@@ -630,6 +672,8 @@ namespace ForgeSim::Sandbox
 
 				.showLights = m_DebugUI.ShowLights(),
 
+				.lightDebugBounds = editorBounds,
+
 				.selectedLightId = selection.SelectedLightId(),
 
 				.selectionHighlight = {
@@ -659,19 +703,24 @@ namespace ForgeSim::Sandbox
 
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
-					.scene = scene,
-					.selection = selection,
 					.diagnosticsSnapshot =
 						latestDiagnosticsSnapshot 
 							? &*latestDiagnosticsSnapshot 
 							: nullptr,
 					.camera = camera,
-					.modelBounds = m_Renderer.ObjectLocalBounds(),
-					.directionalLight = scene.MainDirectionalLight(),
-					.pointLights = scene.PointLights(),
-					.spotLights = scene.SpotLights()
 				}
 			);
+
+			inspectorPanel.Draw(
+				SceneInspectorPanelContext{
+					.scene = scene,
+					.selection = selection,
+					.modelBounds = editorBounds,
+					.editingDisabled =
+						changePending ||
+						transformEditor.IsActive() ||
+						rightMouseDown
+				});
 
 			if (fileRequest.action != SceneFileAction::None)
 			{
@@ -828,7 +877,9 @@ namespace ForgeSim::Sandbox
 
 							selection.Clear();
 							transformEditor.ClearHistory();
+							inspectorPanel.Reset();
 							lightPickTargets.clear();
+							cameraFramingRequested = true;
 
 							pendingAction = PendingSceneAction::None;
 							sceneFileMessage = "New scene created.";
@@ -858,7 +909,9 @@ namespace ForgeSim::Sandbox
 
 								selection.Clear();
 								transformEditor.ClearHistory();
+								inspectorPanel.Reset();
 								lightPickTargets.clear();
+								cameraFramingRequested = true;
 
 								pendingAction = PendingSceneAction::None;
 								pendingOpenPath.clear();

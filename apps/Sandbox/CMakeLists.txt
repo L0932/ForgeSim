@@ -53,10 +53,16 @@ target_sources(
 		SandboxScene.cpp
 		SceneBounds.hpp
         SceneBounds.cpp
+		SceneCameraFraming.hpp
+		SceneCameraFraming.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
 		SceneFilePanel.hpp
         SceneFilePanel.cpp
+		SceneHierarchyPanel.hpp
+		SceneHierarchyPanel.cpp
+		SceneInspectorPanel.hpp
+		SceneInspectorPanel.cpp
 		SceneLightEditing.hpp
 		SceneLightEditing.cpp
 		SceneLightValidation.hpp
