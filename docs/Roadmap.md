@@ -69,6 +69,24 @@ Completed checkboxes indicate the stated capability exists within its documented
 
 ---
 
+## Infrastructure and Release Engineering
+
+Infrastructure work accompanies the phases it supports.
+
+Build and test automation may be introduced independently of release
+automation. Manual packaging must work before automated publishing is added.
+
+Initial automation should validate Windows builds and headless tests.
+Later workflows may package tagged releases and prepare release notes.
+
+Public packages must run without the source checkout and include only
+assets and dependencies permitted for redistribution.
+
+Phase 15 hardens the release process established earlier; it is not the
+first point at which ForgeSim becomes downloadable.
+
+---
+
 # Phase 0 — Project Foundation
 
 ## Repository and Build System
@@ -264,6 +282,20 @@ Extend that foundation with lighting, shadows, image-quality features, and repro
 - [ ] Capture clean screenshots and a short walkthrough
 - [ ] Record representative loading and rendering performance
 
+## Build and Distribution Infrastructure
+
+- [ ] Establish one authoritative application version in CMake
+- [ ] Display the application version in diagnostics
+- [ ] Maintain a release-oriented CHANGELOG.md
+- [ ] Define CMake installation rules for the executable and runtime files
+- [ ] Resolve packaged resources independently of source/build paths
+- [ ] Store writable user data outside the installation directory
+- [ ] Produce a portable Windows Release package through CPack
+- [ ] Include a small redistributable demonstration scene
+- [ ] Include required third-party notices
+- [ ] Verify the package on a machine without the development environment
+- [ ] Publish a versioned preview release with usage instructions
+
 ## Architectural Constraints
 
 - Asset parsing and CPU-side asset data remain independent of OpenGL.
@@ -307,6 +339,14 @@ It does not require skeletal animation, physics integration, VR, a production as
 Make ForgeSim practical for assembling and editing scenes without changing C++ code.
 
 Build on the docked workspace and scene-document foundation established during Phase 3.
+
+## Installation and Release Workflow
+
+- [ ] Produce a Windows installer using the established package layout
+- [ ] Verify installation, launch, upgrade, and uninstallation
+- [ ] Preserve user scenes and preferences during supported upgrades
+- [ ] Link the website download button to a tested public release
+- [ ] Document supported operating systems and hardware requirements
 
 ## Scene and Asset Authoring
 
