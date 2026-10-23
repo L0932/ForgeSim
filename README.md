@@ -136,6 +136,19 @@ Materials that omit optional textures also verify that ForgeSim uses
 safe default resources rather than producing invalid shading or
 requiring every glTF texture slot to be populated.
 
+### Textured Asset and Editor Showcase
+
+The Flight Helmet asset demonstrates varied textured materials within
+ForgeSim’s docked workspace, alongside scene hierarchy, light inspection,
+and viewport transform controls.
+
+![Flight Helmet rendered in ForgeSim’s docked editor](docs/images/flight-helmet-editor.png)
+
+*Flight Helmet demonstrating textured PBR materials, image-based lighting,
+and interactive scene-light editing.*
+
+Asset: [Flight Helmet — Khronos glTF Sample Assets](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/FlightHelmet).
+
 ### Loading an external glTF scene
 
 The Sandbox accepts an optional glTF scene path as its first
