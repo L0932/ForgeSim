@@ -7,6 +7,7 @@ Develop ForgeSim incrementally into a polished, systems-oriented real-time engin
 ForgeSim will emphasize:
 
 - Modern C++ and real-time engine architecture
+- Physically based rendering and visually credible environments
 - Interactive tools, equipment, and machinery
 - Physics-supported mechanical interaction
 - Data-driven parts, assemblies, and functional systems
@@ -14,15 +15,17 @@ ForgeSim will emphasize:
 - Testable simulation behavior and development tooling
 - A reusable foundation shared by games and professional training applications
 
-The first project will be a focused mechanic-simulator vertical slice demonstrating inspection, diagnosis, tool use, mechanical disassembly, part replacement, reassembly, functional testing, and high-quality VR interaction on a compact authored machine.
+The first mechanically interactive project will be a focused mechanic-simulator vertical slice demonstrating inspection, diagnosis, tool use, mechanical disassembly, part replacement, reassembly, and functional testing on a compact authored machine.
 
-The immediate objective is a portfolio-quality engine and vertical slice, not a feature-for-feature replacement for Unreal Engine, Unity, or another mature general-purpose engine.
+Polished rendering showcases will validate the asset and rendering pipeline before that mechanical experience is assembled. VR interaction will follow the desktop foundation.
+
+The immediate objective is a portfolio-quality engine and vertical slice. Scope will remain focused on capabilities that support that objective.
 
 ---
 
 ## Product Direction
 
-ForgeSim is intended to support two related application categories through a shared engine foundation:
+ForgeSim is intended to support two related application categories through a shared engine foundation.
 
 ### Games and Interactive Experiences
 
@@ -46,13 +49,21 @@ Mechanical state must remain independent of game-specific progression and traini
 
 ## Development Strategy
 
-- Develop one coherent mechanic-simulator vertical slice throughout the roadmap.
-- Introduce abstractions in response to concrete requirements from that slice.
+- Develop toward one coherent mechanic-simulator vertical slice.
+- Use polished visual showcases to validate the asset and rendering pipeline before building mechanically interactive scenes.
+- Keep showcase-specific art direction and asset preparation separate from reusable engine capabilities.
+- Introduce abstractions in response to concrete requirements.
 - Keep runtime and simulation systems independent of editor and UI dependencies.
 - Keep platform-specific behavior isolated.
+- Separate authored data, runtime state, and editor preferences.
 - Preserve a path toward VR, multiplayer, player construction, and larger systemic worlds without requiring them in the earliest milestones.
 - Add automated tests and diagnostic tools alongside the systems they validate.
+- Measure performance before introducing substantial optimization infrastructure.
 - Prefer a smaller number of polished, interoperable systems over many incomplete features.
+
+The roadmap describes capability goals and sequencing. GitHub issues and milestones track implementation details, acceptance criteria, and current priorities.
+
+Completed checkboxes indicate the stated capability exists within its documented scope. They do not imply support for every related production use case.
 
 ---
 
@@ -96,9 +107,7 @@ Mechanical state must remain independent of game-specific progression and traini
 
 # Phase 1 — Runtime, Platform, and Timing Foundation
 
-Phase 1 established the interactive application lifecycle, monotonic
-frame timing, bounded fixed-step scheduling, and safe handling of
-non-drawable framebuffer states.
+Phase 1 established the interactive application lifecycle, monotonic frame timing, bounded fixed-step scheduling, and safe handling of non-drawable framebuffer states.
 
 ## Runtime and Platform
 
@@ -133,87 +142,256 @@ non-drawable framebuffer states.
 - [x] Test drawable-framebuffer policy without creating a window
 - [x] Validate Debug and Release builds and tests
 
-## Deferred to Later Phases
+## Follow-Up Runtime Work
 
-- Platform-neutral window events
-- Platform-neutral keyboard and pointer input
+The following capabilities will be introduced when required by later phases:
+
 - Additional runtime-loop test seams
 - A dedicated reusable Runtime target
 - Simulation pause, resume, and single-step
 - Simulation-speed scaling
 - Background-simulation and focus policy
 - Rendering interpolation
-- Camera, rendering, and editor integration
 
-**Milestone outcome:** ForgeSim now has explicit lifecycle ownership,
-monotonic frame timing, deterministic fixed-step scheduling, bounded
-catch-up, and safe minimized-window behavior.
+**Milestone:** ForgeSim has explicit lifecycle ownership, monotonic frame timing, deterministic fixed-step scheduling, bounded catch-up, and safe minimized-window behavior.
+
+**Status:** Complete.
 
 ---
 
-# Phase 2 — Rendering Foundation
+# Phase 2 — Rendering and Interactive Sandbox Foundation
 
-## OpenGL Rendering
+Establish a navigable 3D Sandbox with explicit graphics-resource ownership, externally authored geometry, and interactive diagnostics.
+
+## Rendering Foundation
 
 - [x] Establish OpenGL function loading
-- [ ] Add graphics-resource ownership and lifetime rules
-- [ ] Implement shader abstraction and diagnostics
-- [ ] Implement vertex and index buffers
-- [ ] Implement vertex array abstraction
-- [ ] Implement basic mesh representation
-- [ ] Select a narrow initial format for externally authored static meshes
-- [ ] Load one externally authored static mesh into the runtime mesh representation
-- [ ] Support the minimum vertex attributes required by the initial renderer
-- [ ] Report useful model-loading errors
-- [ ] Implement texture loading
-- [ ] Implement basic material representation
-- [ ] Implement camera and projection support
-- [ ] Implement render submission for basic objects
+- [x] Establish graphics-resource ownership and lifetime rules
+- [x] Implement shader compilation, linking, and diagnostics
+- [x] Implement vertex buffers, index buffers, and vertex arrays
+- [x] Implement a basic mesh representation
+- [x] Load externally authored static glTF geometry
+- [x] Report useful model-loading errors
+- [x] Implement perspective camera and projection support
+- [x] Submit basic objects for rendering
 
-## Rendering Diagnostics
+## Interactive Sandbox
 
-- [ ] Add OpenGL debug output in development builds
-- [ ] Add basic render statistics
-- [ ] Add frame timing instrumentation
-- [ ] Establish debug-rendering primitives
+- [x] Add desktop camera navigation
+- [x] Add keyboard and pointer input handling
+- [x] Integrate Dear ImGui for development controls
+- [x] Add object selection and picking
+- [x] Establish debug-rendering primitives
+- [x] Add reference-grid and bounds visualization
+- [x] Add runtime diagnostics
+- [x] Add shader hot reloading
 
-## Initial Model-Loading Boundary
+## Initial Asset Boundary
 
-The initial model loader exists to provide representative authored geometry for renderer development. It will support one deliberately narrow static-mesh format and only the attributes required by the current renderer.
+The initial loader provides representative authored geometry for renderer development.
 
-This work does not establish the final asset database, project asset organization, persistent asset identity, animation import, or a general-purpose content pipeline. Those responsibilities remain in Phase 7 or later.
+Persistent asset identity, a project asset database, animation import, and production content processing remain later responsibilities.
 
-**Milestone:** ForgeSim renders a navigable 3D test environment containing externally authored static geometry through narrowly scoped OpenGL abstractions.
+**Milestone:** ForgeSim renders a navigable 3D environment containing externally authored static geometry, with interactive controls and diagnostics suitable for continued renderer development.
+
+**Status:** Complete.
 
 ---
 
-# Phase 3 — World and Scene Foundation
+# Phase 3 — PBR Rendering and Visual Showcases
+
+Establish a reusable material, texture, and scene-asset pipeline capable of rendering visually credible glTF 2.0 content.
+
+Extend that foundation with lighting, shadows, image-quality features, and reproducible showcase scenes suitable for impressive screenshots and recordings.
+
+## Textured Assets and Materials
+
+- [x] Import multiple meshes, primitives, materials, and node transforms
+- [x] Import positions, normals, texture coordinates, tangents, and indices
+- [x] Decode images and upload textures through RAII-managed resources
+- [x] Represent CPU-side material data independently of OpenGL
+- [x] Support the glTF metallic-roughness material workflow
+- [x] Support base-color, normal, metallic-roughness, emissive, and occlusion textures
+- [x] Provide fallbacks for missing optional material data
+- [x] Handle missing normals and tangents
+- [x] Support alpha modes and double-sided materials
+- [ ] Complete authored transform and imported-model pivot correctness
+
+## Lighting and Color
+
+- [x] Perform lighting calculations in linear space
+- [x] Apply appropriate sRGB handling to color textures
+- [x] Implement HDR rendering, exposure, and tone mapping
+- [x] Implement image-based lighting and environment backgrounds
+- [x] Implement directional, point, and spot lights
+- [x] Add light inspection, validation, and debug visualization
+- [ ] Establish a documented scene-scale and unit convention
+- [ ] Calibrate light intensity and manual exposure conventions
+- [ ] Load configurable default light settings from a data file
+
+## Shadows and Interior Lighting
+
+- [ ] Implement directional-light shadow mapping
+- [ ] Implement screen-space ambient occlusion
+- [ ] Support baked indirect lighting for static showcase scenes
+- [ ] Implement bounded point-light shadow support
+- [ ] Implement spotlight shadow mapping
+
+## Image Quality and Scene Effects
+
+- [ ] Implement anti-aliasing
+- [ ] Implement bloom
+- [ ] Implement manual-focus depth of field
+- [ ] Support thin tinted glass
+- [ ] Support RGB light cookies for stained-glass projection
+- [ ] Implement shadowed directional volumetric lighting
+- [ ] Implement localized smoke effects
+
+## Showcase Authoring and Workflow
+
+- [x] Add a PBR material validation gallery
+- [x] Save and load scene documents
+- [x] Support runtime scene-file operations and unsaved-change handling
+- [x] Establish a minimal docked workspace with a rendered Scene viewport
+- [x] Support object and light transform gizmos with undo and redo
+- [ ] Improve camera-relative reference-grid behavior
+- [ ] Report asset-loading stages, progress, and timings
+- [ ] Save and restore authored camera and rendering settings
+- [ ] Build a reproducible industrial workshop showcase
+- [ ] Build a cathedral showcase demonstrating stained glass and lighting
+- [ ] Capture clean screenshots and a short walkthrough
+- [ ] Record representative loading and rendering performance
+
+## Architectural Constraints
+
+- Asset parsing and CPU-side asset data remain independent of OpenGL.
+- OpenGL resources and reusable rendering behavior remain within the renderer.
+- Missing optional material data uses documented fallback values.
+- Asset parsing and validation remain headlessly testable where practical.
+- The Sandbox composes reusable systems and demonstrates their behavior.
+- Rendering passes have explicit ordering, resource ownership, resize behavior, and graphics-state boundaries.
+- Scene documents distinguish authored settings from transient editor state.
+- New abstractions address immediate responsibilities or dependency boundaries.
+- Purchased assets and derived files are distributed only where licensing permits.
+
+## Completion Criteria
+
+- Representative glTF scenes render with correct materials and transforms.
+- Shadows and contact shading visibly ground objects in showcase environments.
+- Lighting and exposure produce deliberate, repeatable compositions.
+- Showcase camera and rendering settings can be restored after reopening.
+- Image-quality and scene effects integrate correctly with the docked viewport.
+- Existing navigation, selection, diagnostics, and shader hot reloading remain functional.
+- Asset-loading and validation behavior has deterministic automated coverage where practical.
+- Representative performance measurements identify hardware, build configuration, viewport resolution, and enabled effects.
+- Debug and Release builds and tests pass.
+- Screenshots or recordings demonstrate the completed visual result.
+- Documentation describes supported features, limitations, and asset preparation.
+
+## Scope Boundary
+
+Phase 3 includes the bounded rendering features needed by its showcase scenes.
+
+It does not require skeletal animation, physics integration, VR, a production asset browser, deferred rendering, a render graph, ray tracing, dynamic global illumination, an internal lightmap baker, virtualized geometry, or production asset streaming.
+
+**Milestone:** ForgeSim can render and reproduce polished textured showcase scenes through a reusable PBR asset and rendering pipeline.
+
+**Status:** In progress.
+
+---
+
+# Phase 4 — Editor Usability and Scene Authoring
+
+Make ForgeSim practical for assembling and editing scenes without changing C++ code.
+
+Build on the docked workspace and scene-document foundation established during Phase 3.
+
+## Scene and Asset Authoring
+
+- [ ] Import additional glTF assets into an existing scene
+- [ ] Support multiple independent model assets in one scene
+- [ ] Create, rename, duplicate, and delete objects and lights
+- [ ] Organize objects through parent/child relationships
+- [ ] Define clear local-space and world-space transform behavior
+- [ ] Inspect and edit supported object, material, and light properties
+- [ ] Report missing assets and invalid edits through useful editor feedback
+
+## Commands and History
+
+- [ ] Establish a UI-independent command interface for durable editor mutations
+- [ ] Extend undo and redo beyond transform gizmos
+- [ ] Support property-edit commands
+- [ ] Support object and light creation, duplication, and deletion commands
+- [ ] Support hierarchy modification commands
+- [ ] Preserve stable selection and identity across supported editing operations
+- [ ] Keep editor history separate from runtime domain operations
+
+## Navigation and Presentation
+
+- [ ] Frame the selected object or light
+- [ ] Provide predictable navigation speed across scene scales
+- [ ] Add custom editor styling and selectable themes
+- [ ] Persist editor preferences independently of scene documents
+- [ ] Improve Inspector organization, labels, and property controls
+- [ ] Preserve reliable workspace reset and layout persistence
+- [ ] Provide a minimal asset-import workflow without requiring a production asset browser
+
+## Reliability and Validation
+
+- [ ] Validate scene references and authored property changes
+- [ ] Preserve the current scene when opening or importing fails
+- [ ] Test commands and scene mutations without Dear ImGui
+- [ ] Verify save/open behavior after scene-authoring operations
+- [ ] Document the supported authoring workflow and remaining limitations
+
+## Scope Boundary
+
+Phase 4 focuses on practical scene authoring.
+
+Physics authoring, mechanical simulation controls, scenario editing, VR tooling, and a production asset database remain later responsibilities.
+
+Scene identity, hierarchy, and mutation behavior introduced here must remain testable outside the UI and provide a foundation for reusable runtime systems.
+
+**Milestone:** A user can create a scene, import multiple assets, arrange and inspect objects, edit lights and properties, undo meaningful changes, and save and reopen the result without modifying C++ code.
+
+**Status:** Planned.
+
+---
+
+# Phase 5 — World and Component Foundation
+
+Extract and extend the existing scene model into reusable runtime systems capable of supporting simulation.
+
+Build on the identity, naming, transforms, hierarchy, and persistence established by earlier phases.
 
 ## World Representation
 
-- [ ] Define the initial world/entity/component model
-- [ ] Implement stable object identity
-- [ ] Implement object naming
-- [ ] Implement transform representation
-- [ ] Implement parent/child hierarchy
-- [ ] Implement object creation and deletion
-- [ ] Implement component attachment and lookup
-- [ ] Implement world traversal and system updates
+- [ ] Define the initial reusable world/entity/component model
+- [ ] Establish stable runtime identity and persistent-reference rules
+- [ ] Move reusable scene behavior out of Sandbox-specific ownership where justified
+- [ ] Preserve naming and local/world transform behavior
+- [ ] Define component attachment and lookup
+- [ ] Define world traversal and system-update boundaries
 - [ ] Define ownership and lifetime rules
 - [ ] Separate authored state from transient runtime state
+- [ ] Support creation and destruction outside editor code
 
-## Scene Integration
+## Runtime Integration
 
 - [ ] Render world objects through renderer-facing data
-- [ ] Add a controllable desktop camera
-- [ ] Create a small test scene containing multiple objects
-- [ ] Test identity, hierarchy, transform, and lifecycle operations
+- [ ] Reconstruct a runtime world from authored scene data
+- [ ] Keep runtime world behavior independent of Dear ImGui
+- [ ] Define how editor commands invoke reusable world mutations
+- [ ] Test identity, hierarchy, transforms, components, and lifecycle operations
+- [ ] Preserve the existing editor and showcase workflows
 
-**Milestone:** ForgeSim can represent, update, render, and test a structured world without depending on editor code.
+**Milestone:** ForgeSim can represent, update, render, and test a structured world through reusable systems independent of editor code.
+
+**Status:** Planned.
 
 ---
 
-# Phase 4 — Physics Foundation
+# Phase 6 — Physics Foundation
 
 ## Physics Integration
 
@@ -226,19 +404,23 @@ This work does not establish the final asset database, project asset organizatio
 - [ ] Synchronize world transforms and physics state explicitly
 - [ ] Define kinematic and dynamic object behavior
 - [ ] Add sleeping and activation support
+- [ ] Integrate simulation pause, resume, and single-step controls
 
 ## Physics Diagnostics and Tests
 
 - [ ] Visualize collision shapes and constraints
 - [ ] Inspect rigid-body state
+- [ ] Add minimal authoring controls for supported physics properties
 - [ ] Test creation, destruction, and constraint lifetime
 - [ ] Test repeatable fixed-step behavior within documented limits
 
 **Milestone:** ForgeSim supports inspectable and testable rigid-body interaction and constrained mechanical motion.
 
+**Status:** Planned.
+
 ---
 
-# Phase 5 — Interaction and Tool Foundation
+# Phase 7 — Interaction and Tool Foundation
 
 ## Input and Interaction Model
 
@@ -257,13 +439,81 @@ This work does not establish the final asset database, project asset organizatio
 - [ ] Implement at least two distinct tool actions
 - [ ] Provide interaction highlighting and feedback
 - [ ] Add interaction-state debugging
+- [ ] Inspect supported interaction and tool properties
 - [ ] Test interactions without Dear ImGui dependencies
 
 **Milestone:** A user can inspect, grab, manipulate, and operate tools on compatible objects using a desktop interaction harness.
 
+**Status:** Planned.
+
 ---
 
-# Phase 6 — Mechanical Parts and Assemblies
+# Phase 8 — VR Foundation and Interactive Controls Showcase
+
+Introduce VR as soon as the initial desktop interaction model is usable.
+
+Use a compact industrial control panel to validate headset rendering,
+tracked input, world scale, and shared desktop/VR interaction behavior.
+
+## VR Runtime and Rendering
+
+- [ ] Integrate an OpenXR-based VR runtime
+- [ ] Isolate XR dependencies from world and interaction logic
+- [ ] Implement session lifecycle and headset tracking
+- [ ] Render each eye using its supplied view and projection
+- [ ] Integrate XR frame timing and frame submission
+- [ ] Handle session visibility, focus, and tracking changes
+- [ ] Preserve the desktop application path
+- [ ] Establish an explicit performance target for the test headset
+
+## Tracked Input and Interaction
+
+- [ ] Track controller grip and aim poses
+- [ ] Map controller actions into the shared interaction model
+- [ ] Display simple controller or hand proxies
+- [ ] Support controller-ray targeting and activation
+- [ ] Support proximity-based button interaction
+- [ ] Support grabbing and manipulating constrained controls
+- [ ] Provide hover, activation, and state feedback
+- [ ] Add controller haptic feedback where supported
+- [ ] Prevent invalid or conflicting simultaneous interactions
+
+## Industrial Controls Showcase
+
+- [ ] Prepare independently movable control parts and authored pivots
+- [ ] Implement a momentary push button
+- [ ] Implement a persistent toggle switch
+- [ ] Implement a constrained lever
+- [ ] Implement a rotary control or valve
+- [ ] Connect controls to visible indicators or simple scene behavior
+- [ ] Use the same control state and operations on desktop and in VR
+- [ ] Validate panel dimensions, reachability, and tracking-space alignment
+- [ ] Provide a repeatable demonstration setup
+
+## Validation and Diagnostics
+
+- [ ] Test control behavior independently of XR hardware
+- [ ] Inspect interaction targets, control values, and active manipulators
+- [ ] Measure frame timing on the target headset
+- [ ] Verify safe behavior when tracking or session focus is lost
+- [ ] Document supported hardware, runtime, bindings, and limitations
+
+## Scope Boundary
+
+This phase establishes headset and tracked-controller interaction.
+
+Articulated fingers, optical hand tracking, sophisticated grasp solving,
+two-handed tools, and complete mechanical disassembly remain later work.
+
+**Milestone:** A user can enter a compact industrial scene in VR and
+operate buttons, switches, levers, and rotary controls using the same
+underlying interaction systems as the desktop application.
+
+**Status:** Planned.
+
+---
+
+# Phase 9 — Mechanical Parts and Assemblies
 
 ## Mechanical Data Model
 
@@ -283,68 +533,50 @@ This work does not establish the final asset database, project asset organizatio
 - [ ] Update assembly function when parts or connections change
 - [ ] Validate assembly completeness and compatibility
 - [ ] Visualize attachment points, connections, and assembly state
+- [ ] Inspect and author supported assembly properties
+- [ ] Add mechanical authoring commands where appropriate
+- [ ] Keep runtime domain operations distinct from editor undo/redo commands
 - [ ] Test assembly operations independently of editor and UI code
 
 **Milestone:** ForgeSim supports a small functional machine that can be disassembled, altered, reassembled, and validated.
 
+**Status:** Planned.
+
 ---
 
-# Phase 7 — Persistence and Asset Foundation
+# Phase 10 — Project Assets and Mechanical Persistence
+
+Extend the existing versioned scene-document foundation to support reusable asset identity and mechanically meaningful authored data.
 
 ## Persistence Model
 
-- [ ] Select a serialization approach
-- [ ] Establish schema versioning rules
-- [ ] Serialize stable object and asset references
-- [ ] Serialize scenes and world hierarchy
-- [ ] Serialize components and authored properties
+- [ ] Extend schema versioning and migration rules as formats evolve
+- [ ] Serialize stable world and asset references
+- [ ] Serialize supported components and authored properties
 - [ ] Serialize part definitions, assemblies, and connections
-- [ ] Keep transient runtime and physics state out of authored data where appropriate
-- [ ] Implement round-trip serialization tests
+- [ ] Define authored mechanical state separately from saved runtime progress
+- [ ] Keep transient renderer and physics resources out of authored documents
+- [ ] Extend round-trip serialization and validation tests
+- [ ] Report unresolved references and incompatible data clearly
 
 ## Projects and Assets
 
-- [ ] Define project and scene organization
+- [ ] Define project asset organization and reference-resolution rules
 - [ ] Establish asset identifiers and handles
-- [ ] Integrate early mesh and texture loading with asset identifiers and handles
+- [ ] Integrate mesh and texture loading with asset identifiers and handles
 - [ ] Implement asset-managed material and part-definition loading
 - [ ] Reconstruct runtime rendering resources from persistent asset references
-- [ ] Distinguish source assets from runtime resources
+- [ ] Distinguish source assets, imported data, and runtime resources
 - [ ] Save and load the mechanic test scene
+- [ ] Verify project relocation behavior within the supported reference model
 
-**Milestone:** A project containing a mechanical assembly can be saved, closed, reopened, and reconstructed reliably.
+**Milestone:** A project containing a mechanical assembly can be saved, closed, reopened, and reconstructed reliably through persistent asset and mechanical references.
 
----
-
-# Phase 8 — Editor and Command Foundation
-
-## Editor Inspection
-
-- [ ] Integrate Dear ImGui without introducing runtime dependencies on it
-- [ ] Establish editor layout and viewport
-- [ ] Implement world hierarchy panel
-- [ ] Implement property inspector
-- [ ] Implement object selection
-- [ ] Add runtime and simulation controls
-- [ ] Add physics, interaction, and assembly inspection tools
-
-## Commands and Editing
-
-- [ ] Define a UI-independent editor command interface
-- [ ] Implement command execution and history
-- [ ] Implement undo and redo
-- [ ] Add property and transform commands
-- [ ] Add object creation and deletion commands
-- [ ] Add hierarchy modification commands
-- [ ] Add mechanical authoring commands where appropriate
-- [ ] Route durable editor mutations through commands
-- [ ] Keep runtime domain operations distinct from editor undo/redo commands
-
-**Milestone:** Users can inspect and author a mechanical scene through the editor, with major authoring operations supporting undo and redo.
+**Status:** Planned.
 
 ---
 
-# Phase 9 — Mechanic-Simulator Vertical Slice
+# Phase 11 — Mechanic-Simulator Vertical Slice
 
 Develop a compact authored machine or subsystem that demonstrates the shared engine foundation.
 
@@ -367,12 +599,15 @@ Develop a compact authored machine or subsystem that demonstrates the shared eng
 - [ ] Include automated validation of the completed assembly
 - [ ] Include debugging views for mechanical and interaction state
 - [ ] Profile the complete vertical slice
+- [ ] Reuse the visual presentation standards established by Phase 3
 
 **Milestone:** ForgeSim delivers a cohesive desktop mechanic-simulator experience rather than a collection of isolated engine demonstrations.
 
+**Status:** Planned.
+
 ---
 
-# Phase 10 — VR Interaction
+# Phase 12 — VR Interaction
 
 ## VR Runtime
 
@@ -395,9 +630,11 @@ Develop a compact authored machine or subsystem that demonstrates the shared eng
 
 **Milestone:** The mechanic vertical slice can be completed in VR using articulated hands and physically credible tool interaction.
 
+**Status:** Planned.
+
 ---
 
-# Phase 11 — Functional Networks and Player Construction
+# Phase 13 — Functional Networks and Player Construction
 
 ## Functional Networks
 
@@ -420,9 +657,11 @@ Develop a compact authored machine or subsystem that demonstrates the shared eng
 
 **Milestone:** A player can construct, connect, save, and operate a small functional machine using runtime systems rather than editor-only functionality.
 
+**Status:** Planned.
+
 ---
 
-# Phase 12 — Scenario, Training, and Validation Layer
+# Phase 14 — Scenario, Training, and Validation Layer
 
 ## Scenario Runtime
 
@@ -449,9 +688,11 @@ Develop a compact authored machine or subsystem that demonstrates the shared eng
 
 **Milestone:** The same mechanical foundation supports an authored professional-training workflow with fault injection, assessment, telemetry, and automated validation.
 
+**Status:** Planned.
+
 ---
 
-# Phase 13 — Portfolio Release
+# Phase 15 — Portfolio Release
 
 ## Product Polish
 
@@ -463,15 +704,18 @@ Develop a compact authored machine or subsystem that demonstrates the shared eng
 
 ## Supporting Material
 
-- [ ] Screenshots
-- [ ] Architecture and dependency diagrams
-- [ ] Technical write-up
-- [ ] Demo video
-- [ ] Build instructions
-- [ ] Portfolio description
-- [ ] Documented automated tests and validation results
+- [ ] Refresh showcase and mechanical-interaction screenshots
+- [ ] Publish architecture and dependency diagrams
+- [ ] Write a technical overview
+- [ ] Record a demo video
+- [ ] Verify build and demonstration instructions
+- [ ] Prepare a portfolio description
+- [ ] Document automated tests and validation results
+- [ ] Document third-party dependencies and demonstration-asset requirements
 
 **Milestone:** ForgeSim can be presented as a cohesive systems-oriented engine supporting a polished mechanic game experience and a credible path toward professional simulation.
+
+**Status:** Planned.
 
 ---
 
@@ -502,13 +746,13 @@ These capabilities are part of ForgeSim's intended direction but are not commitm
 
 ## Rendering and Presentation
 
-- Advanced lighting and shadows
-- Post-processing
-- Animation system
-- Audio system
+- Lighting, shadow, and post-processing capabilities beyond the Phase 3 showcase scope
+- Skeletal animation and broader animation tooling
+- Expanded audio systems
 - GPU profiling
 - Instancing and batching
-- Broader model and scene import pipeline beyond the initial static-mesh format
+- Broader model and scene import support
+- Advanced material models where required by demonstration content
 - Specialized VR rendering optimizations
 - Alternative rendering backends only when justified
 
@@ -528,9 +772,11 @@ These capabilities are part of ForgeSim's intended direction but are not commitm
 - Scripting or project-level behavior extension
 - Plugin or extension model
 - Data-oriented optimizations where profiling justifies them
-- Asset browser
+- Production asset browser and asset database
+- Incremental asset processing and caching
 - Visual logic and network editors
-- Profiling interface
+- Node-based VFX authoring
+- Expanded profiling interface
 - Custom editor extensions
 
 ---
@@ -545,6 +791,7 @@ These capabilities are part of ForgeSim's intended direction but are not commitm
 - Shipping production multiplayer before the single-user mechanical foundation is proven
 - Designing a backend-independent renderer without a concrete second-backend requirement
 - Introducing major dependencies or abstractions solely for hypothetical future needs
+- Requiring production-scale asset streaming or rendering infrastructure to complete the visual showcases
 
 ---
 
@@ -560,5 +807,9 @@ Development should prioritize systems that demonstrate expertise in:
 6. Tools and editor development
 7. Testable, data-driven software design
 8. Performance-conscious development
+
+Visual quality is an explicit engineering outcome during Phase 3. Showcase work should produce reusable rendering capabilities, documented asset workflows, and measurable results.
+
+Later phases should build on that foundation while maintaining a clear path toward the mechanically interactive vertical slice.
 
 A smaller number of polished, interoperable systems is preferable to a larger number of incomplete features.
