@@ -1,879 +1,373 @@
 # ForgeSim Architecture
 
-## 1. Purpose and Status
+## Purpose and Status
 
-ForgeSim is a systems-oriented real-time engine and editor for mechanically interactive games and professional simulation applications. It is written primarily in modern C++ and is intended to support interactive tools, machinery, mechanical assemblies, desktop and VR interaction, and data-driven simulation workflows.
+This document describes ForgeSim's implemented architecture, important dependency boundaries, and near-term design considerations.
 
-This document defines the project's architectural direction, subsystem responsibilities, dependency rules, and cross-cutting constraints. `Roadmap.md` defines delivery order and scope. Architecture decision records document important decisions and their alternatives.
+`Roadmap.md` describes capability goals and delivery order. GitHub issues describe individual changes and acceptance criteria.
 
-The architecture is intentionally incremental. Conceptual subsystem boundaries described here do not require an immediate one-to-one mapping to CMake targets. A target should be introduced when code has a concrete responsibility, a meaningful dependency boundary, or an independent testing or reuse requirement.
+ForgeSim uses an incremental approach:
 
-### Decision Status
+- Implement concrete behavior first.
+- Encapsulate responsibilities and dependencies as they become clear.
+- Extract reusable behavior when a real consumer or testing boundary justifies it.
+- Revisit decisions when implementation provides better evidence.
 
-Statements using **must**, **must not**, or **will** are current architectural constraints. Statements marked **provisional** require validation through implementation or an architecture decision record.
-
----
-
-## 2. Product Scope
-
-ForgeSim provides a shared technical foundation for two related categories of applications.
-
-### 2.1 Games and Interactive Experiences
-
-- Mechanic and repair simulations
-- Physics-supported construction and assembly
-- Interactive machines and vehicles
-- Functional logic, power, fluid, and control systems
-- Larger systemic and automation-oriented experiences over time
-
-### 2.2 Professional Simulation and Training
-
-- Equipment and maintenance training
-- Procedural instruction and assessment
-- Fault diagnosis and operational workflows
-- VR-based interaction with tools and machinery
-- Telemetry, replay, validation, and instructor-facing tools
-
-The shared engine owns world representation, rendering, physics integration, interaction, mechanical state, assets, persistence, and general authoring tools. Game rules and training rules are application-level concerns built above that shared foundation.
-
-### 2.3 Initial Product Boundary
-
-The initial product target is a compact mechanic-simulator vertical slice. It will validate inspection, diagnosis, tool use, mechanical disassembly, part replacement, reassembly, functional testing, editor support, persistence, and eventually VR interaction.
-
-ForgeSim is not intended to compete feature-for-feature with mature general-purpose engines. The initial architecture must not be distorted by requirements for every genre, every content pipeline, or hypothetical future backends.
+Future subsystem names and boundaries are provisional. This document does not require creating targets, interfaces, or frameworks ahead of their use.
 
 ---
 
-## 3. Architectural Principles
+## Current Application Structure
 
-### 3.1 Clear Dependency Direction
+ForgeSim currently runs through the Sandbox executable, which combines scene rendering, development diagnostics, and an evolving editor workspace.
 
-Higher-level policy may depend on lower-level mechanisms. Lower-level engine systems must not depend on editor UI, project-specific gameplay, or training procedures.
+The Sandbox is the composition layer for implemented systems. It also contains scene and authoring behavior that may become reusable engine functionality as requirements develop.
 
-### 3.2 Runtime and Editor Separation
+A separate editor executable, general runtime coordinator, and reusable world/component system have not yet been established.
 
-Runtime functionality must remain usable without Dear ImGui or the editor executable. The editor is a client of engine APIs and domain operations.
+### Main Responsibilities
 
-### 3.3 Platform Isolation
+| Area | Responsibility |
+|---|---|
+| `main()` | Command-line configuration, application construction, and top-level error handling |
+| `SandboxApplication` | Application lifecycle and coordination of input, scene operations, rendering, and editor components |
+| Platform | ForgeSim-owned window and input contracts and data |
+| PlatformGLFW | GLFW window, OpenGL context, event collection, and native file-dialog implementation |
+| Core | Logging, assertions, timing, fixed-step scheduling, and narrow foundational utilities |
+| Assets | CPU-side model, image, and material data and asset-loading behavior |
+| Renderer | Graphics-facing data, cameras, bounds, picking, and debug geometry |
+| RendererOpenGL | OpenGL resources, shaders, textures, render targets, and rendering helpers |
+| Sandbox scene and document code | Current object/light representation, serialization, validation, and scene reconstruction |
+| Sandbox editor components | Workspace, panels, selection, transform editing, file operations, and editing history |
 
-Platform-specific behavior and third-party platform callbacks must remain outside general engine and simulation code.
-
-### 3.4 Explicit Ownership
-
-Resources and subsystem lifetimes must have identifiable owners. RAII and value semantics should be preferred where appropriate. Shared ownership must not be used merely to avoid lifecycle design.
-
-### 3.5 Hybrid Physical and Logical Modeling
-
-Rigid-body physics will model motion, collision, forces, and constraints. Durable mechanical truth—such as installation, fastening, compatibility, condition, connectivity, and operational state—will be represented explicitly rather than inferred solely from instantaneous physics state.
-
-### 3.6 Device-Independent Interaction
-
-Interaction intent must not be defined in terms of a specific device. Desktop input, conventional controllers, and VR hands should be capable of driving the same interaction and mechanical-domain operations.
-
-### 3.7 Testable Simulation Logic
-
-Logic that does not inherently require graphics, native windows, or tracked hardware must be testable without them.
-
-### 3.8 Incremental Abstraction
-
-Abstractions should arise from concrete requirements. ForgeSim should encapsulate current implementation details without pretending to support unimplemented backends or extension models.
-
-### 3.9 Performance by Measurement
-
-Subsystems should expose useful measurements and debugging state. Data-oriented or multithreaded designs should be introduced when profiling demonstrates a need.
-
-### 3.10 Stable Authored Data
-
-Persistent content must use stable identities and versioned schemas. Runtime addresses, container positions, and editor-only state must not serve as persistent identity.
+The CMake targets and their declared dependencies are authoritative. This table summarizes responsibilities rather than prescribing additional targets.
 
 ---
 
-## 4. System Context
+## Dependency Principles
 
-ForgeSim is composed through executable-level composition roots rather than a single monolithic engine object with implicit ownership of every subsystem.
+### Graphics and Asset Data
 
-```text
-Project or Demonstration Code
-            |
-            v
-   Runtime / World / Domain Systems
-      |        |         |
-      v        v         v
- Rendering  Physics  Persistence
-      |        |         |
-      +--------+---------+
-               |
-               v
-        Core and Platform
+CPU-side asset parsing and validation must remain independent of OpenGL.
 
-Editor -----------------> Public engine and domain APIs
-VR integration ---------> Input, interaction, and rendering boundaries
-Training layer ---------> Mechanical state and observed domain events
+OpenGL-specific resources and operations belong in the OpenGL renderer implementation or platform context setup. Scene serialization must not store live GPU resources.
+
+Rendering abstractions should express current requirements. A general graphics-backend abstraction is deferred until a concrete second backend requires it.
+
+### UI and Reusable Behavior
+
+Dear ImGui belongs to editor and diagnostic presentation.
+
+Asset loading, validation, scene serialization, transform calculations, and other behavior that does not inherently require UI should remain callable and testable without Dear ImGui.
+
+The Sandbox may compose these systems and adapt their results into UI. A panel should not contain the only implementation of a reusable validation or scene operation.
+
+### Platform Isolation
+
+GLFW and native operating-system details remain behind platform implementation boundaries.
+
+Higher-level interfaces should use ForgeSim-owned data instead of exposing GLFW callback types or native dialog implementation details.
+
+### Explicit Dependencies
+
+Required services and state should be passed through construction, function arguments, or scoped contexts.
+
+Avoid global mutable service locators and shared ownership introduced merely to bypass lifecycle decisions.
+
+---
+
+## Ownership and Lifetime
+
+The executable constructs the application. Application and subsystem owners manage their resources through RAII.
+
+### Window and Graphics Context
+
+`GlfwWindow` owns the native window and OpenGL context.
+
+OpenGL resources must be destroyed before their context is destroyed. When the window and graphics resources are members of the same owner, member declaration order must preserve this destruction order.
+
+Construction must either produce a usable resource or release partially acquired resources before reporting failure.
+
+### Graphics Resources
+
+OpenGL wrapper types manage the lifetime of their underlying GPU objects.
+
+The Sandbox renderer and rendering helpers own the resource instances they use. Resource ownership must remain explicit when resources are replaced, render targets resize, or scene loading fails.
+
+### Scene and Editor State
+
+Scene objects and lights belong to the current scene.
+
+Selection, panels, and editing history refer to scene targets through identifiers or other validated references. Displaying an object does not give a widget ownership of it.
+
+Replacing scene contents must account for selection, pending edits, history, renderer resources, and references held by the application.
+
+---
+
+## Application Loop and Time
+
+`SandboxApplication` coordinates the interactive loop.
+
+The application distinguishes:
+
+- **Real frame time:** monotonic elapsed time measured using `std::chrono::steady_clock`.
+- **Fixed update time:** discrete intervals produced by `FixedStepScheduler`.
+- **Presentation updates:** frame-driven input handling, camera movement, editor work, and rendering as currently required.
+
+The scheduler bounds catch-up work and reports dropped simulation time. It exposes interpolation alpha for future presentation use.
+
+The scheduler's presence does not imply that physics or a complete simulation runtime already exists.
+
+### Loop Constraints
+
+- Process window events and close requests reliably.
+- Handle non-drawable framebuffers without busy looping.
+- Pass required timing information explicitly.
+- Keep future simulation updates independent of rendering frame rate.
+- Keep editor activity from implicitly advancing simulation.
+- Preserve valid context lifetime during rendering and shutdown.
+
+Pause, single-step, time scaling, and rendering interpolation will be added when concrete simulation consumers require them.
+
+Detailed frame ordering should be documented alongside the implementation when it affects correctness.
+
+---
+
+## Asset and Rendering Flow
+
+The current asset pipeline loads externally authored glTF content into CPU-side scene, mesh, material, and image data.
+
+OpenGL resources are then created from that data for rendering.
+
+```mermaid
+flowchart TD
+    A["glTF files and referenced images"] --> B["CPU asset loading and validation"]
+    B --> C["Meshes, materials, images, and node transforms"]
+    C --> D["OpenGL resources and render submissions"]
+    D --> E["HDR scene rendering"]
+    E --> F["Tone mapping to a color target"]
+    F --> G["Scene viewport in the editor"]
 ```
 
-The arrows indicate permitted high-level dependency direction, not ownership in every case.
+### Asset Responsibilities
+
+The asset layer handles supported source data, useful loading errors, and fallbacks for missing optional information.
+
+Material data describes authored properties and texture references independently of OpenGL object names.
+
+Source files and runtime resources are different representations. Loading a GLB does not establish a general asset database or persistent asset-handle system.
+
+### Rendering Responsibilities
+
+The renderer currently supports the glTF metallic-roughness workflow, direct lighting, image-based lighting, HDR rendering, and tone mapping.
+
+Rendering calculations use linear values. Color textures and display output require appropriate color-space handling; data textures must not receive color-texture conversion.
+
+Scene rendering produces a texture displayed by the editor viewport. Editor UI remains outside scene tone mapping and scene post-processing.
+
+### Rendering Passes
+
+As additional effects are implemented, each pass must define:
+
+- Its inputs and outputs
+- Resource ownership
+- Execution order
+- Resize behavior
+- Required graphics state
+- State restored or established for subsequent passes
+
+A render graph is not required to make these contracts explicit.
 
 ---
 
-## 5. Executables and Composition Roots
+## Scene Data and Persistence
 
-### 5.1 Sandbox
+The current scene model represents Sandbox objects and lights. It is not yet a general reusable entity/component world.
 
-The Sandbox is the initial development executable. It composes implemented subsystems, hosts focused demonstrations, and provides a controlled environment for incremental development.
+Scene documents provide a versioned authored representation that can be validated, serialized, loaded, and converted into the current scene.
 
-The Sandbox must not become the permanent owner of reusable engine behavior. Functionality that belongs to the engine or a project should migrate to the appropriate module once its responsibility becomes clear.
+### Data Categories
 
-### 5.2 Editor
+| Category | Examples |
+|---|---|
+| Authored scene data | Object transforms, model references, light properties |
+| Transient runtime data | GPU resources, interaction state, temporary rendering data |
+| Editor session state | Selection, pending edits, command history |
+| Editor preferences | Dock layout, theme, navigation preferences |
 
-The editor executable will compose the runtime, renderer, project content, and Dear ImGui tools. It may own editor session state, selection, windows, command history, and authoring workflows.
+These categories may have different storage and lifetime requirements.
 
-The editor must not own essential world, interaction, mechanical, scenario, or persistence rules.
+A scene document references assets; it does not automatically embed or copy their texture and geometry files.
 
-### 5.3 Project Runtime
+Current model references follow the project's validated path rules. Stable asset identifiers and relocation support can be introduced when project requirements justify them.
 
-A standalone project runtime may be introduced when the first vertical slice must run independently of the editor. It will compose engine modules and project-specific code without Dear ImGui dependencies.
+### Persistence Constraints
 
-### 5.4 Headless Validation
+- Validate documents before applying their contents.
+- Report missing files and invalid properties clearly.
+- Preserve the current usable scene when a replacement operation fails.
+- Reconstruct live resources from authored data.
+- Test serialization and conversion independently of the UI.
+- Define compatibility behavior when document schemas change.
 
-A headless executable or test harness will compose supported world, mechanical, network, scenario, and validation systems without GLFW, OpenGL, Dear ImGui, or VR dependencies.
-
-Headless compatibility is an architectural constraint from the beginning even though the executable is delivered later in the roadmap.
-
----
-
-## 6. Proposed Module Boundaries
-
-The names below describe architectural roles. Except for already established targets, names and target granularity remain provisional until implementation justifies them.
-
-| Conceptual module | Primary responsibility | Must not depend on |
-|---|---|---|
-| `ForgeSim::Core` | Narrow foundational utilities, diagnostics, identifiers, and common infrastructure | GLFW, OpenGL, physics SDK, VR SDK, Dear ImGui, project logic |
-| Platform abstraction, if justified | Platform-neutral window, event, and input boundaries | Renderer, world, mechanics, editor |
-| `ForgeSim::PlatformGLFW` | GLFW-backed windowing, native events, input collection, and OpenGL context support | World, mechanics, scenarios, editor |
-| `ForgeSim::Runtime` | Application coordination, clocks, update scheduling, and lifecycle contracts | GLFW, OpenGL, renderer implementation, Dear ImGui, project-specific policy |
-| World/Scene | Object identity, components, transforms, hierarchy, lifecycle, and system access | Editor UI, GLFW, VR SDK, training policy |
-| Renderer | Render resources, cameras, submission, OpenGL implementation, and render diagnostics | Editor UI, mechanics policy, scenarios |
-| Physics integration | Physics-world ownership, bodies, shapes, queries, constraints, and synchronization | Editor UI, gameplay rules, training rules |
-| Interaction | Device-independent intents, sources, affordances, targeting, grabbing, and tool-use coordination | Dear ImGui and project-specific progression |
-| Mechanics | Parts, assemblies, connections, condition, compatibility, validated operations, and functional state | Editor UI, game progression, training procedures |
-| Assets/Persistence | Asset identity, loading boundaries, schemas, serialization, and reconstruction | Dear ImGui and project-specific UI |
-| Editor | Authoring UI, selection, command history, inspectors, viewports, and debug panels | — |
-| Functional networks | Connected-system graphs and domain-specific propagation | Editor UI, game progression, training assessment |
-| Scenario/Training | Objectives, procedures, faults, observations, telemetry, and assessment | Editor UI and rendering implementation details |
-| VR integration | Headset/controller tracking, hand input adaptation, stereoscopic presentation integration, and haptics | Mechanical policy and training procedure logic |
-| Project code | Content-specific behavior, game rules, progression, and demonstration logic | Editor internals unless implementing editor extensions |
-
-No module should be created solely to match this table. The dependency rule is more important than the number of targets.
+Camera and rendering-setting persistence should extend the existing document model deliberately. Ordinary navigation should not continuously dirty an authored scene.
 
 ---
 
-## 7. Core
+## Editor Components and Editing
 
-`ForgeSim::Core` should remain small and stable.
+The Sandbox editor is divided into focused components for workspace layout, viewport display, hierarchy, inspection, scene files, selection, and transform editing.
 
-Expected responsibilities include:
+`SandboxApplication` coordinates these components. It should not accumulate widget implementation details or duplicated target-specific editing behavior.
 
-- Assertions and diagnostic contracts
-- Logging interfaces and common log categories
-- Stable identifier primitives
-- Basic timing types that do not own application policy
-- Small utilities with broad, demonstrated use
+### Transform Editing
 
-Core must not become a miscellaneous dumping ground. Mathematics, events, resource management, reflection, or service-location facilities should not automatically be placed in Core; each requires a concrete use and ownership model.
+Transform editing adapts supported objects and light types into a shared manipulation workflow.
 
----
+ImGuizmo integration belongs behind the viewport gizmo boundary. Scene editing code handles target conversion, supported operations, application of changes, and history.
 
-## 8. Platform and Input
+An interaction may span multiple frames. History should retain the original state and the final applied state as one logical edit.
 
-The platform layer owns native window and input integration. The GLFW implementation currently creates the window and OpenGL context and receives platform callbacks.
+### History Scope
 
-Platform responsibilities include:
+Current transform history supports object and light gizmo edits.
 
-- Window creation and destruction
-- Native event pumping
-- Framebuffer and window size reporting
-- Raw keyboard, pointer, and controller state collection
-- Graphics-context creation required by the current renderer
+This does not imply that all Inspector changes, scene operations, creation, deletion, or hierarchy changes are undoable.
 
-Platform callbacks must be translated into ForgeSim-owned data before reaching higher-level systems. Higher-level code must not require GLFW types in its public interfaces.
+Broader authoring history will be introduced alongside those operations. Reversible editor commands must remain distinct from future gameplay or mechanical-domain operations.
 
-Raw input is not gameplay or interaction intent. A separate action layer will map device state to named actions, and the interaction system will interpret those actions in world context.
+### Viewport Integration
 
-Whether a standalone platform-neutral target is required is provisional. The project should not introduce an abstract window interface until at least one consuming boundary requires it.
+The Scene viewport connects several coordinate spaces:
 
----
+- Desktop and window coordinates
+- ImGui viewport bounds
+- Render-target pixel dimensions
+- Camera projection and picking coordinates
 
-## 9. Runtime and Time Domains
+Rendering, picking, gizmos, and camera navigation must agree on the active viewport bounds and scaling.
 
-The runtime coordinates subsystem lifecycle and update order. It does not own all subsystem implementation details.
-
-### 9.1 Application Lifecycle Boundary
-
-The executable remains the composition root. `main()` selects the
-application configuration, constructs `SandboxApplication`, invokes
-`Run()`, and translates uncaught standard exceptions into a failure
-exit status.
-
-`SandboxApplication` coordinates the interactive application lifecycle:
-
-1. Construct application-owned resources.
-2. Enter the interactive loop once.
-3. Return from the loop when window closure is requested.
-4. Release resources through deterministic RAII destruction.
-
-`SandboxApplication::Run()` may be attempted only once for each
-application instance. Repeated calls report a standard C++ logic error
-in both Debug and Release configurations. Restarting an application
-within the same process is not currently supported.
-
-`ForgeSim::PlatformGLFW` owns GLFW initialization and termination, the
-native window, and the OpenGL context. A `GlfwWindow` constructor either
-establishes a complete usable window and context or releases partially
-acquired resources before reporting failure.
-
-Graphics resources must not outlive the OpenGL context used to create
-them. Application-owned or renderer-owned OpenGL resources must
-therefore be destroyed before the `GlfwWindow`. Where these resources
-are direct members of the same owner, the window must be declared
-before them so reverse member destruction releases the graphics
-resources first.
-
-A general subsystem manager and dedicated reusable Runtime lifecycle
-coordinator are deferred until multiple concrete consumers demonstrate
-the need for them.
-
-### 9.2 Current Time Domains
-
-ForgeSim currently distinguishes:
-
-- **Real frame time:** monotonic elapsed time measured with
-  `std::chrono::steady_clock`.
-- **Fixed simulation time:** time advanced through discrete intervals
-  requested by `FixedStepScheduler`.
-- **Presentation time:** frame-driven rendering and buffer presentation.
-
-The scheduler exposes an interpolation alpha derived from its remaining
-accumulated time, but the Sandbox does not currently use it for rendering.
-
-Scaled or pausable simulation time has not been implemented. Editor time
-will be defined when the editor provides a concrete consumer.
-
-Systems receive required time information explicitly rather than
-querying a global clock.
-
-### 9.3 Current Outer-Frame Sequence
-
-During normal drawable operation, the Sandbox performs this sequence:
-
-```
-Check for an existing close request
-Poll platform events
-Recheck the close-request state
-Query the framebuffer extent
-Wait when the framebuffer is not drawable
-Measure real frame duration
-Accumulate time for fixed-step scheduling
-Run zero or more fixed updates
-Report timing and dropped-time diagnostics
-Clear the framebuffer
-Present the frame
-```
-
-The exact placement of editor UI rendering may follow the renderer integration, but editor activity must not advance simulation implicitly.
-
-### 9.4 Fixed-Step Contract
-
-The runtime will:
-
-- Use a configured fixed simulation interval
-- Permit zero or more simulation steps per rendered frame
-- Bound catch-up work to avoid an uncontrolled spiral of death
-- Support pause, resume, single-step, and time scaling
-- Expose dropped or clamped time through diagnostics
-
-Exact interval, catch-up limit, interpolation policy, and determinism guarantees require an ADR.
+Input capture must also respect text entry, active widgets, navigation, and ongoing manipulation.
 
 ---
 
-## 10. World and Scene
+## Errors and Diagnostics
 
-The world is the authoritative container for active objects and systems. A scene is the persistent authored description used to construct or restore relevant world state.
-
-For the initial implementation, ForgeSim should avoid maintaining two complete parallel object models. The runtime world and serialized scene may use different representations at their boundaries, but they should describe the same object identities and authored properties.
-
-### 10.1 World Objects
-
-World objects require:
-
-- Stable identity
-- Optional human-readable name
-- Lifecycle state
-- Components or equivalent composable data
-- Optional transform and hierarchy membership
-
-The exact entity/component implementation is provisional. A full archetype ECS is not assumed. The first model should prioritize understandable ownership, safe mutation, testing, serialization, and sufficient performance for the vertical slice.
-
-### 10.2 Hierarchy
-
-Transform hierarchy represents spatial parent/child relationships. It must not automatically imply ownership, simulation activation, mechanical connection, or serialization scope.
-
-Mechanical assemblies may use hierarchy for presentation, but their connection graph is a distinct domain concept.
-
-### 10.3 Stable Identity
-
-Persistent references must use stable identifiers. Runtime handles may include generation or validity information to detect stale access. Human-readable names are not unique identity.
-
----
-
-## 11. Rendering
-
-The initial renderer uses OpenGL. It exists to visualize interactive worlds and demonstrate graphics-engineering techniques without attempting to become a general-purpose AAA renderer.
-
-### 11.1 Boundary
-
-OpenGL calls and types must remain within the renderer implementation and platform context setup. World, mechanics, scenarios, and editor-independent project logic must not issue OpenGL calls.
-
-### 11.2 Initial Responsibilities
-
-- Graphics-resource ownership
-- Buffers and vertex input
-- Shaders and shader diagnostics
-- Textures, meshes, and basic materials
-- Cameras and view/projection data
-- Render submission
-- Debug rendering
-- Frame and render statistics
-
-### 11.3 Abstraction Depth
-
-The renderer will initially provide narrow RAII wrappers and engine-facing rendering concepts. It will not pretend to be backend-independent before a concrete second backend exists.
-
-World components should describe renderable intent or reference render assets. Renderer-owned GPU objects must not be serialized directly.
-
-Render interpolation between simulation states is optional until motion quality requires it. If introduced, presentation state must not become authoritative simulation state.
-
----
-
-## 12. Physics Integration
-
-Physics is a foundational service for ForgeSim's interaction and mechanical goals.
-
-### 12.1 Responsibilities
-
-- Physics-world creation and lifetime
-- Rigid bodies and collision shapes
-- Collision filtering
-- Queries and contacts
-- Fixed, hinge, slider, and other justified constraints
-- Sleeping and activation
-- Debug visualization and statistics
-- Explicit synchronization with world state
-
-### 12.2 Update Ownership
-
-Physics advances within the fixed simulation step. The runtime owns scheduling; the physics integration owns the physics world and SDK resources.
-
-### 12.3 Synchronization
-
-Transform authority must be explicit:
-
-- Static objects are authored by the world and represented in physics.
-- Dynamic objects are normally authoritative in physics during simulation.
-- Kinematic objects are driven by explicit world or interaction targets.
-- Editor manipulation while paused requires a defined synchronization path.
-
-### 12.4 Physics Is Not Mechanical Truth
-
-Contact or proximity alone does not mean a part is installed. A constraint alone does not define compatibility, fastening, condition, or function. The Mechanics subsystem records those durable facts and creates or removes physical constraints through the physics boundary as needed.
-
-The physics library choice and wrapper depth require an ADR.
-
----
-
-## 13. Interaction
-
-Interaction translates user intent into validated requests against world and domain systems.
-
-### 13.1 Interaction Model
-
-The model distinguishes:
-
-- **Source:** desktop pointer, player controller, tracked hand, or automated test driver
-- **Intent:** select, grab, release, use, push, pull, rotate, attach, or remove
-- **Target:** world object or interaction point
-- **Affordance:** operations the target supports under current conditions
-- **Execution:** validated world, physics, or mechanical-domain operation
-- **Feedback:** visual, audio, animation, or haptic response
-
-### 13.2 Tools
-
-A tool exposes capabilities rather than hard-coding knowledge of every compatible object. Targets expose affordances and requirements. Mechanical domain rules determine whether an operation is valid and what state transition it causes.
-
-### 13.3 Desktop and VR
-
-Desktop interaction is the initial development and accessibility harness. VR adapts tracked hands and controllers into the same interaction intents and consumes the same affordances and domain operations.
-
-VR-specific hand posing, reach, haptics, and two-handed constraints belong to VR or presentation integration, not the Mechanics subsystem.
-
----
-
-## 14. Mechanical Domain
-
-The Mechanics subsystem is the primary ForgeSim-specific domain layer shared by game and professional simulation projects.
-
-### 14.1 Definitions and Instances
-
-- A **part definition** describes reusable authored properties, compatible connections, supported operations, assets, and default state.
-- A **part instance** has stable identity and records its current condition, installation state, connections, and project-specific overrides.
-- An **assembly** groups related part instances and exposes validation or functional state.
-- A **subassembly** is an assembly used as part of a larger assembly without losing its internal structure.
-
-### 14.2 Connections
-
-A mechanical connection describes a durable relationship between compatible attachment points. It may create a physics constraint, a functional-network edge, a transform relationship, or some combination of these.
-
-Connection type, compatibility, installation requirements, and removal requirements are domain data. They must not be inferred only from hierarchy or physical overlap.
-
-### 14.3 Condition and Faults
-
-Parts may expose condition, wear, damage, calibration, or fault state as justified by the project. Fault injection must use the same validated domain APIs as other state changes rather than modifying private component state directly.
-
-### 14.4 Domain Operations
+Expected failures should produce useful errors or operation results.
 
 Examples include:
 
-- Install or remove a part
-- Attach or disconnect a connection
-- Tighten or loosen a fastener
-- Repair or replace a component
-- Change an operational control
+- Missing or invalid assets
+- Invalid scene documents
+- Unsupported material or model data
+- Rejected light properties
+- Unavailable platform functionality
 
-Domain operations validate preconditions, modify authoritative state, produce observable results, and coordinate required physics or network changes.
+Assertions are reserved for programmer invariants. Recoverable failures must remain diagnosable in Release builds.
 
-Domain operations are not inherently editor commands and are not automatically undoable.
+Diagnostic data belongs near the behavior it describes. ImGui panels and debug rendering present that data.
 
-### 14.5 Functional State
-
-An assembly's functional state may be derived from part presence, compatibility, condition, connection state, functional networks, and current operating inputs. Expensive evaluation should become incremental only after profiling identifies a need.
-
-The initial part/component representation, attachment model, and operation-result contract require ADRs.
+Performance changes should follow measurements. Loading time should be separated into meaningful stages before introducing caching, asynchronous loading, or threading infrastructure.
 
 ---
 
-## 15. Functional Networks
+## Testing Boundaries
 
-Functional networks represent connected systems such as electrical power, mechanical power, fluids, fuel, coolant, signals, or control logic.
+Behavior that does not require a graphics context, native window, or tracked hardware should be tested without those dependencies.
 
-Each network domain may define its own node, port, edge, state, and propagation rules while using shared graph infrastructure only where concrete commonality exists.
+Current and evolving test areas include:
 
-Networks must:
+- Fixed-step scheduling
+- Camera and picking calculations
+- Asset parsing and mesh processing
+- Material data and fallback behavior
+- Transform conversion
+- Light validation
+- Scene serialization and document conversion
+- Editing history
+- Scene bounds and camera framing
 
-- Reference stable part or port identities
-- Update independently of editor UI
-- Expose diagnostic topology and state
-- Serialize authored connections
-- Respond to mechanical installation, removal, condition, and fault changes
-- Avoid requiring rigid-body physics to represent nonphysical flow or logic
+Rendering correctness, window behavior, docking, and visual quality also require manual verification.
 
-ForgeSim will implement one network domain before generalizing the infrastructure. A universal network framework must not be designed solely from hypothetical requirements.
-
----
-
-## 16. Assets, Projects, and Persistence
-
-### 16.1 Projects
-
-A project identifies content, configuration, scenes, part definitions, and project-specific code or data. Editor session preferences are not automatically part of runtime project content.
-
-### 16.2 Asset Identity
-
-Assets use stable identifiers or handles. Filesystem paths may locate source content but should not be the only durable identity once asset references and moves must be supported.
-
-### 16.3 Source Data and Runtime Resources
-
-ForgeSim distinguishes:
-
-- Source assets and authored documents
-- Serialized project and scene data
-- Imported or processed runtime data, if later required
-- Live runtime resources such as GPU objects and physics shapes
-
-Live runtime resources are reconstructed and are not serialized directly.
-
-### 16.4 Serialization
-
-Persistent formats must support:
-
-- Schema versioning
-- Stable object and asset references
-- World hierarchy and authored components
-- Part definitions and instances
-- Assemblies and connections
-- Functional-network definitions
-- Scenario and training definitions when introduced
-
-Serialization should be human-readable during early development where doing so improves debugging and version control. Format and library selection require an ADR.
-
-Deserialization must validate input and report actionable errors. Round-trip tests must verify reconstruction of representative content.
+Future physics and VR tests must document hardware requirements and numerical tolerances. Fixed-step scheduling alone does not guarantee cross-platform bitwise determinism.
 
 ---
 
-## 17. Editor and Commands
+## Near-Term Architectural Focus
 
-### 17.1 Editor Role
+### Phase 3: Rendering and Showcases
 
-The editor owns:
+- Preserve the CPU asset/OpenGL resource boundary.
+- Keep rendering effects reusable across showcase scenes.
+- Make pass ordering and resource lifetime explicit.
+- Measure loading and rendering costs.
+- Extend scene documents for reproducible presentation settings.
+- Keep asset preparation and showcase art direction separate from renderer behavior.
 
-- Dear ImGui integration
-- Docking and window layout
-- Selection and editor session state
-- Scene viewport and hierarchy presentation
-- Property and domain inspectors
-- Debug panels and visualization controls
-- Authoring workflows
-- Editor command history
+### Phase 4: Scene Authoring
 
-The editor invokes public runtime and domain APIs. It must not contain the only implementation of world mutation, assembly validation, persistence, or scenario execution.
+- Support multiple imported assets without duplicating scene-loading logic.
+- Add creation, deletion, hierarchy, and property edits through testable operations.
+- Expand undo and redo around meaningful authoring transactions.
+- Preserve stable identity and reference validity.
+- Keep editor preferences separate from authored scene data.
 
-### 17.2 Editor Commands
+### Interaction and Early VR
 
-Editor commands represent reversible authoring operations. Examples include:
+Desktop and VR input should drive the same control state and validated interaction operations.
 
-- Create or delete an object
-- Modify an authored property
-- Change a transform
-- Reparent an object
-- Author or remove a mechanical connection
+The first interaction showcase should support buttons, switches, levers, and rotary controls before requiring a complete mechanical assembly system.
 
-A command records enough information to execute and reverse its authoring change. Dear ImGui types must not appear in command interfaces.
+Basic VR integration should follow the initial desktop interaction foundation. It should isolate headset rendering, tracked poses, controller actions, session handling, and haptics from scene and domain behavior.
 
-### 17.3 Domain Operations Versus Commands
+Articulated hands and advanced tool handling can follow later.
 
-Editor commands may call domain operations, but the concepts remain separate:
-
-- **Input actions** express user intent.
-- **Domain operations** validate and mutate runtime or authored domain state.
-- **Editor commands** provide reversible authoring history.
-
-Runtime gameplay must not depend on editor command history.
-
-### 17.4 In-World Construction
-
-Player construction is runtime behavior, not reuse of the Dear ImGui editor. It may share snapping, validation, part definitions, attachment rules, and domain operations with editor authoring while providing its own interaction and presentation.
+Exact world/component, physics, interaction, and XR APIs remain undecided until their implementation provides concrete requirements.
 
 ---
 
-## 18. Scenario and Training Layer
+## Longer-Term Direction
 
-Scenario and training systems are application-level orchestration built above shared world and mechanical state.
+ForgeSim is intended to support reusable world systems, physics, mechanical assemblies, functional networks, and training scenarios.
 
-### 18.1 Scenario Runtime
+The important boundaries are:
 
-A scenario may define:
+- Physics describes motion and constraints.
+- Mechanical data records installation, fastening, compatibility, condition, and connectivity.
+- Game rules describe progression and rewards.
+- Training rules describe procedures and assessment.
+- Editor commands provide reversible authoring.
+- Runtime interaction invokes domain behavior without depending on editor history.
 
-- Initial state
-- Events
-- Conditions
-- Actions
-- Objectives
-- Outcomes
-- Faults
-- State transitions
-
-Scenario execution must not depend on its visual editor.
-
-### 18.2 Procedures and Assessment
-
-A procedure observes domain operations and relevant state transitions. It may evaluate required steps, ordering, allowed alternatives, timing, safety constraints, and final state.
-
-Procedure state must not be embedded into general mechanical components. The same assembly should remain usable without training logic.
-
-### 18.3 Telemetry
-
-Domain operations and significant state changes should produce structured observations suitable for diagnostics, assessment, record/replay, or networking. This does not imply one unrestricted global event bus.
-
-Event ownership, ordering, lifetime, and delivery semantics must be explicit. The observation/event model requires an ADR before it becomes a broad public API.
+These principles guide later implementation. They do not require building those subsystems in advance.
 
 ---
 
-## 19. VR Integration
+## Build and Dependency Rules
 
-VR is an integration layer over platform tracking, input actions, interaction, rendering, animation, and feedback.
+ForgeSim-owned targets use C++20 and target-scoped CMake configuration.
 
-Responsibilities include:
+- Declare sources, includes, features, definitions, and dependencies per target.
+- Use public dependencies when required by a target's public interface.
+- Keep implementation dependencies private where practical.
+- Keep third-party warnings separate from ForgeSim warning policy.
+- Link tests only to the dependencies required by the behavior under test.
+- Preserve headless testability where the implementation permits it.
+- Avoid dependency cycles.
+- Introduce new targets when they establish a useful ownership, dependency, testing, or reuse boundary.
 
-- Headset and controller tracking
-- Tracked-hand or controller pose adaptation
-- Stereoscopic view configuration
-- Hand representation and pose selection
-- Stable one-handed and two-handed grasp behavior
-- Haptic feedback where supported
-- VR diagnostics and performance measurement
-
-VR SDK types must not enter Mechanics, Scenario, or general World public interfaces. The VR runtime and dependency strategy require an ADR.
-
----
-
-## 20. Game and Training Separation
-
-ForgeSim distinguishes three kinds of state and policy:
-
-| Concern | Example | Owner |
-|---|---|---|
-| Mechanical truth | A part is installed, damaged, connected, or transmitting power | Mechanics and functional networks |
-| Game policy | The repair awards currency or unlocks an upgrade | Project/game code |
-| Training policy | The part was removed in an allowed sequence and the trainee passed | Scenario/training layer |
-
-Game or training systems may observe and request changes through public APIs. They must not redefine core mechanical truth privately.
+Core must remain narrow. It should not become a destination for unrelated utilities merely because multiple systems might eventually use them.
 
 ---
 
-## 21. Headless Execution
+## Recording Decisions and Maintaining This Document
 
-Headless execution must be possible for systems that do not inherently require presentation or tracked hardware.
+Update this document when implemented responsibilities, ownership, or dependency boundaries change.
 
-The headless composition must be capable of supporting, as implemented:
+Ordinary feature work does not require an architecture rewrite.
 
-- World and scene loading
-- Fixed-step updates
-- Mechanical-domain operations
-- Functional-network evaluation
-- Scenario execution
-- Content and workflow validation
-- Machine-readable test results
+Use a short architecture decision record when a decision has significant alternatives, lasting consequences, or reasoning that would otherwise be difficult to recover. Small local implementation choices do not require one.
 
-Rendering, GLFW, Dear ImGui, audio, and VR must remain optional dependencies from the perspective of these systems.
+Future proposals should be labeled as provisional. Descriptions of implemented behavior should remain distinguishable from architectural constraints and planned capabilities.
 
-Physics may be available in headless mode if the selected physics integration supports it. Tests that depend on physics must document tolerances and platform limitations rather than claiming stronger determinism than the implementation provides.
-
----
-
-## 22. Determinism and Replay
-
-ForgeSim favors repeatable and testable behavior, but full cross-platform bitwise determinism is not assumed.
-
-The initial determinism contract is:
-
-- Fixed-step systems receive explicit time steps.
-- Simulation logic must not depend on render frame rate.
-- Random behavior must be seedable when repeatability is required.
-- Iteration order that affects outcomes must be intentional.
-- Wall-clock and editor state must not implicitly affect simulation results.
-- Physics-dependent tests must use documented tolerances.
-
-Record/replay may record input, domain operations, observations, state snapshots, or a combination. The required fidelity and authority model must be decided before implementation.
-
----
-
-## 23. Ownership and Lifetime
-
-### 23.1 General Rules
-
-- Executable composition roots own top-level subsystem instances.
-- Subsystems own their implementation resources.
-- World objects use handles or stable IDs rather than exposing owning pointers broadly.
-- GPU resources are owned by the renderer.
-- Physics resources are owned by the physics integration.
-- Native window and context resources are owned by the platform implementation.
-- Editor widgets do not own runtime objects merely because they display them.
-
-### 23.2 Initialization and Shutdown
-
-Dependencies must be initialized before their consumers and destroyed after them. Shutdown must not depend on global-static destruction order.
-
-### 23.3 Global Access
-
-Global mutable service locators should be avoided. Systems should receive required dependencies explicitly through construction, initialization, or scoped execution context.
-
----
-
-## 24. Errors, Diagnostics, and Observability
-
-Expected failures such as invalid content, missing assets, incompatible connections, or unavailable devices should produce structured errors or operation results rather than assertions alone.
-
-Assertions are appropriate for violated programmer invariants. Recoverable runtime and authoring failures must remain diagnosable in Release configurations.
-
-Each major subsystem should expose suitable diagnostics:
-
-- Runtime timing and catch-up behavior
-- Renderer resource and frame statistics
-- Physics bodies, shapes, contacts, and constraints
-- Interaction source, target, and affordance state
-- Mechanical connections, condition, and validation failures
-- Functional-network topology and propagation state
-- Scenario and procedure state
-
-Diagnostic presentation belongs to the editor or debug-rendering layer; diagnostic data belongs to the relevant subsystem.
-
----
-
-## 25. Testing Strategy
-
-Testing is continuous rather than a late roadmap phase.
-
-### 25.1 Unit and Domain Tests
-
-- Stable identifier and handle behavior
-- Transform and hierarchy operations
-- Clock and fixed-step accumulation
-- Mechanical compatibility and operation validation
-- Assembly completeness and functional-state evaluation
-- Functional-network propagation
-- Scenario conditions, actions, and assessment
-
-### 25.2 Serialization Tests
-
-- Round-trip reconstruction
-- Stable reference resolution
-- Invalid and missing data handling
-- Schema migration once more than one schema version exists
-
-### 25.3 Integration Tests
-
-- World and physics lifecycle
-- Constraint creation and destruction
-- Interaction-to-domain-operation flow
-- Tool use and mechanical state transitions
-- Save, reload, and continue workflows
-- Headless scenario validation
-
-### 25.4 Manual and Visual Verification
-
-Rendering, VR comfort, hand behavior, tool usability, and presentation quality require manual verification in addition to automated tests.
-
----
-
-## 26. Dependency Strategy
-
-External dependencies should be adopted deliberately when they provide mature infrastructure that is expensive or risky to reproduce.
-
-Current or expected categories include:
-
-- GLFW for initial windowing and input integration
-- An OpenGL function loader
-- Dear ImGui for editor UI
-- A mathematics library if justified
-- A physics library
-- Image and model loading libraries
-- A serialization library if justified
-- A VR runtime integration layer
-- A testing framework
-
-Each major dependency must be evaluated for:
-
-- License and redistribution terms
-- Maintenance activity and platform support
-- API stability
-- Build-system impact
-- Transitive dependencies
-- Debugging and profiling support
-- Ability to isolate it behind a ForgeSim-owned boundary
-- Long-term replacement cost
-
-Major dependency selections should be captured in ADRs.
-
----
-
-## 27. CMake and Build Architecture
-
-ForgeSim-owned targets use C++20 and should expose namespaced aliases such as `ForgeSim::Core` and `ForgeSim::PlatformGLFW` where appropriate.
-
-Build rules include:
-
-- Target-scoped sources, includes, compile features, definitions, and dependencies
-- No reliance on global include directories or compiler flags
-- Public dependencies only when they are part of a target's public interface
-- Private third-party dependencies where implementation boundaries permit
-- Platform-specific source selection inside platform implementation targets
-- Tests that link only the modules required by the behavior under test
-- Runtime modules that can build without editor dependencies
-- Headless-compatible modules that can build without presentation dependencies
-
-The directory structure may evolve, but target dependency direction is authoritative over folder appearance.
-
----
-
-## 28. Provisional Dependency Direction
-
-The following is the intended dependency direction. It should be enforced through CMake target links as modules become concrete.
-
-```text
-Core
-
-PlatformGLFW ------> Core
-Runtime -----------> Core
-World -------------> Core
-Renderer ----------> Core
-Physics -----------> Core, World-facing contracts
-Interaction -------> Core, World, Physics-facing contracts
-Mechanics ---------> Core, World, Physics-facing contracts
-Persistence -------> Core, World, Mechanics data contracts
-FunctionalNetworks -> Core, World/Mechanics identities
-ScenarioTraining --> Core, World, Mechanics, FunctionalNetworks
-VRIntegration -----> Core, Runtime-facing input, Interaction, Renderer-facing contracts
-Editor ------------> Runtime, World, Renderer, Physics, Interaction,
-                     Mechanics, Persistence, FunctionalNetworks, ScenarioTraining
-ProjectCode -------> Public runtime and domain APIs
-Executables -------> Required implementations and project code
-```
-
-This diagram does not permit upward dependencies merely because a lower module appears on the same line as a higher module. Cycles between targets are prohibited. If two modules appear to require each other, their contracts, ownership, or target boundaries must be reconsidered.
-
----
-
-## 29. Explicit Architectural Non-Goals
-
-- A monolithic engine library containing every subsystem
-- A universal graphics abstraction designed without a second backend
-- A universal functional-network framework designed before one concrete domain works
-- An editor dependency in runtime or mechanical logic
-- Mechanical installation inferred only from collision or hierarchy
-- Training procedure state embedded in reusable mechanical components
-- Runtime gameplay implemented through editor undo/redo history
-- VR device types exposed throughout the engine
-- Full cross-platform bitwise determinism without a demonstrated requirement
-- Premature multithreading, job systems, plugins, or scripting
-- Using Core as a repository for unrelated utilities
-
----
-
-## 30. Architecture Decision Records
-
-The following decisions should be captured as ADRs as their roadmap milestones approach:
-
-1. ForgeSim product scope and shared game/training foundation
-2. Application lifecycle, composition, and runtime ownership
-3. Fixed-timestep contract and time domains
-4. World/entity/component representation
-5. Stable identifier and runtime-handle model
-6. OpenGL abstraction depth and render submission model
-7. Physics library and integration boundary
-8. Transform authority and physics synchronization
-9. Device-independent input and interaction model
-10. Part, assembly, attachment, and connection representation
-11. Domain-operation validation and result model
-12. Serialization format, schema versioning, and asset identity
-13. Editor command scope and undo/redo behavior
-14. First functional-network domain and graph representation
-15. Scenario observation and event semantics
-16. VR runtime and dependency strategy
-17. Multiplayer authority and replication model before networking begins
-18. Replay fidelity and recording model before replay begins
-
-An ADR should state context, constraints, considered alternatives, decision, consequences, and status. Superseded decisions should remain in history and point to their replacements.
-
----
-
-## 31. Near-Term Architectural Focus
-
-The current implementation has established a Sandbox executable, GLFW window, OpenGL context, framebuffer clearing, resize handling, and normal shutdown.
-
-The next architectural work should remain limited to the active roadmap needs:
-
-1. Confirm executable and subsystem lifecycle ownership.
-2. Define the initial runtime loop and time-domain contract.
-3. Preserve the existing `ForgeSim::Core` and `ForgeSim::PlatformGLFW` boundary.
-4. Introduce rendering abstractions narrowly around concrete OpenGL requirements.
-5. Delay final world, physics, interaction, and mechanical APIs until their milestones provide concrete use cases.
-
-This approach preserves the long-term direction without front-loading the entire engine architecture into the Foundation milestone.
+The architecture should explain the code that exists and preserve the reasoning needed to evolve it.
