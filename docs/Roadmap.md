@@ -56,8 +56,10 @@ Mechanical state must remain independent of game-specific progression and traini
 - Keep runtime and simulation systems independent of editor and UI dependencies.
 - Keep platform-specific behavior isolated.
 - Separate authored data, runtime state, and editor preferences.
-- Preserve a path toward VR, multiplayer, player construction, and larger systemic worlds without requiring them in the earliest milestones.
-- Add automated tests and diagnostic tools alongside the systems they validate.
+- Introduce VR once the initial desktop interaction foundation is usable,
+  then develop hands and basic tool interaction against a compact showcase.
+- Preserve a path toward multiplayer, player construction, and larger
+  systemic worlds without requiring them in the earliest milestones.- Add automated tests and diagnostic tools alongside the systems they validate.
 - Measure performance before introducing substantial optimization infrastructure.
 - Prefer a smaller number of polished, interoperable systems over many incomplete features.
 
@@ -420,7 +422,7 @@ Build on the identity, naming, transforms, hierarchy, and persistence establishe
 
 ---
 
-# Phase 7 — Interaction and Tool Foundation
+# Phase 7 — Interaction and Control Foundation
 
 ## Input and Interaction Model
 
@@ -429,8 +431,17 @@ Build on the identity, naming, transforms, hierarchy, and persistence establishe
 - [ ] Implement desktop object targeting
 - [ ] Implement grabbing and releasing
 - [ ] Implement constrained manipulation
-- [ ] Support one-handed and two-handed interaction semantics
+- [ ] Identify interaction sources independently so multiple hands can be supported later
 - [ ] Separate interaction requests from validated world mutations
+
+## Interactive Controls
+
+- [ ] Implement momentary buttons and persistent toggle switches
+- [ ] Implement constrained levers and rotary controls
+- [ ] Define control limits, activation thresholds, and state transitions
+- [ ] Connect control changes to simple visible behavior
+- [ ] Support desktop manipulation through device-independent operations
+- [ ] Test control behavior independently of input devices and rendering
 
 ## Tools
 
@@ -442,13 +453,25 @@ Build on the identity, naming, transforms, hierarchy, and persistence establishe
 - [ ] Inspect supported interaction and tool properties
 - [ ] Test interactions without Dear ImGui dependencies
 
+## Interaction Targeting and Highlighting
+
+- [ ] Identify the current interaction target independently of editor selection
+- [ ] Define available, targeted, engaged, and unavailable interaction states
+- [ ] Highlight the relevant control or movable part
+- [ ] Distinguish interaction highlighting from editor selection highlighting
+- [ ] Provide feedback for unavailable actions and explain the reason where useful
+- [ ] Resolve overlapping targets predictably
+- [ ] Clear feedback when targets are removed or become unavailable
+- [ ] Expose interaction state to rendering without introducing UI dependencies
+- [ ] Test targeting and state transitions independently of rendering
+
 **Milestone:** A user can inspect, grab, manipulate, and operate tools on compatible objects using a desktop interaction harness.
 
 **Status:** Planned.
 
 ---
 
-# Phase 8 — VR Foundation and Interactive Controls Showcase
+# Phase 8 — VR Hands and Interactive Controls Showcase
 
 Introduce VR as soon as the initial desktop interaction model is usable.
 
@@ -466,25 +489,53 @@ tracked input, world scale, and shared desktop/VR interaction behavior.
 - [ ] Preserve the desktop application path
 - [ ] Establish an explicit performance target for the test headset
 
-## Tracked Input and Interaction
+## Articulated Hands and Direct Interaction
 
+- [ ] Load a suitable licensed hand mesh and skeleton
+- [ ] Implement the joint transforms and mesh deformation needed to render articulated hands
+- [ ] Keep initial hand posing narrowly scoped without requiring a general animation editor
 - [ ] Track controller grip and aim poses
-- [ ] Map controller actions into the shared interaction model
-- [ ] Display simple controller or hand proxies
-- [ ] Support controller-ray targeting and activation
-- [ ] Support proximity-based button interaction
-- [ ] Support grabbing and manipulating constrained controls
-- [ ] Provide hover, activation, and state feedback
-- [ ] Add controller haptic feedback where supported
-- [ ] Prevent invalid or conflicting simultaneous interactions
+- [ ] Display articulated virtual hands
+- [ ] Drive finger poses from available controller inputs
+- [ ] Define open, pointing, pressing, and gripping poses
+- [ ] Map hand interaction into the shared interaction model
+- [ ] Support proximity targeting and interactable highlighting
+- [ ] Press buttons through fingertip contact
+- [ ] Grab and move constrained switches and levers
+- [ ] Grip and rotate knobs and valve handwheels
+- [ ] Apply authored hand alignment and grasp poses to controls
+- [ ] Release controls reliably when input or tracking is lost
+- [ ] Provide visual and haptic interaction feedback
+- [ ] Prevent conflicting simultaneous manipulation
+- [ ] Retain controller-ray interaction as a fallback
+
+## Basic Tool Interaction
+
+- [ ] Grab, carry, release, and place one handheld tool
+- [ ] Apply an authored hand grip pose to the tool
+- [ ] Identify and highlight compatible tool targets
+- [ ] Engage and disengage a tool at a compatible interaction point
+- [ ] Use a bounded alignment or snapping guide
+- [ ] Perform one tool action that changes the target's state
+- [ ] Provide visual feedback for alignment, engagement, and completion
+- [ ] Recover safely from release, tracking loss, or interrupted interaction
+- [ ] Support the same tool operation through the desktop interaction path
+
+## Hand and Tool Feedback
+
+- [ ] Highlight controls targeted by a hand or controller ray
+- [ ] Distinguish hover feedback from active manipulation
+- [ ] Track interaction targets independently for each hand
+- [ ] Resolve conflicting attempts to manipulate the same target
+- [ ] Highlight compatible targets while holding a tool
+- [ ] Show tool alignment, engagement, and completion feedback
+- [ ] Keep feedback understandable without relying solely on color
+- [ ] Clear transient interaction state after tracking loss or session interruption
 
 ## Industrial Controls Showcase
 
 - [ ] Prepare independently movable control parts and authored pivots
-- [ ] Implement a momentary push button
-- [ ] Implement a persistent toggle switch
-- [ ] Implement a constrained lever
-- [ ] Implement a rotary control or valve
+- [ ] Adapt the existing button, toggle, lever, and rotary-control behaviors to hand input
 - [ ] Connect controls to visible indicators or simple scene behavior
 - [ ] Use the same control state and operations on desktop and in VR
 - [ ] Validate panel dimensions, reachability, and tracking-space alignment
@@ -500,14 +551,21 @@ tracked input, world scale, and shared desktop/VR interaction behavior.
 
 ## Scope Boundary
 
-This phase establishes headset and tracked-controller interaction.
+This phase includes articulated hands, direct interaction with industrial
+controls, and one handheld tool used at a compatible target.
 
-Articulated fingers, optical hand tracking, sophisticated grasp solving,
+Initial hands may use controller-driven finger poses and authored grasp
+alignment. Tool engagement may use bounded snapping or alignment guides.
+
+Full physical finger simulation, generalized grasp solving, advanced
 two-handed tools, and complete mechanical disassembly remain later work.
 
-**Milestone:** A user can enter a compact industrial scene in VR and
-operate buttons, switches, levers, and rotary controls using the same
-underlying interaction systems as the desktop application.
+Optical hand tracking must be explicitly included and validated if
+controller-free interaction is required.
+
+**Milestone:** A user can operate industrial controls with articulated
+hands in VR, pick up a handheld tool, engage it with a compatible target,
+and perform one meaningful tool action.
 
 **Status:** Planned.
 
@@ -524,6 +582,14 @@ underlying interaction systems as the desktop application.
 - [ ] Represent installed, removed, fastened, and connected states
 - [ ] Represent part condition, wear, damage, and faults
 - [ ] Separate physical behavior from durable logical mechanical state
+
+## Mechanical Interaction Feedback
+
+- [ ] Expose valid installation and removal targets through interaction affordances
+- [ ] Indicate compatible attachment points while positioning a part
+- [ ] Explain blocked operations, such as remaining fasteners or incompatible parts
+- [ ] Update available interactions after assembly state changes
+- [ ] Keep compatibility and operation rules independent of highlight rendering
 
 ## Assembly Operations
 
@@ -607,26 +673,50 @@ Develop a compact authored machine or subsystem that demonstrates the shared eng
 
 ---
 
-# Phase 12 — VR Interaction
+# Phase 12 — Advanced VR Manipulation and Tools
 
-## VR Runtime
+## Advanced Hands and Grasping
 
-- [ ] Evaluate and select the VR integration approach
-- [ ] Isolate VR-platform dependencies from the general runtime
-- [ ] Implement headset and controller tracking
-- [ ] Render stereoscopic views correctly
-- [ ] Meet an explicit VR frame-time target
+- [ ] Extend existing hand poses to the tools and parts required by the repair
+- [ ] Support transitions between holding, operating, and releasing tools
+- [ ] Support regripping and hand repositioning where required
+- [ ] Preserve stable manipulation when hands encounter constrained objects
+- [ ] Recover safely from tracking loss and interrupted interactions
 
-## Articulated Hands and Tools
+## Two-Handed Interaction
 
-- [ ] Implement articulated hand representation
-- [ ] Map tracked input to hand poses
-- [ ] Implement stable grasp poses
-- [ ] Implement one-handed and two-handed tool use
-- [ ] Support constrained mechanical interactions in VR
-- [ ] Add haptic and audiovisual feedback where available
-- [ ] Validate reachability, comfort, and interaction reliability
+- [ ] Stabilize a part or tool with one hand while operating with the other
+- [ ] Define primary and supporting hand roles
+- [ ] Support deliberate handoff and release behavior
+- [ ] Resolve competing manipulation requests predictably
+- [ ] Support two-handed tools where required by the vertical slice
+
+## Validation and Usability
+
+- [ ] Complete the selected repair workflow in VR
+- [ ] Validate reachability, comfort, precision, and interaction reliability
+- [ ] Measure performance during representative repair operations
+- [ ] Keep essential feedback understandable without controller haptics
 - [ ] Preserve desktop interaction as a development and accessibility harness
+- [ ] Preserve desktop interaction as a development and accessibility harness
+
+## Tools and Mechanical Operations
+
+- [ ] Extend basic tool interaction to the tools required by the selected repair
+- [ ] Support repeated tool motions and regripping where required
+- [ ] Coordinate tool movement with fastening, removal, and installation rules
+- [ ] Remove, carry, position, and install mechanically meaningful parts
+- [ ] Preserve reliable tool engagement during supported constrained motion
+- [ ] Complete multi-step tool operations with clear progress and completion feedback
+
+## Contextual Interaction Feedback
+
+- [ ] Extend existing highlighting to multi-step repair operations
+- [ ] Identify the active tool target and supporting-hand target
+- [ ] Distinguish alignment, engagement, operation progress, and completion
+- [ ] Explain operations blocked by mechanical state
+- [ ] Keep highlights readable without obscuring small parts or tool contact points
+- [ ] Support optional instructional guidance separately from mechanical validity
 
 **Milestone:** The mechanic vertical slice can be completed in VR using articulated hands and physically credible tool interaction.
 
