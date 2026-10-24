@@ -130,3 +130,25 @@ forgesim_install_notice(
 forgesim_install_notice(
     glad "${PROJECT_SOURCE_DIR}/external/glad/include/KHR/khrplatform.h"
 )
+
+install(
+    FILES "${PROJECT_SOURCE_DIR}/CHANGELOG.md"
+    DESTINATION .
+    COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+)
+
+set(
+    FORGESIM_RELEASE_NOTES
+    "${PROJECT_SOURCE_DIR}/docs/releases/${FORGESIM_VERSION_STRING}.md"
+)
+
+if(EXISTS "${FORGESIM_RELEASE_NOTES}")
+    install(
+        FILES "${FORGESIM_RELEASE_NOTES}"
+        DESTINATION .
+        RENAME RELEASE_NOTES.md
+        COMPONENT SandboxRuntime
+        CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+    )
+endif()

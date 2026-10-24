@@ -307,3 +307,11 @@ if (FORGESIM_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# ---------------------------------------------------------------------------
+# Packaging
+# ---------------------------------------------------------------------------
+
+if(FORGESIM_BUILD_SANDBOX AND WIN32)
+    include("${PROJECT_SOURCE_DIR}/cmake/PackageSandbox.cmake")
+endif()
