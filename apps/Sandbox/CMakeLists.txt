@@ -2,6 +2,23 @@ add_executable(
 	ForgeSimSandbox 
 )
 
+set(
+    FORGESIM_SANDBOX_GENERATED_INCLUDE_DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/Version.hpp.in"
+    "${FORGESIM_SANDBOX_GENERATED_INCLUDE_DIRECTORY}/ForgeSim/Build/Version.hpp"
+    @ONLY
+)
+
+target_include_directories(
+    ForgeSimSandbox
+    PRIVATE
+        "${FORGESIM_SANDBOX_GENERATED_INCLUDE_DIRECTORY}"
+)
+
 add_custom_target(
 	ForgeSimSandboxAssets
 	ALL

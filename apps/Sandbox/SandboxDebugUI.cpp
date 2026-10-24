@@ -17,10 +17,11 @@
 #include <imgui_impl_opengl3.h>
 #include <glm/trigonometric.hpp>
 
-#include <ForgeSim/Renderer/Bounds.hpp>
-#include <ForgeSim/Renderer/PerspectiveCamera.hpp>
+#include <ForgeSim/Build/Version.hpp>
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
+#include <ForgeSim/Renderer/Bounds.hpp>
+#include <ForgeSim/Renderer/PerspectiveCamera.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -225,8 +226,9 @@ namespace ForgeSim::Sandbox
 			"ForgeSim Debug",
 			&m_IsVisible);
 
-		ImGui::TextUnformatted(
-			"ForgeSim Sandbox debug interface");
+		ImGui::Text(
+			"ForgeSim Sandbox %s",
+			ForgeSim::Build::Version);
 
 		ImGui::TextUnformatted(
 			"Press F1 to show or hide this panel.");

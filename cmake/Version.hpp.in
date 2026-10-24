@@ -1,0 +1,19 @@
+#pragma once
+
+namespace ForgeSim::Build
+{
+    inline constexpr unsigned VersionMajor =
+        @PROJECT_VERSION_MAJOR@;
+
+    inline constexpr unsigned VersionMinor =
+        @PROJECT_VERSION_MINOR@;
+
+    inline constexpr unsigned VersionPatch =
+        @PROJECT_VERSION_PATCH@;
+
+    inline constexpr char Version[] =
+        "@FORGESIM_VERSION_STRING@";
+
+    inline constexpr char Prerelease[] =
+        "@FORGESIM_VERSION_PRERELEASE@";
+}

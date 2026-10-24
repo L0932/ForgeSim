@@ -11,6 +11,7 @@
 #include <string_view>
 #include <utility>
 
+#include <ForgeSim/Build/Version.hpp>
 #include <ForgeSim/Core/Log.hpp>
 
 namespace
@@ -193,7 +194,8 @@ int main(int argumentCount, char* arguments[])
         }
 
         ForgeSim::Core::LogInfo(
-            "Starting ForgeSim Sandbox Application");
+            std::string{ "Starting ForgeSim Sandbox " } +
+            ForgeSim::Build::Version);
 
         const fs::path projectRoot =
             fs::weakly_canonical(

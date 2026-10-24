@@ -8,6 +8,35 @@ project(
     LANGUAGES C CXX
 )
 
+set(
+    FORGESIM_VERSION_PRERELEASE
+    "dev"
+    CACHE STRINGS
+    "Prerelease identifier; empty for a stable release"
+)
+
+if(NOT FORGESIM_VERSION_PRERELEASE STREQUAL "")
+    if(NOT FORGESIM_VERSION_PRERELEASE MATCHES
+        "^[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*$")
+        message(
+            FATAL_ERROR
+            "FORGESIM_VERSION_PRERELEASE must contain "
+            "dot-separated letters, digits, or hyphens."
+        )
+    endif()
+endif()
+
+set(FORGESIM_VERSION_STRING "${PROJECT_VERSION}")
+
+if(NOT FORGESIM_VERSION_PRERELEASE STREQUAL "")
+    string(
+        APPEND FORGESIM_VERSION_STRING
+        "-${FORGESIM_VERSION_PRERELEASE}"
+    )
+endif()
+
+message(STATUS "ForgeSim version: ${FORGESIM_VERSION_STRING}")
+
 # Prevent accidental in-source builds.
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 message(
