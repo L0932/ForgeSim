@@ -16,6 +16,8 @@ namespace ForgeSim::Sandbox
             const SceneDocument& document,
             const std::filesystem::path& projectRoot,
             std::optional<std::filesystem::path> scenePath =
+            std::nullopt,
+            std::optional<std::filesystem::path> defaultSceneDirectory =
             std::nullopt);
 
         [[nodiscard]] SandboxScene& Scene() noexcept;
@@ -23,6 +25,9 @@ namespace ForgeSim::Sandbox
 
         [[nodiscard]] const std::optional<std::filesystem::path>&
             ScenePath() const noexcept;
+
+        [[nodiscard]]
+        const std::filesystem::path& DefaultSceneDirectory() const noexcept;
 
         [[nodiscard]]
         const std::filesystem::path& ProjectRoot() const noexcept;
@@ -52,6 +57,7 @@ namespace ForgeSim::Sandbox
     private:
         SandboxScene m_Scene;
         std::filesystem::path m_ProjectRoot;
+        std::filesystem::path m_DefaultSceneDirectory;
 
         std::optional<std::filesystem::path> m_ScenePath;
         std::string m_ChangeBaseline;

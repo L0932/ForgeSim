@@ -1,4 +1,5 @@
 #include "EditorWorkspace.hpp"
+#include "SandboxPaths.hpp"
 
 #include <filesystem>
 
@@ -12,11 +13,7 @@ namespace ForgeSim::Sandbox
     void EditorWorkspace::Initialize()
     {
         const std::filesystem::path settingsPath =
-            std::filesystem::absolute(
-                std::filesystem::path{
-                    FORGESIM_SANDBOX_ASSET_DIRECTORY
-                }.parent_path() / "imgui.ini")
-            .lexically_normal();
+            EditorSettingsDirectory() / "imgui.ini";
 
         const std::u8string utf8Path =
             settingsPath.generic_u8string();

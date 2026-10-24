@@ -47,8 +47,6 @@ target_compile_definitions(
 	ForgeSimSandbox
 	PRIVATE
 	    GLM_ENABLE_EXPERIMENTAL
-		FORGESIM_SANDBOX_ASSET_DIRECTORY="${CMAKE_CURRENT_BINARY_DIR}/assets"
-		FORGESIM_SANDBOX_SHADER_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
 )
 
 target_sources(
@@ -66,6 +64,8 @@ target_sources(
 		SandboxDebugUI.hpp
 		SandboxDebugUI.cpp
 		SandboxObject.hpp
+		SandboxPaths.hpp
+		SandboxPaths.cpp
 		SandboxRenderer.hpp
 		SandboxRenderer.cpp
 		SandboxScene.hpp
@@ -136,3 +136,5 @@ target_link_libraries(
 )
 
 forgesim_set_project_warnings(ForgeSimSandbox)
+
+include("${PROJECT_SOURCE_DIR}/cmake/InstallSandbox.cmake")

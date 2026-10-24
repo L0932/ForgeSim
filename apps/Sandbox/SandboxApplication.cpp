@@ -2,6 +2,7 @@
 #include "LightDebugLayout.hpp"
 #include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
+#include "SandboxPaths.hpp"
 #include "SceneCameraFraming.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneFilePanel.hpp"
@@ -51,9 +52,7 @@ namespace ForgeSim::Sandbox
 			std::filesystem::weakly_canonical(
 				std::filesystem::absolute(
 					spec.projectRoot.value_or(
-						std::filesystem::path{
-							FORGESIM_SANDBOX_ASSET_DIRECTORY
-						}.parent_path())));
+						BundledAssetDirectory().parent_path())));
 
 		SandboxScene initialScene =
 			spec.initialScene
@@ -100,7 +99,8 @@ namespace ForgeSim::Sandbox
 		m_EditorSession = std::make_unique<EditorSession>(
 			document,
 			projectRoot,
-			spec.scenePath);
+			spec.scenePath,
+			DefaultSceneDirectory());
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
@@ -1015,7 +1015,7 @@ namespace ForgeSim::Sandbox
 		Platform::FileDialogSpecification specification;
 
 		specification.defaultDirectory =
-			m_EditorSession->ProjectRoot() / "scenes";
+			m_EditorSession->DefaultSceneDirectory();
 
 		specification.suggestedFileName =
 			m_EditorSession->ScenePath()

@@ -1,4 +1,5 @@
 #include "SandboxApplication.hpp"
+#include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
 
 #include <cstdlib>
@@ -13,6 +14,7 @@
 
 #include <ForgeSim/Build/Version.hpp>
 #include <ForgeSim/Core/Log.hpp>
+#include <ForgeSim/Platform/ApplicationPaths.hpp>
 
 namespace
 {
@@ -136,11 +138,7 @@ namespace
 
     [[nodiscard]] fs::path DefaultProjectRoot()
     {
-        return fs::weakly_canonical(
-            fs::absolute(
-                fs::path{
-                    FORGESIM_SANDBOX_ASSET_DIRECTORY
-                }.parent_path()));
+        return ForgeSim::Platform::ExecutableDirectory();
     }
 
     [[nodiscard]] fs::path ResolveSharedModel(
@@ -196,6 +194,21 @@ int main(int argumentCount, char* arguments[])
         ForgeSim::Core::LogInfo(
             std::string{ "Starting ForgeSim Sandbox " } +
             ForgeSim::Build::Version);
+
+        const fs::path executableDirectory =
+            ForgeSim::Platform::ExecutableDirectory();
+
+        ForgeSim::Core::LogInfo(
+            "Executable directory: " +
+            executableDirectory.string());
+
+        ForgeSim::Core::LogInfo(
+            "Bundled assets: " +
+            ForgeSim::Sandbox::BundledAssetDirectory().string());
+
+        ForgeSim::Core::LogInfo(
+            "Shader directory: " +
+            ForgeSim::Sandbox::ShaderDirectory().string());
 
         const fs::path projectRoot =
             fs::weakly_canonical(

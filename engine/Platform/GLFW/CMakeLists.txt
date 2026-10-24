@@ -9,12 +9,14 @@ add_library(
 target_sources(
     ForgeSimPlatformGLFW
     PRIVATE
+        src/ApplicationPaths.cpp
         src/FileDialogs.cpp
         src/GlfwWindow.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include
         FILES
+            include/ForgeSim/Platform/ApplicationPaths.hpp
             include/ForgeSim/Platform/FileDialogs.hpp
             include/ForgeSim/Platform/GlfwWindow.hpp
 )

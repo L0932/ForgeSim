@@ -10,11 +10,17 @@ namespace ForgeSim::Sandbox
     EditorSession::EditorSession(
         const SceneDocument& document,
         const std::filesystem::path& projectRoot,
-        std::optional<std::filesystem::path> scenePath)
+        std::optional<std::filesystem::path> scenePath,
+        std::optional<std::filesystem::path> defaultSceneDirectory)
         : m_Scene(document)
         , m_ProjectRoot(
             std::filesystem::weakly_canonical(
                 std::filesystem::absolute(projectRoot)))
+        , m_DefaultSceneDirectory(
+            std::filesystem::absolute(
+                defaultSceneDirectory.value_or(
+                    m_ProjectRoot / "scenes"))
+            .lexically_normal())
     {
         if (scenePath)
         {
@@ -50,6 +56,12 @@ namespace ForgeSim::Sandbox
     }
 
     const std::filesystem::path&
+        EditorSession::DefaultSceneDirectory() const noexcept
+    {
+        return m_DefaultSceneDirectory;
+    }
+
+    const std::filesystem::path&
         EditorSession::ProjectRoot() const noexcept
     {
         return m_ProjectRoot;
@@ -79,7 +91,9 @@ namespace ForgeSim::Sandbox
     {
         return EditorSession{
             SceneDocument{},
-            m_ProjectRoot
+            m_ProjectRoot,
+            std::nullopt,
+            m_DefaultSceneDirectory
         };
     }
 
@@ -96,7 +110,7 @@ namespace ForgeSim::Sandbox
             std::filesystem::absolute(
                 path.is_absolute()
                 ? path
-                : m_ProjectRoot / "scenes" / path)
+                : m_DefaultSceneDirectory / path)
             .lexically_normal();
 
         const SceneDocument document =
@@ -107,7 +121,8 @@ namespace ForgeSim::Sandbox
         return EditorSession{
             document,
             m_ProjectRoot,
-            resolvedPath
+            resolvedPath,
+            m_DefaultSceneDirectory
         };
     }
 
@@ -141,12 +156,10 @@ namespace ForgeSim::Sandbox
 
         if (destination.is_relative())
         {
-            const std::filesystem::path sceneDirectory =
-                m_ProjectRoot / "scenes";
+            std::filesystem::create_directories(
+                m_DefaultSceneDirectory);
 
-            std::filesystem::create_directories(sceneDirectory);
-
-            destination = sceneDirectory / destination;
+            destination = m_DefaultSceneDirectory / destination;
         }
 
         std::optional<std::filesystem::path> scenePath{

@@ -1,5 +1,6 @@
 #include "LightDebugLayout.hpp"
 #include "LightSubmission.hpp"
+#include "SandboxPaths.hpp"
 #include "SandboxRenderer.hpp"
 
 #include <algorithm>
@@ -31,14 +32,6 @@
 #include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Assets/SceneAsset.hpp>
 #include <ForgeSim/Core/Log.hpp>
-
-#ifndef FORGESIM_SANDBOX_SHADER_DIRECTORY
-#error FORGESIM_SANDBOX_SHADER_DIRECTORY must be defined by CMake
-#endif
-
-#ifndef FORGESIM_SANDBOX_ASSET_DIRECTORY
-#error FORGESIM_SANDBOX_ASSET_DIRECTORY must be defined by CMake
-#endif
 
 namespace ForgeSim::Sandbox
 {
@@ -230,9 +223,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] std::filesystem::path ShaderPath(
 			const std::filesystem::path& filename)
 		{
-			return std::filesystem::path{
-				FORGESIM_SANDBOX_SHADER_DIRECTORY
-			} / filename;
+			return ShaderDirectory() / filename;
 		}
 
 		[[nodiscard]] std::string LoadShaderSource(
@@ -266,11 +257,9 @@ namespace ForgeSim::Sandbox
 			const std::filesystem::path& filename)
 		{
 			const std::filesystem::path modelPath =
-				std::filesystem::path{
-					FORGESIM_SANDBOX_ASSET_DIRECTORY
-			} /
-				"models" /
-				filename;
+				filename.is_absolute()
+				? filename
+				: BundledAssetDirectory() / "models" / filename;
 
 			return std::filesystem::weakly_canonical(
 				std::filesystem::absolute(modelPath));
@@ -387,11 +376,9 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] std::filesystem::path EnvironmentPath(
 			const std::filesystem::path& filename)
 		{
-			return std::filesystem::path{
-				FORGESIM_SANDBOX_ASSET_DIRECTORY
-			} /
-				"environments" /
-				filename;
+			return filename.is_absolute()
+				? filename
+				: BundledAssetDirectory() / "environments" / filename;
 		}
 
 		[[nodiscard]]

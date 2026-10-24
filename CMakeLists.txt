@@ -11,7 +11,7 @@ project(
 set(
     FORGESIM_VERSION_PRERELEASE
     "dev"
-    CACHE STRINGS
+    CACHE STRING
     "Prerelease identifier; empty for a stable release"
 )
 
