@@ -1,0 +1,76 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Windows x64 / ${{ matrix.configuration }}
+    runs-on: windows-2022
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Report CMake version
+        run: cmake --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B out/build/ci
+          -G "Visual Studio 17 2022"
+          -A x64
+          -DFORGESIM_BUILD_SANDBOX=ON
+          -DFORGESIM_BUILD_TESTS=ON
+          -DFORGESIM_VERSION_PRERELEASE=dev
+
+      - name: Build
+        run: >
+          cmake --build out/build/ci
+          --config ${{ matrix.configuration }}
+          --parallel 2
+
+      - name: Run headless tests
+        run: >
+          ctest --test-dir out/build/ci
+          -C ${{ matrix.configuration }}
+          --output-on-failure
+          --no-tests=error
+          --timeout 120
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-${{ matrix.configuration }}-diagnostics
+          path: |
+            out/build/ci/CMakeCache.txt
+            out/build/ci/CMakeFiles/CMakeConfigureLog.yaml
+            out/build/ci/CMakeFiles/CMakeError.log
+            out/build/ci/Testing/Temporary/LastTest.log
+            out/build/ci/Testing/Temporary/LastTestsFailed.log
+          if-no-files-found: ignore
+          retention-days: 7
