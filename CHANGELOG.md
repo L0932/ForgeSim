@@ -7,6 +7,19 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+## [0.1.0-preview.2] - 2026-10-26
+
+### Added
+
+- Windows installer generated through CPack NSIS.
+- Start Menu shortcuts and application uninstallation.
+- Detection of existing installations when installing a replacement version.
+- GitHub Actions validation for Windows Debug and Release builds and headless tests.
+
+### Fixed
+
+- Scene-save path tests now compare filesystem identity rather than path spelling.
+
 ## [0.1.0-preview.1] - 2026-10-24
 
 ### Added
