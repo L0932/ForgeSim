@@ -474,16 +474,19 @@ namespace
 
         relativeSession.SaveAs("Relative.scene.json");
 
-        Require(
-            relativeSession.ScenePath().value() ==
-            (projectRoot / "scenes/Relative.scene.json")
-            .lexically_normal(),
-            "Relative editor saves did not use the scenes directory.");
+        const fs::path expectedPath =
+            projectRoot / "scenes/Relative.scene.json";
 
         Require(
-            fs::is_regular_file(
-                projectRoot / "scenes/Relative.scene.json"),
+            fs::is_regular_file(expectedPath),
             "Relative scene save did not create the expected file.");
+
+        Require(
+            relativeSession.ScenePath().has_value() &&
+            fs::equivalent(
+                *relativeSession.ScenePath(),
+                expectedPath),
+            "Relative editor saves did not use the scenes directory.");
     }
 
     void TestPreparedSceneChanges()
