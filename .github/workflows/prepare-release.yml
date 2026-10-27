@@ -18,6 +18,8 @@ concurrency:
 jobs:
   build-and-test:
     name: Validate Windows release
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     runs-on: windows-2022
     timeout-minutes: 30
 
@@ -188,3 +190,185 @@ jobs:
             out/build/release/Testing/Temporary/LastTestsFailed.log
           if-no-files-found: ignore
           retention-days: 7
+
+  prepare-draft:
+    name: Prepare draft release
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        shell: pwsh
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_VERSION: ${{ needs.build-and-test.outputs.version }}
+      SOURCE_COMMIT: ${{ github.sha }}
+
+    steps:
+      - name: Download verified packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ForgeSim-${{ needs.build-and-test.outputs.version }}-Windows
+          path: release-assets
+
+      - name: Create or update draft
+        run: |
+          function Invoke-Gh {
+            param([string[]] $Arguments)
+
+            $result = & gh @Arguments
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub CLI command failed: gh $($Arguments -join ' ')"
+            }
+
+            return $result
+          }
+
+          $repository = $env:GH_REPO
+          $tag = $env:RELEASE_TAG
+          $commit = $env:SOURCE_COMMIT
+
+          # Verify an existing tag points to the exact commit we built.
+          $references = (
+            Invoke-Gh -Arguments @(
+              "api",
+              "repos/$repository/git/matching-refs/tags/$tag"
+            )
+          ) | ConvertFrom-Json
+
+          $existingTag = @(
+            $references | Where-Object { $_.ref -ceq "refs/tags/$tag" }
+          )
+
+          if ($existingTag.Count -gt 0) {
+            # The commits endpoint also resolves annotated tags.
+            $tagCommit = (
+              Invoke-Gh -Arguments @(
+                "api",
+                "repos/$repository/commits/$tag"
+              )
+            ) | ConvertFrom-Json
+
+            if ($tagCommit.sha -ne $commit) {
+              throw "Tag '$tag' points to another commit. Use a new release tag."
+            }
+          }
+
+          # Include drafts and paginate rather than assuming only one page.
+          $pages = (
+            Invoke-Gh -Arguments @(
+              "api", "--paginate", "--slurp",
+              "repos/$repository/releases?per_page=100"
+            )
+          ) | ConvertFrom-Json
+
+          $matchingReleases = @(
+            foreach ($page in $pages) {
+              foreach ($release in $page) {
+                if ($release.tag_name -ceq $tag) {
+                  $release
+                }
+              }
+            }
+          )
+
+          if ($matchingReleases.Count -gt 1) {
+            throw "Multiple releases found for '$tag'; inspect them manually."
+          }
+
+          $existingRelease = $matchingReleases | Select-Object -First 1
+
+          if ($null -ne $existingRelease) {
+            if (-not $existingRelease.draft) {
+              throw "Release '$tag' is already published. It will not be modified."
+            }
+
+            if ($existingRelease.target_commitish -ne $commit) {
+              throw "Draft '$tag' targets another commit. Use a new release tag."
+            }
+          }
+
+          # Upload only the four expected release files.
+          $baseName = "ForgeSim-$env:RELEASE_VERSION-Windows-AMD64"
+          $assetNames = @(
+            "$baseName.zip"
+            "$baseName.zip.sha256"
+            "$baseName-Setup.exe"
+            "$baseName-Setup.exe.sha256"
+          )
+
+          $assetPaths = @(
+            foreach ($name in $assetNames) {
+              $path = Join-Path "release-assets" $name
+
+              if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                throw "Release asset is missing: $name"
+              }
+
+              $path
+            }
+          )
+
+          if ($null -eq $existingRelease) {
+            $runUrl = (
+              "$env:GITHUB_SERVER_URL/$repository/actions/runs/" +
+              "$env:GITHUB_RUN_ID"
+            )
+
+            @(
+              "Prepared from commit: $commit"
+              ""
+              "Build and automated checks: $runUrl"
+              ""
+              "Before publishing, verify application launch, rendering,"
+              "editor interactions, installation, and package contents."
+              ""
+              "Windows x64. Requires an OpenGL 4.6-capable graphics driver."
+              "This preview is unsigned."
+              ""
+            ) | Set-Content -Path release-notes.md -Encoding utf8
+
+            $createArguments = @(
+              "release", "create", $tag,
+              "--repo", $repository,
+              "--draft",
+              "--target", $commit,
+              "--title", "ForgeSim $env:RELEASE_VERSION",
+              "--notes-file", "release-notes.md",
+              "--generate-notes"
+            )
+
+            if ($tag.Contains("-")) {
+              $createArguments += "--prerelease"
+            }
+
+            Invoke-Gh -Arguments $createArguments
+          }
+
+          # Retry replaces matching assets only on the verified draft.
+          $uploadArguments = @(
+            "release", "upload", $tag,
+            "--repo", $repository,
+            "--clobber"
+          ) + $assetPaths
+
+          Invoke-Gh -Arguments $uploadArguments
+
+          $draftUrl = Invoke-Gh -Arguments @(
+            "release", "view", $tag,
+            "--repo", $repository,
+            "--json", "url",
+            "--jq", ".url"
+          )
+
+          "Draft release: $draftUrl" |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
