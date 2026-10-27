@@ -84,7 +84,7 @@ jobs:
             throw "Release tests failed."
           }
 
-                - name: Package portable ZIP
+      - name: Package portable ZIP
         run: |
           cpack --config out/build/release/CPackConfig.cmake `
             -C Release `
