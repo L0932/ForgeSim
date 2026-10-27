@@ -35,6 +35,27 @@ if(NOT FORGESIM_VERSION_PRERELEASE STREQUAL "")
     )
 endif()
 
+# Optional release guard supplied by release automation.
+set(
+    FORGESIM_EXPECTED_VERSION
+    ""
+    CACHE STRING
+    "Expected complete application version; empty disables the release guard"
+)
+
+if(NOT FORGESIM_EXPECTED_VERSION STREQUAL "")
+    if(NOT FORGESIM_VERSION_STRING STREQUAL FORGESIM_EXPECTED_VERSION)
+        message(
+            FATAL_ERROR
+            "Release version mismatch.\n"
+            "Expected: ${FORGESIM_EXPECTED_VERSION}\n"
+            "Configured: ${FORGESIM_VERSION_STRING}\n"
+            "Check project(VERSION ...) and "
+            "FORGESIM_VERSION_PRERELEASE."
+        )
+    endif()
+endif()
+
 message(STATUS "ForgeSim version: ${FORGESIM_VERSION_STRING}")
 
 # Prevent accidental in-source builds.
