@@ -84,6 +84,98 @@ jobs:
             throw "Release tests failed."
           }
 
+                - name: Package portable ZIP
+        run: |
+          cpack --config out/build/release/CPackConfig.cmake `
+            -C Release `
+            -G ZIP
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Portable ZIP packaging failed."
+          }
+
+      - name: Package Windows installer
+        run: |
+          $nsisDirectory = "${env:ProgramFiles(x86)}\NSIS"
+
+          if (Test-Path "$nsisDirectory\makensis.exe") {
+            $env:PATH = "$nsisDirectory;$env:PATH"
+          }
+
+          cpack --config out/build/release/CPackConfig.cmake `
+            -C Release `
+            -G NSIS
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows installer packaging failed."
+          }
+
+      - name: Verify packages and checksums
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $packageDirectory = "out/build/release/packages"
+          $baseName = "ForgeSim-$env:RELEASE_VERSION-Windows-AMD64"
+
+          $packageNames = @(
+            "$baseName.zip"
+            "$baseName-Setup.exe"
+          )
+
+          foreach ($name in $packageNames) {
+            $packagePath = Join-Path $packageDirectory $name
+            $checksumPath = "$packagePath.sha256"
+
+            if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) {
+              throw "Expected package is missing: $packagePath"
+            }
+
+            if (-not (Test-Path -LiteralPath $checksumPath -PathType Leaf)) {
+              throw "Expected checksum is missing: $checksumPath"
+            }
+
+            $checksumText = Get-Content -LiteralPath $checksumPath -Raw
+
+            if ($checksumText -notmatch '^\s*([0-9A-Fa-f]{64})\s+') {
+              throw "Invalid SHA-256 checksum file: $checksumPath"
+            }
+
+            $expectedHash = $Matches[1]
+            $actualHash = (
+              Get-FileHash -LiteralPath $packagePath -Algorithm SHA256
+            ).Hash
+
+            if ($actualHash -ne $expectedHash) {
+              throw "Checksum mismatch for $name"
+            }
+
+            # Keep checksum files compatible with sha256sum -c:
+            # UTF-8 without BOM, filename only, and an LF line ending.
+            $normalizedChecksum = (
+              $actualHash.ToLowerInvariant() + "  " + $name + "`n"
+            )
+
+            [System.IO.File]::WriteAllText(
+              $checksumPath,
+              $normalizedChecksum,
+              [System.Text.UTF8Encoding]::new($false)
+            )
+
+            Write-Host "Verified: $name"
+          }
+
+      - name: Upload release packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ForgeSim-${{ steps.version.outputs.version }}-Windows
+          path: |
+            out/build/release/packages/ForgeSim-*.zip
+            out/build/release/packages/ForgeSim-*.zip.sha256
+            out/build/release/packages/ForgeSim-*-Setup.exe
+            out/build/release/packages/ForgeSim-*-Setup.exe.sha256
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
