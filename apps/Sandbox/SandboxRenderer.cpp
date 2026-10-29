@@ -2,11 +2,13 @@
 #include "LightSubmission.hpp"
 #include "SandboxPaths.hpp"
 #include "SandboxRenderer.hpp"
+#include "SceneBounds.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -21,6 +23,7 @@
 #include <glad/gl.h>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -37,6 +40,134 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+
+        namespace DirectionalShadowUniform
+        {
+            constexpr std::string_view model = "uModel";
+            constexpr std::string_view lightViewProjection = "uLightViewProjection";
+            constexpr std::string_view baseColorTexture = "uBaseColorTexture";
+            constexpr std::string_view baseColorAlpha = "uBaseColorAlpha";
+            constexpr std::string_view alphaMaskEnabled = "uAlphaMaskEnabled";
+            constexpr std::string_view alphaCutoff = "uAlphaCutoff";
+
+            constexpr std::array required{
+                model, lightViewProjection, baseColorTexture,
+                baseColorAlpha, alphaMaskEnabled, alphaCutoff
+            };
+        }
+
+        // Reserved for the shadow pass's material-alpha sampling.
+        // Units 0-7 are currently used by the visible scene pass.
+        constexpr std::uint32_t shadowAlphaTextureUnit = 8;
+
+        [[nodiscard]] glm::mat4 CreateDirectionalShadowMatrix(
+            const Renderer::AxisAlignedBoundingBox& worldBounds,
+            const glm::vec3& directionToLight)
+        {
+            const float directionLengthSquared =
+                glm::dot(directionToLight, directionToLight);
+
+            if (!std::isfinite(directionLengthSquared) ||
+                directionLengthSquared <= 1.0e-12f)
+            {
+                throw std::invalid_argument(
+                    "Directional shadow direction must be finite and nonzero.");
+            }
+
+            const glm::vec3 direction = glm::normalize(directionToLight);
+            const glm::vec3 center =
+                (worldBounds.minimum + worldBounds.maximum) * 0.5f;
+
+            // Fit the current scene inside a padded bounding sphere.
+            // This first implementation refits when object bounds change.
+            const float radius = std::max(
+                glm::length(worldBounds.maximum - worldBounds.minimum) * 0.55f,
+                0.5f);
+
+            const glm::vec3 up = std::abs(direction.y) > 0.99f
+                ? glm::vec3{ 0.0f, 0.0f, 1.0f }
+                : glm::vec3{ 0.0f, 1.0f, 0.0f };
+
+            const float nearPlane = radius * 0.01f;
+            const glm::vec3 eye = center + direction * (2.0f * radius);
+
+            // Explicit OpenGL [-1, 1] clip-depth convention.
+            return glm::orthoRH_NO(
+                -radius, radius, -radius, radius,
+                nearPlane, 4.0f * radius) *
+                glm::lookAtRH(eye, center, up);
+        }
+
+        // Restore the GL state changed by the depth pass, including on error.
+        class DirectionalShadowPassState final
+        {
+        public:
+            DirectionalShadowPassState()
+            {
+                glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &m_DrawFramebuffer);
+                glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &m_ReadFramebuffer);
+                glGetIntegerv(GL_VIEWPORT, m_Viewport.data());
+                glGetIntegerv(GL_CURRENT_PROGRAM, &m_Program);
+                glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_VertexArray);
+                glGetIntegerv(GL_DEPTH_FUNC, &m_DepthFunction);
+                glGetBooleanv(GL_DEPTH_WRITEMASK, &m_DepthWriteMask);
+                glGetDoublev(GL_DEPTH_RANGE, m_DepthRange.data());
+                glGetIntegerv(GL_CULL_FACE_MODE, &m_CullFaceMode);
+
+                for (std::size_t i = 0; i < m_Capabilities.size(); ++i)
+                {
+                    m_Enabled[i] = glIsEnabled(m_Capabilities[i]);
+                }
+            }
+
+            ~DirectionalShadowPassState()
+            {
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                    static_cast<GLuint>(m_DrawFramebuffer));
+                glBindFramebuffer(GL_READ_FRAMEBUFFER,
+                    static_cast<GLuint>(m_ReadFramebuffer));
+                glViewport(m_Viewport[0], m_Viewport[1],
+                    m_Viewport[2], m_Viewport[3]);
+                glUseProgram(static_cast<GLuint>(m_Program));
+                glBindVertexArray(static_cast<GLuint>(m_VertexArray));
+                glDepthFunc(static_cast<GLenum>(m_DepthFunction));
+                glDepthMask(m_DepthWriteMask);
+                glDepthRange(m_DepthRange[0], m_DepthRange[1]);
+                glCullFace(static_cast<GLenum>(m_CullFaceMode));
+
+                for (std::size_t i = 0; i < m_Capabilities.size(); ++i)
+                {
+                    if (m_Enabled[i] == GL_TRUE)
+                    {
+                        glEnable(m_Capabilities[i]);
+                    }
+                    else
+                    {
+                        glDisable(m_Capabilities[i]);
+                    }
+                }
+            }
+
+            DirectionalShadowPassState(const DirectionalShadowPassState&) = delete;
+            DirectionalShadowPassState& operator=(const DirectionalShadowPassState&) = delete;
+
+        private:
+            static constexpr std::array<GLenum, 6> m_Capabilities{
+                GL_DEPTH_TEST, GL_CULL_FACE, GL_BLEND,
+                GL_SCISSOR_TEST, GL_POLYGON_OFFSET_FILL, GL_DEPTH_CLAMP
+            };
+            std::array<GLboolean, 6> m_Enabled{};
+            std::array<GLint, 4> m_Viewport{};
+            std::array<GLdouble, 2> m_DepthRange{};
+            GLint m_DrawFramebuffer = 0;
+            GLint m_ReadFramebuffer = 0;
+            GLint m_Program = 0;
+            GLint m_VertexArray = 0;
+            GLint m_DepthFunction = GL_LESS;
+            GLint m_CullFaceMode = GL_BACK;
+            GLboolean m_DepthWriteMask = GL_TRUE;
+        };
+
 		namespace SandboxRendererShaderUniform
 		{
 			constexpr std::string_view model =
@@ -579,7 +710,16 @@ namespace ForgeSim::Sandbox
 
 	SandboxRenderer::SandboxRenderer(
 		const SandboxRendererSpecification& specification)
-		: m_ObjectModelPath(
+        : m_DirectionalShadowShaderMonitor(
+            ShaderPath("DirectionalShadow.vert"),
+            ShaderPath("DirectionalShadow.frag"))
+        , m_DirectionalShadowShaderProgram(
+            CreateShaderProgram(
+                m_DirectionalShadowShaderMonitor.VertexShaderPath(),
+                m_DirectionalShadowShaderMonitor.FragmentShaderPath(),
+                DirectionalShadowUniform::required))
+        , m_DirectionalShadowMap(2048)
+        , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
 			Assets::LoadGltfScene(m_ObjectModelPath))
@@ -1149,6 +1289,79 @@ namespace ForgeSim::Sandbox
 		const DirectionalLight& light =
 			lighting.directionalLight;
 
+		m_BoundsVertices.clear();
+
+		if (settings.showObjectBounds)
+		{
+			m_BoundsVertices.reserve(
+				objects.size() * 24);
+		}
+
+		m_RenderSubmissions.clear();
+		m_RenderSubmissions.reserve(
+			objects.size() *
+			m_GpuPrimitiveResources.size());
+
+		for (const SandboxObject& object : objects)
+		{
+			const bool isSelected =
+				selectedObjectId &&
+				*selectedObjectId == object.id;
+
+			const glm::mat4 objectTransform =
+				object.transform.ModelMatrix();
+
+			for (const Assets::SceneNodeIndex rootNodeIndex :
+			m_ObjectSceneAsset.rootNodeIndices)
+			{
+				AppendSceneNodeSubmissions(
+					rootNodeIndex,
+					glm::mat4{ 1.0f },
+					objectTransform,
+					isSelected);
+			}
+
+			if (settings.showObjectBounds)
+			{
+				const glm::vec3 boundsColor =
+					isSelected
+					? glm::vec3{
+						1.0f,
+						0.85f,
+						0.1f
+				}
+					: glm::vec3{
+						0.1f,
+						0.9f,
+						1.0f
+				};
+
+				const auto boundsVertices =
+					Renderer::CreateWireframeBoxLines(
+						m_ObjectLocalBounds,
+						objectTransform,
+						boundsColor);
+
+				m_BoundsVertices.insert(
+					m_BoundsVertices.end(),
+					boundsVertices.begin(),
+					boundsVertices.end());
+			}
+		}
+
+
+        if (settings.directionalShadowsEnabled && light.enabled &&
+            !m_RenderSubmissions.empty())
+        {
+            const auto worldBounds = CalculateSceneBounds(
+                objects, m_ObjectLocalBounds);
+
+            m_DirectionalLightViewProjection = CreateDirectionalShadowMatrix(
+                worldBounds, light.directionToLight);
+
+            RenderDirectionalShadowMap(m_DirectionalLightViewProjection);
+        }
+
 		if (!m_HdrRenderTarget)
 		{
 			m_HdrRenderTarget.emplace(
@@ -1284,66 +1497,6 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetVector3(
 			SandboxRendererShaderUniform::selectionColor,
 			settings.selectionHighlight.color);
-
-		m_BoundsVertices.clear();
-
-		if (settings.showObjectBounds)
-		{
-			m_BoundsVertices.reserve(
-				objects.size() * 24);
-		}
-
-		m_RenderSubmissions.clear();
-		m_RenderSubmissions.reserve(
-			objects.size() *
-			m_GpuPrimitiveResources.size());
-
-		for (const SandboxObject& object : objects)
-		{
-			const bool isSelected =
-				selectedObjectId &&
-				*selectedObjectId == object.id;
-
-			const glm::mat4 objectTransform =
-				object.transform.ModelMatrix();
-
-			for (const Assets::SceneNodeIndex rootNodeIndex :
-			m_ObjectSceneAsset.rootNodeIndices)
-			{
-				AppendSceneNodeSubmissions(
-					rootNodeIndex,
-					glm::mat4{ 1.0f },
-					objectTransform,
-					isSelected);
-			}
-
-			if (settings.showObjectBounds)
-			{
-				const glm::vec3 boundsColor =
-					isSelected
-					? glm::vec3{
-						1.0f,
-						0.85f,
-						0.1f
-				}
-					: glm::vec3{
-						0.1f,
-						0.9f,
-						1.0f
-				};
-
-				const auto boundsVertices =
-					Renderer::CreateWireframeBoxLines(
-						m_ObjectLocalBounds,
-						objectTransform,
-						boundsColor);
-
-				m_BoundsVertices.insert(
-					m_BoundsVertices.end(),
-					boundsVertices.begin(),
-					boundsVertices.end());
-			}
-		}
 
 		const auto materialFor =
 			[this](const RenderSubmission& submission)
@@ -1730,6 +1883,108 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
+
+    void SandboxRenderer::RenderDirectionalShadowMap(
+        const glm::mat4& lightViewProjection)
+    {
+        const DirectionalShadowPassState savedState;
+
+        m_DirectionalShadowMap.Bind();
+        const auto resolution = static_cast<GLsizei>(
+            m_DirectionalShadowMap.Resolution());
+        glViewport(0, 0, resolution, resolution);
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+        glDepthRange(0.0, 1.0);
+        glDisable(GL_BLEND);
+        glDisable(GL_SCISSOR_TEST);
+        glDisable(GL_POLYGON_OFFSET_FILL);
+        glDisable(GL_DEPTH_CLAMP);
+
+        constexpr GLfloat farDepth = 1.0f;
+        glClearBufferfv(GL_DEPTH, 0, &farDepth);
+
+        m_DirectionalShadowShaderProgram.Bind();
+        m_DirectionalShadowShaderProgram.SetMatrix4x4(
+            DirectionalShadowUniform::lightViewProjection,
+            lightViewProjection);
+        m_DirectionalShadowShaderProgram.SetInt(
+            DirectionalShadowUniform::baseColorTexture,
+            static_cast<int>(shadowAlphaTextureUnit));
+
+        for (const RenderSubmission& submission : m_RenderSubmissions)
+        {
+            if (submission.mesh == nullptr)
+            {
+                continue;
+            }
+
+            const GpuMaterialResource* material = nullptr;
+            if (submission.materialIndex)
+            {
+                if (*submission.materialIndex >= m_GpuMaterialResources.size())
+                {
+                    throw std::runtime_error(
+                        "Shadow submission references an invalid material.");
+                }
+                material = &m_GpuMaterialResources[*submission.materialIndex];
+            }
+
+            // Blended surfaces do not cast opaque shadows in this version.
+            if (material != nullptr &&
+                material->alphaMode == Assets::AlphaMode::Blend)
+            {
+                continue;
+            }
+
+            if (material != nullptr && material->doubleSided)
+            {
+                glDisable(GL_CULL_FACE);
+            }
+            else
+            {
+                glEnable(GL_CULL_FACE);
+                glCullFace(GL_BACK);
+            }
+
+            const GpuTextureBinding baseColor = material != nullptr
+                ? material->baseColor
+                : GpuTextureBinding{
+                    .texture = &m_FallbackWhiteTexture,
+                    .sampler = &m_DefaultSampler
+                };
+
+            baseColor.texture->Bind(shadowAlphaTextureUnit);
+            baseColor.sampler->Bind(shadowAlphaTextureUnit);
+
+            m_DirectionalShadowShaderProgram.SetFloat(
+                DirectionalShadowUniform::baseColorAlpha,
+                material != nullptr ? material->baseColorFactor.a : 1.0f);
+            m_DirectionalShadowShaderProgram.SetInt(
+                DirectionalShadowUniform::alphaMaskEnabled,
+                material != nullptr &&
+                material->alphaMode == Assets::AlphaMode::Mask ? 1 : 0);
+            m_DirectionalShadowShaderProgram.SetFloat(
+                DirectionalShadowUniform::alphaCutoff,
+                material != nullptr ? material->alphaCutoff : 0.5f);
+            m_DirectionalShadowShaderProgram.SetMatrix4x4(
+                DirectionalShadowUniform::model,
+                submission.modelTransform);
+
+            submission.mesh->Bind();
+            glDrawElements(GL_TRIANGLES,
+                static_cast<GLsizei>(submission.mesh->IndexCount()),
+                GL_UNSIGNED_INT, nullptr);
+        }
+
+        // Texture unit 8 is reserved for shadow rendering. The next pass
+        // must bind its own texture and sampler before using that unit.
+        glBindSampler(shadowAlphaTextureUnit, 0);
+        glBindTextureUnit(shadowAlphaTextureUnit, 0);
+    }
+
 	unsigned int SandboxRenderer::SceneColorTexture() const noexcept
 	{
 		return m_ColorRenderTarget
@@ -1739,6 +1994,26 @@ namespace ForgeSim::Sandbox
 
 	void SandboxRenderer::ReloadChangedShaders()
 	{
+        if (m_DirectionalShadowShaderMonitor.PollForChanges())
+        {
+            try
+            {
+                auto replacement = CreateShaderProgram(
+                    m_DirectionalShadowShaderMonitor.VertexShaderPath(),
+                    m_DirectionalShadowShaderMonitor.FragmentShaderPath(),
+                    DirectionalShadowUniform::required);
+
+                m_DirectionalShadowShaderProgram = std::move(replacement);
+                ForgeSim::Core::LogInfo("Reloaded directional-shadow shader program.");
+            }
+            catch (const std::exception& exception)
+            {
+                ForgeSim::Core::LogError(
+                    "Failed to reload directional-shadow shader program: " +
+                    std::string{ exception.what() });
+            }
+        }
+
 		if (m_ObjectShaderMonitor.PollForChanges())
 		{
 			try

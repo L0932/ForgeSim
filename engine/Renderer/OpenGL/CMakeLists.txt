@@ -22,6 +22,7 @@ target_sources(
 		src/Texture2D.cpp
 		src/TextureCube.cpp
 		src/ToneMappingRenderer.cpp
+		src/ShadowMap.cpp
 		src/VertexArray.cpp
 	PUBLIC
 		FILE_SET HEADERS
@@ -39,6 +40,7 @@ target_sources(
 			include/ForgeSim/Renderer/OpenGL/Texture2D.hpp
 			include/ForgeSim/Renderer/OpenGL/TextureCube.hpp
 			include/ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp
+			include/ForgeSim/Renderer/OpenGL/ShadowMap.hpp
 			include/ForgeSim/Renderer/OpenGL/VertexArray.hpp
 )
 
