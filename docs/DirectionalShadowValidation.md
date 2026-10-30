@@ -65,3 +65,34 @@ missing shadows still require investigation.
 
 Use Save As to keep experiments separately from this baseline scene.
 Scene documents reference their model asset; they do not embed it.
+
+## Implementation
+
+- One 2048 × 2048 depth map for the main directional light.
+- An orthographic shadow projection fitted to current scene bounds.
+- Shadows affect directional direct lighting; environment lighting,
+  point lights, spot lights, and emissive contributions remain separate.
+- Optional 3 × 3 PCF with bilinear interpolation of depth comparisons.
+- Receiver-plane depth correction reduces filtering-induced acne
+  at grazing light angles.
+- Runtime controls provide shadow enablement, filtering, minimum
+  bias, slope bias, and reset to defaults.
+
+## Editor behavior
+
+Light-marker size and picking radius are established when a scene
+loads and remain stable during object editing. Shadow projection
+bounds continue updating with scene geometry.
+
+## Known limitations
+
+- A single shadow map shares its resolution across the entire scene.
+  Large scenes can lose fine shadow detail.
+- Filtering softens sampled edges; it does not simulate physically
+  accurate soft shadows.
+- Bias may require adjustment for different scenes.
+- Receiver-plane correction approximates the receiving surface
+  locally and can be less reliable near silhouettes or degenerate
+  projections.
+- Point-light and spot-light shadows are not implemented.
+- Shadow debug settings are not persisted between sessions.

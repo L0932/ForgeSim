@@ -278,6 +278,15 @@ namespace ForgeSim::Sandbox
 		bool cameraFramingRequested = true;
 		bool viewportNavigationActive = false;
 
+		// Light guides and their picking radius follow the transformed
+		// scene size, rather than the shared mesh's local dimensions.
+		Renderer::AxisAlignedBoundingBox lightDebugBounds =
+			scene.Objects().empty()
+			? emptySceneBounds
+			: CalculateSceneBounds(
+				scene.Objects(),
+				m_Renderer.ObjectLocalBounds());
+
 		while (!exitRequested)
 		{
 			m_Window.PollEvents();
@@ -311,15 +320,6 @@ namespace ForgeSim::Sandbox
 				scene.Objects().empty()
 				? emptySceneBounds
 				: m_Renderer.ObjectLocalBounds();
-
-            // Light guides and their picking radius follow the transformed
-            // scene size, rather than the shared mesh's local dimensions.
-            const Renderer::AxisAlignedBoundingBox lightDebugBounds =
-                scene.Objects().empty()
-                ? emptySceneBounds
-                : CalculateSceneBounds(
-                    scene.Objects(),
-                    m_Renderer.ObjectLocalBounds());
 
 			lightPickTargets.clear();
 
@@ -942,6 +942,13 @@ namespace ForgeSim::Sandbox
 							// Keep the EditorSession and its SandboxScene
 							// at their existing addresses.
 							*m_EditorSession = std::move(replacement);
+
+							lightDebugBounds =
+								scene.Objects().empty()
+								? emptySceneBounds
+								: CalculateSceneBounds(
+									scene.Objects(),
+									m_Renderer.ObjectLocalBounds());
 
 							selection.Clear();
 							transformEditor.ClearHistory();
