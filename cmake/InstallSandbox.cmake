@@ -7,6 +7,15 @@ install(
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
 )
 
+# Include only the original validation scene, not arbitrary user documents.
+install(
+    FILES
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/DirectionalShadowTest.forgesim.json"
+    DESTINATION assets/scenes
+    COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel
+)
+
 # Install shaders from source rather than potentially stale build output.
 install(
     DIRECTORY "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/shaders/"
@@ -22,6 +31,7 @@ install(
 install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/PbrMaterialGallery.glb"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/ShadowTestCube.gltf"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/BoxVertexColors.glb"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/README.md"
     DESTINATION assets/models

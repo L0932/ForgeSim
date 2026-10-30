@@ -8,7 +8,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cmath>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -23,7 +22,6 @@
 #include <glad/gl.h>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -35,6 +33,7 @@
 #include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Assets/SceneAsset.hpp>
 #include <ForgeSim/Core/Log.hpp>
+#include <ForgeSim/Renderer/DirectionalShadowProjection.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -59,44 +58,6 @@ namespace ForgeSim::Sandbox
         // Reserved for the shadow pass's material-alpha sampling.
         // Units 0-7 are currently used by the visible scene pass.
         constexpr std::uint32_t shadowAlphaTextureUnit = 8;
-
-        [[nodiscard]] glm::mat4 CreateDirectionalShadowMatrix(
-            const Renderer::AxisAlignedBoundingBox& worldBounds,
-            const glm::vec3& directionToLight)
-        {
-            const float directionLengthSquared =
-                glm::dot(directionToLight, directionToLight);
-
-            if (!std::isfinite(directionLengthSquared) ||
-                directionLengthSquared <= 1.0e-12f)
-            {
-                throw std::invalid_argument(
-                    "Directional shadow direction must be finite and nonzero.");
-            }
-
-            const glm::vec3 direction = glm::normalize(directionToLight);
-            const glm::vec3 center =
-                (worldBounds.minimum + worldBounds.maximum) * 0.5f;
-
-            // Fit the current scene inside a padded bounding sphere.
-            // This first implementation refits when object bounds change.
-            const float radius = std::max(
-                glm::length(worldBounds.maximum - worldBounds.minimum) * 0.55f,
-                0.5f);
-
-            const glm::vec3 up = std::abs(direction.y) > 0.99f
-                ? glm::vec3{ 0.0f, 0.0f, 1.0f }
-                : glm::vec3{ 0.0f, 1.0f, 0.0f };
-
-            const float nearPlane = radius * 0.01f;
-            const glm::vec3 eye = center + direction * (2.0f * radius);
-
-            // Explicit OpenGL [-1, 1] clip-depth convention.
-            return glm::orthoRH_NO(
-                -radius, radius, -radius, radius,
-                nearPlane, 4.0f * radius) *
-                glm::lookAtRH(eye, center, up);
-        }
 
         // Restore the GL state changed by the depth pass, including on error.
         class DirectionalShadowPassState final
@@ -1356,7 +1317,7 @@ namespace ForgeSim::Sandbox
             const auto worldBounds = CalculateSceneBounds(
                 objects, m_ObjectLocalBounds);
 
-            m_DirectionalLightViewProjection = CreateDirectionalShadowMatrix(
+            m_DirectionalLightViewProjection = Renderer::CreateDirectionalShadowMatrix(
                 worldBounds, light.directionToLight);
 
             RenderDirectionalShadowMap(m_DirectionalLightViewProjection);
@@ -1413,6 +1374,31 @@ namespace ForgeSim::Sandbox
 		}
 
 		m_ObjectShaderProgram.Bind();
+
+		constexpr std::uint32_t shadowTextureUnit = 8;
+
+		// Use the depth texture's own sampling settings.
+		glBindSampler(shadowTextureUnit, 0);
+
+		m_DirectionalShadowMap.BindDepthTexture(
+			shadowTextureUnit);
+
+		m_ObjectShaderProgram.SetInt(
+			"uDirectionalShadowMap",
+			static_cast<int>(shadowTextureUnit));
+
+		m_ObjectShaderProgram.SetMatrix4x4(
+			"uDirectionalLightViewProjection",
+			m_DirectionalLightViewProjection);
+
+		const bool shadowsActive =
+			settings.directionalShadowsEnabled &&
+			light.enabled &&
+			!m_RenderSubmissions.empty();
+
+		m_ObjectShaderProgram.SetInt(
+			"uDirectionalShadowsEnabled",
+			shadowsActive ? 1 : 0);
 
 		glBindSampler(
 			diffuseIrradianceTextureUnit,

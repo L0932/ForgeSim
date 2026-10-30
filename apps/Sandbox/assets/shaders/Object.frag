@@ -35,6 +35,10 @@ uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
 uniform vec3 uLightRadiance;
 
+uniform sampler2D uDirectionalShadowMap;
+uniform mat4 uDirectionalLightViewProjection;
+uniform int uDirectionalShadowsEnabled;
+
 const int maximumPointLights = 16;
 
 struct PointLightData
@@ -262,6 +266,43 @@ float DistanceAttenuation(
 		(distanceSquared + softeningDistanceSquared);
 }
 
+float DirectionalLightVisibility()
+{
+    if (uDirectionalShadowsEnabled == 0)
+    {
+        return 1.0;
+    }
+
+    vec4 lightClipPosition =
+        uDirectionalLightViewProjection *
+        vec4(vWorldPosition, 1.0);
+
+    if (lightClipPosition.w <= 0.0)
+    {
+        return 1.0;
+    }
+
+    vec3 shadowPosition =
+        lightClipPosition.xyz / lightClipPosition.w;
+
+    shadowPosition = shadowPosition * 0.5 + 0.5;
+
+    if (any(lessThan(shadowPosition, vec3(0.0))) ||
+        any(greaterThan(shadowPosition, vec3(1.0))))
+    {
+        return 1.0;
+    }
+
+    float storedDepth =
+        texture(uDirectionalShadowMap, shadowPosition.xy).r;
+
+    const float bias = 0.0005;
+
+    return shadowPosition.z - bias <= storedDepth
+        ? 1.0
+        : 0.0;
+}
+
 void main()
 {
 	vec4 sampledBaseColor =
@@ -380,6 +421,8 @@ void main()
 			metallic,
 			roughness,
 			reflectanceAtNormalIncidence);
+
+	directLighting *= DirectionalLightVisibility();
 
 	for (int index = 0; index < uPointLightCount; ++index)
 	{

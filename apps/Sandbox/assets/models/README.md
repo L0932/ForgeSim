@@ -184,3 +184,18 @@ instructions before launching the Sandbox.
 - License: Creative Commons Attribution, as stated by Intel's download page
 - ForgeSim modifications: Optional derived copy with texture dimensions reduced to a maximum of 1024 pixels
 - Redistribution: Not included in the ForgeSim repository
+
+## ShadowTestCube.gltf
+
+An original ForgeSim validation asset containing a centered unit cube
+with explicit face normals and texture coordinates. It uses one matte
+gray material and embeds its geometry buffer in the glTF file.
+
+The scene in `../scenes/DirectionalShadowTest.forgesim.json` instantiates
+this mesh as a floor slab, a resting cube, and a floating cube. Each
+instance can be selected and transformed independently in the editor.
+
+- Source: Original ForgeSim project asset
+- Third-party attribution: None
+- License: No separate public license is currently granted
+- External files or textures: None

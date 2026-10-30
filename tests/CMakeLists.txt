@@ -1105,3 +1105,33 @@ set_target_properties(
 	PROPERTIES
 		FOLDER "ForgeSim/Tests"
 )
+
+add_executable(
+    ForgeSimDirectionalShadowProjectionTests
+    DirectionalShadowProjectionTest.cpp
+)
+
+target_link_libraries(
+    ForgeSimDirectionalShadowProjectionTests
+    PRIVATE
+        ForgeSim::Renderer
+)
+
+target_compile_features(
+    ForgeSimDirectionalShadowProjectionTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(ForgeSimDirectionalShadowProjectionTests)
+
+set_target_properties(
+    ForgeSimDirectionalShadowProjectionTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Renderer.DirectionalShadowProjection
+    COMMAND ForgeSimDirectionalShadowProjectionTests
+)

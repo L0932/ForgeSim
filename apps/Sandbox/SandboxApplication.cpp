@@ -312,12 +312,21 @@ namespace ForgeSim::Sandbox
 				? emptySceneBounds
 				: m_Renderer.ObjectLocalBounds();
 
+            // Light guides and their picking radius follow the transformed
+            // scene size, rather than the shared mesh's local dimensions.
+            const Renderer::AxisAlignedBoundingBox lightDebugBounds =
+                scene.Objects().empty()
+                ? emptySceneBounds
+                : CalculateSceneBounds(
+                    scene.Objects(),
+                    m_Renderer.ObjectLocalBounds());
+
 			lightPickTargets.clear();
 
 			if (m_DebugUI.ShowLights())
 			{
 				const LightDebugLayout layout =
-					CalculateLightDebugLayout(editorBounds);
+					CalculateLightDebugLayout(lightDebugBounds);
 
 				lightPickTargets.push_back(
 					LightPickTarget{
@@ -707,7 +716,7 @@ namespace ForgeSim::Sandbox
 
 				.showLights = m_DebugUI.ShowLights(),
 
-				.lightDebugBounds = editorBounds,
+				.lightDebugBounds = lightDebugBounds,
 
 				.selectedLightId = selection.SelectedLightId(),
 
