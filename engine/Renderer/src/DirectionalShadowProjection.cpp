@@ -56,7 +56,7 @@ namespace ForgeSim::Renderer
         const glm::dvec3 center = (minimum + maximum) * 0.5;
         const double radius = std::max(
             glm::length(maximum - minimum) * 0.55,
-            0.5);
+            1.0e-6);
 
         // A camera cannot look along its own up vector. Choose another
         // reference axis for lights pointing nearly straight up or down.

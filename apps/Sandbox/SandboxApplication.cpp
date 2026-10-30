@@ -658,7 +658,7 @@ namespace ForgeSim::Sandbox
 					.viewportHovered = viewport.hovered && !changePending,
 					.operation = editorUI.operation,
 					.space = editorUI.space,
-					.showLights = m_DebugUI.ShowLights(),
+					.showLights = m_DebugUI.ShowLights(),				
 					.navigationActive = changePending|| rightMouseDown
 				});
 
@@ -702,7 +702,7 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.BackgroundColor(),
 
 				.exposure = m_DebugUI.Exposure(),
-				
+
 				.environmentIntensity =
 					m_DebugUI.EnvironmentIntensity(),
 
@@ -715,6 +715,8 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.ShowObjectBounds(),
 
 				.showLights = m_DebugUI.ShowLights(),
+
+				.directionalShadows = m_DebugUI.ShadowSettings(),
 
 				.lightDebugBounds = lightDebugBounds,
 

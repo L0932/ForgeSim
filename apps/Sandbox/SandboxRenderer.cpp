@@ -75,6 +75,14 @@ namespace ForgeSim::Sandbox
                 glGetDoublev(GL_DEPTH_RANGE, m_DepthRange.data());
                 glGetIntegerv(GL_CULL_FACE_MODE, &m_CullFaceMode);
 
+				glGetFloatv(
+					GL_POLYGON_OFFSET_FACTOR,
+					&m_PolygonOffsetFactor);
+
+				glGetFloatv(
+					GL_POLYGON_OFFSET_UNITS,
+					&m_PolygonOffsetUnits);
+
                 for (std::size_t i = 0; i < m_Capabilities.size(); ++i)
                 {
                     m_Enabled[i] = glIsEnabled(m_Capabilities[i]);
@@ -95,6 +103,10 @@ namespace ForgeSim::Sandbox
                 glDepthMask(m_DepthWriteMask);
                 glDepthRange(m_DepthRange[0], m_DepthRange[1]);
                 glCullFace(static_cast<GLenum>(m_CullFaceMode));
+
+				glPolygonOffset(
+					m_PolygonOffsetFactor,
+					m_PolygonOffsetUnits);
 
                 for (std::size_t i = 0; i < m_Capabilities.size(); ++i)
                 {
@@ -127,6 +139,9 @@ namespace ForgeSim::Sandbox
             GLint m_DepthFunction = GL_LESS;
             GLint m_CullFaceMode = GL_BACK;
             GLboolean m_DepthWriteMask = GL_TRUE;
+
+			GLfloat m_PolygonOffsetFactor = 0.0f;
+			GLfloat m_PolygonOffsetUnits = 0.0f;
         };
 
 		namespace SandboxRendererShaderUniform
@@ -218,6 +233,24 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view spotLightCount =
 				"uSpotLightCount";
 
+			constexpr std::string_view directionalShadowMap =
+				"uDirectionalShadowMap";
+
+			constexpr std::string_view directionalLightViewProjection =
+				"uDirectionalLightViewProjection";
+
+			constexpr std::string_view directionalShadowsEnabled =
+				"uDirectionalShadowsEnabled";
+
+			constexpr std::string_view directionalShadowFilteringEnabled =
+				"uDirectionalShadowFilteringEnabled";
+
+			constexpr std::string_view directionalShadowMinimumBias =
+				"uDirectionalShadowMinimumBias";
+
+			constexpr std::string_view directionalShadowSlopeBias =
+				"uDirectionalShadowSlopeBias";
+
 			constexpr std::array required{
 				model,
 				view,
@@ -247,7 +280,13 @@ namespace ForgeSim::Sandbox
 				brdfLookupTexture,
 				maximumSpecularLod,
 				pointLightCount,
-				spotLightCount
+				spotLightCount,
+				directionalShadowMap,
+				directionalLightViewProjection,
+				directionalShadowsEnabled,
+				directionalShadowFilteringEnabled,
+				directionalShadowMinimumBias,
+				directionalShadowSlopeBias,
 			};
 
 		}
@@ -679,7 +718,7 @@ namespace ForgeSim::Sandbox
                 m_DirectionalShadowShaderMonitor.VertexShaderPath(),
                 m_DirectionalShadowShaderMonitor.FragmentShaderPath(),
                 DirectionalShadowUniform::required))
-        , m_DirectionalShadowMap(2048)
+		, m_DirectionalShadowMap(2048)
         , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
@@ -1311,7 +1350,7 @@ namespace ForgeSim::Sandbox
 		}
 
 
-        if (settings.directionalShadowsEnabled && light.enabled &&
+        if (settings.directionalShadows.enabled && light.enabled &&
             !m_RenderSubmissions.empty())
         {
             const auto worldBounds = CalculateSceneBounds(
@@ -1392,13 +1431,24 @@ namespace ForgeSim::Sandbox
 			m_DirectionalLightViewProjection);
 
 		const bool shadowsActive =
-			settings.directionalShadowsEnabled &&
+			settings.directionalShadows.enabled &&
 			light.enabled &&
 			!m_RenderSubmissions.empty();
 
 		m_ObjectShaderProgram.SetInt(
-			"uDirectionalShadowsEnabled",
-			shadowsActive ? 1 : 0);
+			"uDirectionalShadowsEnabled", shadowsActive ? 1 : 0);
+
+		m_ObjectShaderProgram.SetInt(
+			"uDirectionalShadowFilteringEnabled",
+			settings.directionalShadows.filteringEnabled ? 1 : 0);
+
+		m_ObjectShaderProgram.SetFloat(
+			"uDirectionalShadowMinimumBias",
+			settings.directionalShadows.minimumBias);
+
+		m_ObjectShaderProgram.SetFloat(
+			"uDirectionalShadowSlopeBias",
+			settings.directionalShadows.slopeBias);
 
 		glBindSampler(
 			diffuseIrradianceTextureUnit,
@@ -1886,7 +1936,8 @@ namespace ForgeSim::Sandbox
         glDepthRange(0.0, 1.0);
         glDisable(GL_BLEND);
         glDisable(GL_SCISSOR_TEST);
-        glDisable(GL_POLYGON_OFFSET_FILL);
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(1.1f, 1.0f);
         glDisable(GL_DEPTH_CLAMP);
 
         constexpr GLfloat farDepth = 1.0f;

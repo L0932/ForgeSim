@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DirectionalShadowSettings.hpp"
 #include "SandboxObject.hpp"
 #include "SceneLight.hpp"
 #include "ShaderFileMonitor.hpp"
@@ -62,7 +63,7 @@ namespace ForgeSim::Sandbox
 		bool showGrid = true;
 		bool showObjectBounds = false;
 		bool showLights = true;
-		bool directionalShadowsEnabled = true;
+		DirectionalShadowSettings directionalShadows{};
 
 		std::optional<Renderer::AxisAlignedBoundingBox> lightDebugBounds;
 		std::optional<SceneLightId> selectedLightId;

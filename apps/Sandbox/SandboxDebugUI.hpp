@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DirectionalShadowSettings.hpp"
 #include "EditorWorkspace.hpp"
 #include "SceneLight.hpp"
 #include "SceneLightValidation.hpp"
@@ -100,7 +101,12 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool RuntimeDiagnosticsEnabled()
 			const noexcept;
 
+		[[nodiscard]] const DirectionalShadowSettings&
+			ShadowSettings() const noexcept;
+
 	private:
+		DirectionalShadowSettings m_DirectionalShadowSettings{};
+
 		glm::vec3 m_BackgroundColor{
 			0.032f,
 			0.036f,

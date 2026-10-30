@@ -16,6 +16,9 @@ namespace ForgeSim::Renderer
     // The returned matrix uses right-handed OpenGL [-1, 1] clip depth.
     // No graphics context is required. Invalid inputs or an unrepresentable
     // result throw std::invalid_argument.
+
+    // The sphere has a minimum radius of 1e-6 world units to avoid
+// a zero-sized projection for degenerate bounds.
     [[nodiscard]] glm::mat4 CreateDirectionalShadowMatrix(
         const AxisAlignedBoundingBox& worldBounds,
         const glm::vec3& directionToLight);
