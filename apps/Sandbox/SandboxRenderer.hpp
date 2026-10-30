@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DirectionalShadowSettings.hpp"
 #include "SandboxObject.hpp"
 #include "SceneLight.hpp"
 #include "ShaderFileMonitor.hpp"
@@ -26,6 +27,7 @@
 #include <ForgeSim/Renderer/OpenGL/GpuMesh.hpp>
 #include <ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/Sampler.hpp>
+#include <ForgeSim/Renderer/OpenGL/ShadowMap.hpp>
 #include <ForgeSim/Renderer/OpenGL/Texture2D.hpp>
 #include <ForgeSim/Renderer/OpenGL/TextureCube.hpp>
 #include <ForgeSim/Renderer/OpenGL/ToneMappingRenderer.hpp>
@@ -61,6 +63,7 @@ namespace ForgeSim::Sandbox
 		bool showGrid = true;
 		bool showObjectBounds = false;
 		bool showLights = true;
+		DirectionalShadowSettings directionalShadows{};
 
 		std::optional<Renderer::AxisAlignedBoundingBox> lightDebugBounds;
 		std::optional<SceneLightId> selectedLightId;
@@ -140,6 +143,9 @@ namespace ForgeSim::Sandbox
 
 	private:
 
+		void RenderDirectionalShadowMap(
+			const glm::mat4& lightViewProjection);
+
 		void BindMaterial(
 			std::optional<Assets::MaterialIndex> materialIndex);
 
@@ -214,6 +220,11 @@ namespace ForgeSim::Sandbox
 			std::vector<GpuMaterialResource>& materials);
 
 		std::vector<RenderSubmission> m_RenderSubmissions;
+
+        ShaderFileMonitor m_DirectionalShadowShaderMonitor;
+        Renderer::OpenGL::ShaderProgram m_DirectionalShadowShaderProgram;
+        Renderer::OpenGL::ShadowMap m_DirectionalShadowMap;
+        glm::mat4 m_DirectionalLightViewProjection{ 1.0f };
 
 		std::filesystem::path m_ObjectModelPath;
 		Assets::SceneAsset m_ObjectSceneAsset;

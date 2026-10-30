@@ -31,6 +31,8 @@ add_custom_target(
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Grid.frag"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.vert"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.frag"
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/DirectionalShadow.vert"
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/DirectionalShadow.frag"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/models/BoxVertexColors.glb"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/models/README.md"
 	COMMENT

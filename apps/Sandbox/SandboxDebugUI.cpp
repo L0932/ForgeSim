@@ -321,6 +321,43 @@ namespace ForgeSim::Sandbox
 			2.0f,
 			"%.2f");
 		
+		ImGui::SeparatorText("Directional shadows");
+
+		ImGui::Checkbox(
+			"Enable shadows",
+			&m_DirectionalShadowSettings.enabled);
+
+		ImGui::BeginDisabled(
+			!m_DirectionalShadowSettings.enabled);
+
+		ImGui::Checkbox(
+			"Enable PCF",
+			&m_DirectionalShadowSettings.filteringEnabled);
+
+		ImGui::SliderFloat(
+			"Minimum bias",
+			&m_DirectionalShadowSettings.minimumBias,
+			0.0f,
+			0.01f,
+			"%.6f",
+			ImGuiSliderFlags_AlwaysClamp);
+
+		ImGui::SliderFloat(
+			"Slope bias",
+			&m_DirectionalShadowSettings.slopeBias,
+			0.0f,
+			0.02f,
+			"%.6f",
+			ImGuiSliderFlags_AlwaysClamp);
+
+		ImGui::EndDisabled();
+
+		if (ImGui::Button("Reset shadow settings"))
+		{
+			m_DirectionalShadowSettings =
+				DirectionalShadowSettings{};
+		}
+
 		ImGui::SeparatorText("Selection");
 
 		ImGui::Checkbox(
@@ -425,6 +462,12 @@ namespace ForgeSim::Sandbox
 		const noexcept
 	{
 		return m_BackgroundColor;
+	}
+
+	const DirectionalShadowSettings&
+	SandboxDebugUI::ShadowSettings() const noexcept
+	{
+		return m_DirectionalShadowSettings;
 	}
 
 	float SandboxDebugUI::Exposure() const noexcept

@@ -35,6 +35,14 @@ uniform vec3 uCameraPosition;
 uniform vec3 uLightDirection;
 uniform vec3 uLightRadiance;
 
+uniform sampler2D uDirectionalShadowMap;
+uniform mat4 uDirectionalLightViewProjection;
+uniform int uDirectionalShadowsEnabled;
+
+uniform int uDirectionalShadowFilteringEnabled;
+uniform float uDirectionalShadowMinimumBias;
+uniform float uDirectionalShadowSlopeBias;
+
 const int maximumPointLights = 16;
 
 struct PointLightData
@@ -262,8 +270,180 @@ float DistanceAttenuation(
 		(distanceSquared + softeningDistanceSquared);
 }
 
+float FilteredShadowComparison(
+    vec2 uv,
+    float receiverDepth,
+    vec2 depthGradient)
+{
+    vec2 mapSize =
+        vec2(textureSize(uDirectionalShadowMap, 0));
+
+    // Express the position relative to texel centers.
+    vec2 texelPosition = uv * mapSize - 0.5;
+    vec2 baseTexel = floor(texelPosition);
+    vec2 weight = fract(texelPosition);
+
+    vec2 uv00 = (baseTexel + vec2(0.5)) / mapSize;
+    vec2 texelSize = 1.0 / mapSize;
+
+	float depth00 =
+    texture(uDirectionalShadowMap, uv00).r;
+
+	float depth10 =
+		texture(
+			uDirectionalShadowMap,
+			uv00 + vec2(texelSize.x, 0.0)).r;
+
+	float depth01 =
+		texture(
+			uDirectionalShadowMap,
+			uv00 + vec2(0.0, texelSize.y)).r;
+
+	float depth11 =
+		texture(
+			uDirectionalShadowMap,
+			uv00 + texelSize).r;
+
+	float depthAt00 =
+		receiverDepth +
+		dot(depthGradient, uv00 - uv);
+
+	float depthStepX = depthGradient.x * texelSize.x;
+	float depthStepY = depthGradient.y * texelSize.y;
+
+	float visibility00 =
+		depthAt00 <= depth00 ? 1.0 : 0.0;
+
+	float visibility10 =
+		depthAt00 + depthStepX <= depth10 ? 1.0 : 0.0;
+
+	float visibility01 =
+		depthAt00 + depthStepY <= depth01 ? 1.0 : 0.0;
+
+	float visibility11 =
+		depthAt00 + depthStepX + depthStepY <= depth11
+			? 1.0 : 0.0;
+
+    return mix(
+        mix(visibility00, visibility10, weight.x),
+        mix(visibility01, visibility11, weight.x),
+        weight.y);
+}
+
+float DirectionalLightVisibility(vec3 geometricNormal)
+{
+    if (uDirectionalShadowsEnabled == 0)
+    {
+        return 1.0;
+    }
+
+    vec4 lightClipPosition =
+        uDirectionalLightViewProjection *
+        vec4(vWorldPosition, 1.0);
+
+    if (lightClipPosition.w <= 0.0)
+    {
+        return 1.0;
+    }
+
+    vec3 shadowPosition =
+        lightClipPosition.xyz / lightClipPosition.w;
+
+    shadowPosition = shadowPosition * 0.5 + 0.5;
+
+	vec3 shadowDx = dFdx(shadowPosition);
+	vec3 shadowDy = dFdy(shadowPosition);
+
+	float determinant =
+		shadowDx.x * shadowDy.y -
+		shadowDx.y * shadowDy.x;
+
+	float derivativeScale =
+		length(shadowDx.xy) * length(shadowDy.xy);
+
+	vec2 depthGradient = vec2(0.0);
+
+	if (abs(determinant) >
+		0.000001 * max(derivativeScale, 1e-20))
+	{
+		depthGradient = vec2(
+			shadowDy.y * shadowDx.z -
+				shadowDx.y * shadowDy.z,
+
+			shadowDx.x * shadowDy.z -
+				shadowDy.x * shadowDx.z
+		) / determinant;
+	}
+
+    if (any(lessThan(shadowPosition, vec3(0.0))) ||
+        any(greaterThan(shadowPosition, vec3(1.0))))
+    {
+        return 1.0;
+    }
+
+    float normalDotLight =
+    clamp(
+        dot(
+            normalize(geometricNormal),
+            normalize(uLightDirection)),
+        0.0,
+        1.0);
+
+	float bias =
+		max(
+			uDirectionalShadowMinimumBias,
+			uDirectionalShadowSlopeBias *
+				(1.0 - normalDotLight));
+
+	float receiverDepth = shadowPosition.z - bias;
+
+	if (uDirectionalShadowFilteringEnabled == 0)
+	{
+		float storedDepth =
+			texture(
+				uDirectionalShadowMap,
+				shadowPosition.xy).r;
+
+		return receiverDepth <= storedDepth ? 1.0 : 0.0;
+	}
+
+	vec2 texelSize =
+		1.0 / vec2(textureSize(uDirectionalShadowMap, 0));
+
+	float visibility = 0.0;
+
+	for (int y = -1; y <= 1; ++y)
+	{
+		for (int x = -1; x <= 1; ++x)
+		{
+			vec2 offset = vec2(x, y) * texelSize;
+
+			float sampleReceiverDepth =
+				receiverDepth + dot(depthGradient, offset);
+
+			visibility += FilteredShadowComparison(
+				shadowPosition.xy + offset,
+				sampleReceiverDepth,
+				depthGradient);
+		}
+	}
+
+	return visibility / 9.0;
+}
+
 void main()
 {
+
+	vec3 shadowNormal = normalize(vWorldNormal);
+
+	if (uDoubleSided != 0 && !gl_FrontFacing)
+	{
+		shadowNormal = -shadowNormal;
+	}
+
+	float directionalVisibility =
+		DirectionalLightVisibility(shadowNormal);
+
 	vec4 sampledBaseColor =
 		texture(
 			uBaseColorTexture,
@@ -380,6 +560,8 @@ void main()
 			metallic,
 			roughness,
 			reflectanceAtNormalIncidence);
+
+	directLighting *= directionalVisibility;
 
 	for (int index = 0; index < uPointLightCount; ++index)
 	{

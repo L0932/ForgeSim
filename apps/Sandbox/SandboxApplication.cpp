@@ -278,6 +278,15 @@ namespace ForgeSim::Sandbox
 		bool cameraFramingRequested = true;
 		bool viewportNavigationActive = false;
 
+		// Light guides and their picking radius follow the transformed
+		// scene size, rather than the shared mesh's local dimensions.
+		Renderer::AxisAlignedBoundingBox lightDebugBounds =
+			scene.Objects().empty()
+			? emptySceneBounds
+			: CalculateSceneBounds(
+				scene.Objects(),
+				m_Renderer.ObjectLocalBounds());
+
 		while (!exitRequested)
 		{
 			m_Window.PollEvents();
@@ -317,7 +326,7 @@ namespace ForgeSim::Sandbox
 			if (m_DebugUI.ShowLights())
 			{
 				const LightDebugLayout layout =
-					CalculateLightDebugLayout(editorBounds);
+					CalculateLightDebugLayout(lightDebugBounds);
 
 				lightPickTargets.push_back(
 					LightPickTarget{
@@ -649,7 +658,7 @@ namespace ForgeSim::Sandbox
 					.viewportHovered = viewport.hovered && !changePending,
 					.operation = editorUI.operation,
 					.space = editorUI.space,
-					.showLights = m_DebugUI.ShowLights(),
+					.showLights = m_DebugUI.ShowLights(),				
 					.navigationActive = changePending|| rightMouseDown
 				});
 
@@ -693,7 +702,7 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.BackgroundColor(),
 
 				.exposure = m_DebugUI.Exposure(),
-				
+
 				.environmentIntensity =
 					m_DebugUI.EnvironmentIntensity(),
 
@@ -707,7 +716,9 @@ namespace ForgeSim::Sandbox
 
 				.showLights = m_DebugUI.ShowLights(),
 
-				.lightDebugBounds = editorBounds,
+				.directionalShadows = m_DebugUI.ShadowSettings(),
+
+				.lightDebugBounds = lightDebugBounds,
 
 				.selectedLightId = selection.SelectedLightId(),
 
@@ -931,6 +942,13 @@ namespace ForgeSim::Sandbox
 							// Keep the EditorSession and its SandboxScene
 							// at their existing addresses.
 							*m_EditorSession = std::move(replacement);
+
+							lightDebugBounds =
+								scene.Objects().empty()
+								? emptySceneBounds
+								: CalculateSceneBounds(
+									scene.Objects(),
+									m_Renderer.ObjectLocalBounds());
 
 							selection.Clear();
 							transformEditor.ClearHistory();
