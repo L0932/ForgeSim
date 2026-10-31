@@ -136,6 +136,12 @@ namespace ForgeSim::Sandbox
 		return m_PointLights;
 	}
 
+	const std::optional<SceneCameraData>&
+		SandboxScene::SavedCamera() const noexcept
+	{
+		return m_SavedCamera;
+	}
+
 	std::span<SpotLight>
 		SandboxScene::SpotLights() noexcept
 	{
@@ -146,5 +152,23 @@ namespace ForgeSim::Sandbox
 		SandboxScene::SpotLights() const noexcept
 	{
 		return m_SpotLights;
+	}
+
+	std::optional<CameraValidationError>
+		SandboxScene::TrySetSavedCamera(
+			const SceneCameraData& camera) noexcept
+	{
+		if (const auto error = ValidateSceneCamera(camera))
+		{
+			return error;
+		}
+
+		m_SavedCamera = camera;
+		return std::nullopt;
+	}
+
+	void SandboxScene::ClearSavedCamera() noexcept
+	{
+		m_SavedCamera.reset();
 	}
 }

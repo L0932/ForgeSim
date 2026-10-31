@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <limits>
 #include <stdexcept>
+#include <string>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -18,6 +19,7 @@
 #include <glm/trigonometric.hpp>
 
 #include <ForgeSim/Build/Version.hpp>
+#include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Renderer/Bounds.hpp>
@@ -289,6 +291,57 @@ namespace ForgeSim::Sandbox
 			ImGui::SetClipboardText(
 				cameraPose.data());
 		}
+
+		ImGui::BeginDisabled(context.cameraEditingDisabled);
+
+		if (ImGui::Button("Save current viewpoint"))
+		{
+			const SceneCameraData saved{
+				.position = context.camera.Position(),
+
+				.forwardDirection =
+					context.camera.ForwardDirection(),
+
+				.upDirection =
+					context.camera.UpDirection(),
+
+				.verticalFieldOfViewRadians =
+					context.camera.VerticalFieldOfViewRadians(),
+
+				.nearClippingPlane =
+					context.camera.NearClippingPlane(),
+
+				.farClippingPlane =
+					context.camera.FarClippingPlane()
+			};
+
+			if (const auto error = context.scene.TrySetSavedCamera(saved))
+			{
+				Core::LogError(
+					std::string{ "Cannot save viewpoint at 'camera." } +
+					std::string{ error->property } +
+					"': " +
+					std::string{ error->message });
+			}
+		}
+
+		ImGui::BeginDisabled(!context.scene.SavedCamera());
+
+		if (ImGui::Button("Clear saved viewpoint"))
+		{
+			context.scene.ClearSavedCamera();
+		}
+
+		ImGui::EndDisabled();
+		ImGui::EndDisabled();
+
+		ImGui::TextUnformatted(
+			context.scene.SavedCamera()
+			? "Scene has a saved viewpoint."
+			: "Scene will use automatic framing.");
+
+		ImGui::TextWrapped(
+			"Save the scene file to keep viewpoint changes.");
 
 		ImGui::SeparatorText("Rendering");
 

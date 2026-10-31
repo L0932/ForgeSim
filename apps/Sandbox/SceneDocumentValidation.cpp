@@ -1,3 +1,4 @@
+#include "SceneCameraValidation.hpp"
 #include "SceneDocumentValidation.hpp"
 #include "SceneLightValidation.hpp"
 
@@ -163,6 +164,17 @@ namespace ForgeSim::Sandbox
                 "name",
                 "Scene name must not be empty."
             };
+        }
+
+        if (document.camera)
+        {
+            if (const auto error = ValidateSceneCamera(*document.camera))
+            {
+                return Error{
+                    "camera." + std::string{ error->property },
+                    std::string{ error->message }
+                };
+            }
         }
 
         std::unordered_set<std::uint64_t> objectIds;

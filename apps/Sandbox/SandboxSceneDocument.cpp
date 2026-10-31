@@ -1,5 +1,6 @@
 #include "SandboxScene.hpp"
 #include "SceneDocument.hpp"
+#include "SceneCameraValidation.hpp"
 #include "SceneDocumentValidation.hpp"
 
 #include <algorithm>
@@ -18,6 +19,7 @@ namespace ForgeSim::Sandbox
         }
 
         m_Name = document.name;
+        m_SavedCamera = document.camera;
 
         m_Objects.reserve(document.objects.size());
 
@@ -59,6 +61,7 @@ namespace ForgeSim::Sandbox
     {
         SceneDocument document;
         document.name = m_Name;
+        document.camera = m_SavedCamera;
 
         document.objects.reserve(m_Objects.size());
 

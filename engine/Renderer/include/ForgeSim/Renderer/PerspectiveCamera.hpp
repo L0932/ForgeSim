@@ -27,6 +27,11 @@ namespace ForgeSim::Renderer
 		[[nodiscard]] const glm::vec3& Position() const noexcept;
 		[[nodiscard]] glm::vec3 ForwardDirection() const;
 		[[nodiscard]] glm::vec3 RightDirection() const;
+		[[nodiscard]] glm::vec3 UpDirection() const noexcept;
+
+		[[nodiscard]] float VerticalFieldOfViewRadians() const noexcept;
+		[[nodiscard]] float NearClippingPlane() const noexcept;
+		[[nodiscard]] float FarClippingPlane() const noexcept;
 
 		void Translate(
 			const glm::vec3& displacement) noexcept;

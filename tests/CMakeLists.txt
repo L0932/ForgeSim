@@ -1,498 +1,541 @@
 add_executable(ForgeSimCoreSmokeTests)
 
 target_sources(
-	ForgeSimCoreSmokeTests
-	PRIVATE
-		CoreSmokeTests.cpp
+    ForgeSimCoreSmokeTests
+    PRIVATE
+        CoreSmokeTests.cpp
 )
 
 target_link_libraries(
-	ForgeSimCoreSmokeTests
-	PRIVATE
-		ForgeSim::Core
+    ForgeSimCoreSmokeTests
+    PRIVATE
+        ForgeSim::Core
 )
 
 target_compile_features(
-	ForgeSimCoreSmokeTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimCoreSmokeTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimCoreSmokeTests)
 
+set_target_properties(
+    ForgeSimCoreSmokeTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
 add_test(
-	NAME ForgeSim.CoreSmoke
-	COMMAND ForgeSimCoreSmokeTests
+    NAME ForgeSim.CoreSmoke
+    COMMAND ForgeSimCoreSmokeTests
 )
 
 add_executable(ForgeSimFixedStepSchedulerTests)
 
 target_sources(
-	ForgeSimFixedStepSchedulerTests
-	PRIVATE
-		FixedStepSchedulerTest.cpp
+    ForgeSimFixedStepSchedulerTests
+    PRIVATE
+        FixedStepSchedulerTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimFixedStepSchedulerTests
-	PRIVATE
-		ForgeSim::Core
+    ForgeSimFixedStepSchedulerTests
+    PRIVATE
+        ForgeSim::Core
 )
 
 target_compile_features(
-	ForgeSimFixedStepSchedulerTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimFixedStepSchedulerTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimFixedStepSchedulerTests)
 
+set_target_properties(
+    ForgeSimFixedStepSchedulerTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
 add_test(
-	NAME ForgeSim.Core.FixedStepScheduler
-	COMMAND ForgeSimFixedStepSchedulerTests
+    NAME ForgeSim.Core.FixedStepScheduler
+    COMMAND ForgeSimFixedStepSchedulerTests
 )
 
 add_executable(ForgeSimPlatformGLFWTests)
 
 target_sources(
-	ForgeSimPlatformGLFWTests
-	PRIVATE
-		FramebufferExtentTest.cpp
+    ForgeSimPlatformGLFWTests
+    PRIVATE
+        FramebufferExtentTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimPlatformGLFWTests
-	PRIVATE
-		ForgeSim::PlatformGLFW
+    ForgeSimPlatformGLFWTests
+    PRIVATE
+        ForgeSim::PlatformGLFW
 )
 
 target_compile_features(
-	ForgeSimPlatformGLFWTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimPlatformGLFWTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimPlatformGLFWTests)
 
+set_target_properties(
+    ForgeSimPlatformGLFWTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
 add_test(
-	NAME ForgeSim.PlatformGLFW.FramebufferExtent
-	COMMAND ForgeSimPlatformGLFWTests
+    NAME ForgeSim.PlatformGLFW.FramebufferExtent
+    COMMAND ForgeSimPlatformGLFWTests
 )
 
 add_executable(ForgeSimPerspectiveCameraTests)
 
 target_sources(
-	ForgeSimPerspectiveCameraTests
-	PRIVATE
-		PerspectiveCameraTest.cpp
+    ForgeSimPerspectiveCameraTests
+    PRIVATE
+        PerspectiveCameraTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimPerspectiveCameraTests
-	PRIVATE
-		ForgeSim::Renderer
+    ForgeSimPerspectiveCameraTests
+    PRIVATE
+        ForgeSim::Renderer
 )
 
 target_compile_features(
-	ForgeSimPerspectiveCameraTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimPerspectiveCameraTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimPerspectiveCameraTests
+    ForgeSimPerspectiveCameraTests
+)
+
+set_target_properties(
+    ForgeSimPerspectiveCameraTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Renderer.PerspectiveCamera
-	COMMAND ForgeSimPerspectiveCameraTests
+    NAME ForgeSim.Renderer.PerspectiveCamera
+    COMMAND ForgeSimPerspectiveCameraTests
 )
 
 add_executable(ForgeSimInputStateTests)
 
 target_sources(
-	ForgeSimInputStateTests
-	PRIVATE
-		InputStateTest.cpp
+    ForgeSimInputStateTests
+    PRIVATE
+        InputStateTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimInputStateTests
-	PRIVATE
-		ForgeSim::Platform
+    ForgeSimInputStateTests
+    PRIVATE
+        ForgeSim::Platform
 )
 
 target_compile_features(
-	ForgeSimInputStateTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimInputStateTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimInputStateTests
+    ForgeSimInputStateTests
+)
+
+set_target_properties(
+    ForgeSimInputStateTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Platform.InputState
-	COMMAND ForgeSimInputStateTests
+    NAME ForgeSim.Platform.InputState
+    COMMAND ForgeSimInputStateTests
 )
 
 add_executable(ForgeSimFreeCameraControllerTests)
 
 target_sources(
-	ForgeSimFreeCameraControllerTests
-	PRIVATE
-		FreeCameraControllerTest.cpp
-		${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp
+    ForgeSimFreeCameraControllerTests
+    PRIVATE
+        FreeCameraControllerTest.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp
 )
 
 target_include_directories(
-	ForgeSimFreeCameraControllerTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimFreeCameraControllerTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimFreeCameraControllerTests
-	PRIVATE
-		ForgeSim::Platform
-		ForgeSim::Renderer
+    ForgeSimFreeCameraControllerTests
+    PRIVATE
+        ForgeSim::Platform
+        ForgeSim::Renderer
 )
 
 target_compile_features(
-	ForgeSimFreeCameraControllerTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimFreeCameraControllerTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimFreeCameraControllerTests
+    ForgeSimFreeCameraControllerTests
+)
+
+set_target_properties(
+    ForgeSimFreeCameraControllerTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.FreeCameraController
-	COMMAND ForgeSimFreeCameraControllerTests
+    NAME ForgeSim.Sandbox.FreeCameraController
+    COMMAND ForgeSimFreeCameraControllerTests
 )
 
 add_executable(ForgeSimTransformTests)
 
 target_sources(
-	ForgeSimTransformTests
-	PRIVATE
-		TransformTest.cpp
-		${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
-		${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ForgeSimTransformTests
+    PRIVATE
+        TransformTest.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
 )
 
 target_include_directories(
-	ForgeSimTransformTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimTransformTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimTransformTests
-	PRIVATE
-		ForgeSim::Renderer
-		glm::glm
+    ForgeSimTransformTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
 )
 
 target_compile_features(
-	ForgeSimTransformTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimTransformTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimTransformTests
+    ForgeSimTransformTests
+)
+
+set_target_properties(
+    ForgeSimTransformTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.Transform
-	COMMAND ForgeSimTransformTests
+    NAME ForgeSim.Sandbox.Transform
+    COMMAND ForgeSimTransformTests
 )
 
 add_executable(ForgeSimGltfLoaderTests)
 
 target_sources(
-	ForgeSimGltfLoaderTests
-	PRIVATE
-		GltfLoaderTest.cpp
+    ForgeSimGltfLoaderTests
+    PRIVATE
+        GltfLoaderTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimGltfLoaderTests
-	PRIVATE
-		ForgeSim::Assets
+    ForgeSimGltfLoaderTests
+    PRIVATE
+        ForgeSim::Assets
 )
 
 target_compile_features(
-	ForgeSimGltfLoaderTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimGltfLoaderTests
+    PRIVATE
+        cxx_std_20
 )
 
 target_compile_definitions(
-	ForgeSimGltfLoaderTests
-	PRIVATE
-		FORGESIM_TEST_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    ForgeSimGltfLoaderTests
+    PRIVATE
+        FORGESIM_TEST_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets"
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimGltfLoaderTests)
 
 set_target_properties(
-	ForgeSimGltfLoaderTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimGltfLoaderTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Assets.GltfLoader
-	COMMAND ForgeSimGltfLoaderTests
+    NAME ForgeSim.Assets.GltfLoader
+    COMMAND ForgeSimGltfLoaderTests
 )
 
 add_executable(ForgeSimRendererPickingTests)
 
 target_sources(
-	ForgeSimRendererPickingTests
-	PRIVATE
-		PickingTest.cpp
+    ForgeSimRendererPickingTests
+    PRIVATE
+        PickingTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimRendererPickingTests
-	PRIVATE
-		ForgeSim::Renderer
+    ForgeSimRendererPickingTests
+    PRIVATE
+        ForgeSim::Renderer
 )
 
 target_compile_features(
-	ForgeSimRendererPickingTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimRendererPickingTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimRendererPickingTests
+    ForgeSimRendererPickingTests
 )
 
 set_target_properties(
-	ForgeSimRendererPickingTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimRendererPickingTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Renderer.Picking
-	COMMAND ForgeSimRendererPickingTests
+    NAME ForgeSim.Renderer.Picking
+    COMMAND ForgeSimRendererPickingTests
 )
 
 add_executable(ForgeSimDebugGeometryTests)
 
 target_sources(
-	ForgeSimDebugGeometryTests
-	PRIVATE
-		DebugGeometryTest.cpp
+    ForgeSimDebugGeometryTests
+    PRIVATE
+        DebugGeometryTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimDebugGeometryTests
-	PRIVATE
-		ForgeSim::Renderer
+    ForgeSimDebugGeometryTests
+    PRIVATE
+        ForgeSim::Renderer
 )
 
 target_compile_features(
-	ForgeSimDebugGeometryTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimDebugGeometryTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimDebugGeometryTests)
 
 set_target_properties(
-	ForgeSimDebugGeometryTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimDebugGeometryTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Renderer.DebugGeometry
-	COMMAND ForgeSimDebugGeometryTests
+    NAME ForgeSim.Renderer.DebugGeometry
+    COMMAND ForgeSimDebugGeometryTests
 )
 
 add_executable(ForgeSimShaderFileMonitorTests)
 
 target_sources(
-	ForgeSimShaderFileMonitorTests
-	PRIVATE
-		ShaderFileMonitorTest.cpp
-		${PROJECT_SOURCE_DIR}/apps/Sandbox/ShaderFileMonitor.cpp
+    ForgeSimShaderFileMonitorTests
+    PRIVATE
+        ShaderFileMonitorTest.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/ShaderFileMonitor.cpp
 )
 
 target_include_directories(
-	ForgeSimShaderFileMonitorTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimShaderFileMonitorTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_compile_features(
-	ForgeSimShaderFileMonitorTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimShaderFileMonitorTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimShaderFileMonitorTests
+    ForgeSimShaderFileMonitorTests
 )
 
 set_target_properties(
-	ForgeSimShaderFileMonitorTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimShaderFileMonitorTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.ShaderFileMonitor
-	COMMAND ForgeSimShaderFileMonitorTests
+    NAME ForgeSim.Sandbox.ShaderFileMonitor
+    COMMAND ForgeSimShaderFileMonitorTests
 )
 
 add_executable(ForgeSimRuntimeDiagnosticsTests)
 
 target_sources(
-	ForgeSimRuntimeDiagnosticsTests
-	PRIVATE
-		RuntimeDiagnosticsTest.cpp
+    ForgeSimRuntimeDiagnosticsTests
+    PRIVATE
+        RuntimeDiagnosticsTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimRuntimeDiagnosticsTests
-	PRIVATE
-		ForgeSim::Core
+    ForgeSimRuntimeDiagnosticsTests
+    PRIVATE
+        ForgeSim::Core
 )
 
 target_compile_features(
-	ForgeSimRuntimeDiagnosticsTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimRuntimeDiagnosticsTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimRuntimeDiagnosticsTests
+    ForgeSimRuntimeDiagnosticsTests
 )
 
 set_target_properties(
-	ForgeSimRuntimeDiagnosticsTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimRuntimeDiagnosticsTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Core.RuntimeDiagnostics
-	COMMAND ForgeSimRuntimeDiagnosticsTests
+    NAME ForgeSim.Core.RuntimeDiagnostics
+    COMMAND ForgeSimRuntimeDiagnosticsTests
 )
 
 add_executable(ForgeSimImageLoaderTests)
 
 target_sources(
-	ForgeSimImageLoaderTests
-	PRIVATE
-		ImageLoaderTest.cpp
+    ForgeSimImageLoaderTests
+    PRIVATE
+        ImageLoaderTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimImageLoaderTests
-	PRIVATE
-		ForgeSim::Assets
+    ForgeSimImageLoaderTests
+    PRIVATE
+        ForgeSim::Assets
 )
 
 target_compile_features(
-	ForgeSimImageLoaderTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimImageLoaderTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimImageLoaderTests
+    ForgeSimImageLoaderTests
 )
 
 set_target_properties(
-	ForgeSimImageLoaderTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimImageLoaderTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Assets.ImageLoader
-	COMMAND ForgeSimImageLoaderTests
+    NAME ForgeSim.Assets.ImageLoader
+    COMMAND ForgeSimImageLoaderTests
 )
 
 add_executable(ForgeSimMaterialDataTests)
 
 target_sources(
-	ForgeSimMaterialDataTests
-	PRIVATE
-		MaterialDataTest.cpp
+    ForgeSimMaterialDataTests
+    PRIVATE
+        MaterialDataTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimMaterialDataTests
-	PRIVATE
-		ForgeSim::Assets
+    ForgeSimMaterialDataTests
+    PRIVATE
+        ForgeSim::Assets
 )
 
 target_compile_features(
-	ForgeSimMaterialDataTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimMaterialDataTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimMaterialDataTests
+    ForgeSimMaterialDataTests
 )
 
 set_target_properties(
-	ForgeSimMaterialDataTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimMaterialDataTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Assets.MaterialData
-	COMMAND ForgeSimMaterialDataTests
+    NAME ForgeSim.Assets.MaterialData
+    COMMAND ForgeSimMaterialDataTests
 )
 
 add_executable(ForgeSimMeshProcessingTests)
 
 target_sources(
-	ForgeSimMeshProcessingTests
-	PRIVATE
-		MeshProcessingTest.cpp
+    ForgeSimMeshProcessingTests
+    PRIVATE
+        MeshProcessingTest.cpp
 )
 
 target_link_libraries(
-	ForgeSimMeshProcessingTests
-	PRIVATE
-		ForgeSim::Assets
+    ForgeSimMeshProcessingTests
+    PRIVATE
+        ForgeSim::Assets
 )
 
 target_compile_features(
-	ForgeSimMeshProcessingTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimMeshProcessingTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimMeshProcessingTests
+    ForgeSimMeshProcessingTests
 )
 
 set_target_properties(
-	ForgeSimMeshProcessingTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimMeshProcessingTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Assets.MeshProcessing
-	COMMAND ForgeSimMeshProcessingTests
+    NAME ForgeSim.Assets.MeshProcessing
+    COMMAND ForgeSimMeshProcessingTests
 )
 
 add_executable(ForgeSimSceneLightTests)
@@ -502,6 +545,7 @@ target_sources(
     PRIVATE
         SceneLightTest.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
 )
 
 target_include_directories(
@@ -619,255 +663,258 @@ add_test(
 add_executable(ForgeSimSceneSelectionValidationTests)
 
 target_sources(
-	ForgeSimSceneSelectionValidationTests
-	PRIVATE
-		SceneSelectionValidationTest.cpp
-		${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ForgeSimSceneSelectionValidationTests
+    PRIVATE
+        SceneSelectionValidationTest.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
 )
 
 target_include_directories(
-	ForgeSimSceneSelectionValidationTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimSceneSelectionValidationTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimSceneSelectionValidationTests
-	PRIVATE
-		ForgeSim::Renderer
-		glm::glm
+    ForgeSimSceneSelectionValidationTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
 )
 
 target_compile_features(
-	ForgeSimSceneSelectionValidationTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimSceneSelectionValidationTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(
-	ForgeSimSceneSelectionValidationTests
+    ForgeSimSceneSelectionValidationTests
 )
 
 set_target_properties(
-	ForgeSimSceneSelectionValidationTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimSceneSelectionValidationTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.SceneSelectionValidation
-	COMMAND ForgeSimSceneSelectionValidationTests
+    NAME ForgeSim.Sandbox.SceneSelectionValidation
+    COMMAND ForgeSimSceneSelectionValidationTests
 )
 
 add_executable(
-	ForgeSimGizmoTransformTests
-	GizmoTransformTest.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ForgeSimGizmoTransformTests
+    GizmoTransformTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
-	ForgeSimGizmoTransformTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimGizmoTransformTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimGizmoTransformTests
-	PRIVATE
-		ForgeSim::Renderer
-		glm::glm
+    ForgeSimGizmoTransformTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
 )
 
 target_compile_definitions(
-	ForgeSimGizmoTransformTests
-	PRIVATE
-		GLM_ENABLE_EXPERIMENTAL
+    ForgeSimGizmoTransformTests
+    PRIVATE
+        GLM_ENABLE_EXPERIMENTAL
 )
 
 target_compile_features(
-	ForgeSimGizmoTransformTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimGizmoTransformTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimGizmoTransformTests)
 
 set_target_properties(
-	ForgeSimGizmoTransformTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimGizmoTransformTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.GizmoTransform
-	COMMAND ForgeSimGizmoTransformTests
+    NAME ForgeSim.Sandbox.GizmoTransform
+    COMMAND ForgeSimGizmoTransformTests
 )
 
 add_executable(
-	ForgeSimSceneEditHistoryTests
-	SceneEditHistoryTest.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ForgeSimSceneEditHistoryTests
+    SceneEditHistoryTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
-	ForgeSimSceneEditHistoryTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimSceneEditHistoryTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimSceneEditHistoryTests
-	PRIVATE
-		ForgeSim::Renderer
-		glm::glm
+    ForgeSimSceneEditHistoryTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
 )
 
 target_compile_features(
-	ForgeSimSceneEditHistoryTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimSceneEditHistoryTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneEditHistoryTests)
 
 set_target_properties(
-	ForgeSimSceneEditHistoryTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimSceneEditHistoryTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_executable(
-	ForgeSimLightGizmoTransformTests
-	LightGizmoTransformTest.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ForgeSimLightGizmoTransformTests
+    LightGizmoTransformTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
-	ForgeSimLightGizmoTransformTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimLightGizmoTransformTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimLightGizmoTransformTests
-	PRIVATE
-		ForgeSim::Renderer
-		glm::glm
+    ForgeSimLightGizmoTransformTests
+    PRIVATE
+        ForgeSim::Renderer
+        glm::glm
 )
 
 target_compile_definitions(
-	ForgeSimLightGizmoTransformTests
-	PRIVATE
-		GLM_ENABLE_EXPERIMENTAL
+    ForgeSimLightGizmoTransformTests
+    PRIVATE
+        GLM_ENABLE_EXPERIMENTAL
 )
 
 target_compile_features(
-	ForgeSimLightGizmoTransformTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimLightGizmoTransformTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimLightGizmoTransformTests)
 
 set_target_properties(
-	ForgeSimLightGizmoTransformTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimLightGizmoTransformTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.LightGizmoTransform
-	COMMAND ForgeSimLightGizmoTransformTests
+    NAME ForgeSim.Sandbox.LightGizmoTransform
+    COMMAND ForgeSimLightGizmoTransformTests
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.SceneEditHistory
-	COMMAND ForgeSimSceneEditHistoryTests
+    NAME ForgeSim.Sandbox.SceneEditHistory
+    COMMAND ForgeSimSceneEditHistoryTests
 )
 
 add_executable(
-	ForgeSimLightSubmissionTests
-	LightSubmissionTest.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/LightSubmission.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ForgeSimLightSubmissionTests
+    LightSubmissionTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightSubmission.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
 )
 
 target_include_directories(
-	ForgeSimLightSubmissionTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimLightSubmissionTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimLightSubmissionTests
-	PRIVATE
-		glm::glm
+    ForgeSimLightSubmissionTests
+    PRIVATE
+        glm::glm
 )
 
 target_compile_features(
-	ForgeSimLightSubmissionTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimLightSubmissionTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimLightSubmissionTests)
 
 set_target_properties(
-	ForgeSimLightSubmissionTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimLightSubmissionTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.LightSubmission
-	COMMAND ForgeSimLightSubmissionTests
+    NAME ForgeSim.Sandbox.LightSubmission
+    COMMAND ForgeSimLightSubmissionTests
 )
 
 add_executable(
-	ForgeSimSceneLightValidationTests
-	SceneLightValidationTest.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightEditing.cpp
+    ForgeSimSceneLightValidationTests
+    SceneLightValidationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightEditing.cpp
 )
 
 target_include_directories(
-	ForgeSimSceneLightValidationTests
-	PRIVATE
-		${PROJECT_SOURCE_DIR}/apps/Sandbox
+    ForgeSimSceneLightValidationTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
 )
 
 target_link_libraries(
-	ForgeSimSceneLightValidationTests
-	PRIVATE
-		glm::glm
+    ForgeSimSceneLightValidationTests
+    PRIVATE
+        glm::glm
 )
 
 target_compile_features(
-	ForgeSimSceneLightValidationTests
-	PRIVATE
-		cxx_std_20
+    ForgeSimSceneLightValidationTests
+    PRIVATE
+        cxx_std_20
 )
 
 FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneLightValidationTests)
 
 set_target_properties(
-	ForgeSimSceneLightValidationTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
+    ForgeSimSceneLightValidationTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
 )
 
 add_test(
-	NAME ForgeSim.Sandbox.SceneLightValidation
-	COMMAND ForgeSimSceneLightValidationTests
+    NAME ForgeSim.Sandbox.SceneLightValidation
+    COMMAND ForgeSimSceneLightValidationTests
 )
 
 add_executable(
     ForgeSimSceneDocumentValidationTests
     SceneDocumentValidationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
 )
@@ -909,6 +956,7 @@ add_executable(
     ForgeSimSceneSerializerTests
     SceneSerializerTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
 )
@@ -950,10 +998,12 @@ add_executable(
     SceneDocumentIOTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
-	${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
 )
 
@@ -993,6 +1043,7 @@ add_executable(
     ForgeSimSandboxSceneDocumentTests
     SandboxSceneDocumentTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
@@ -1072,40 +1123,6 @@ add_test(
     COMMAND ForgeSimSceneBoundsTests
 )
 
-set_target_properties(
-	ForgeSimCoreSmokeTests
-	ForgeSimFixedStepSchedulerTests
-	ForgeSimFreeCameraControllerTests
-	ForgeSimGltfLoaderTests
-	ForgeSimInputStateTests
-	ForgeSimPerspectiveCameraTests
-	ForgeSimPlatformGLFWTests
-	ForgeSimRendererPickingTests
-	ForgeSimSceneLightValidationTests
-	ForgeSimTransformTests
-	ForgeSimDebugGeometryTests
-	ForgeSimShaderFileMonitorTests
-	ForgeSimRuntimeDiagnosticsTests
-	ForgeSimImageLoaderTests
-	ForgeSimMaterialDataTests
-	ForgeSimMeshProcessingTests
-	ForgeSimSceneLightTests
-	ForgeSimSceneSelectionTests
-	ForgeSimLightPickingTests
-	ForgeSimSceneSelectionValidationTests
-	ForgeSimGizmoTransformTests
-	ForgeSimSceneEditHistoryTests
-	ForgeSimSceneSerializerTests
-	ForgeSimLightGizmoTransformTests
-	ForgeSimLightSubmissionTests
-	ForgeSimSceneDocumentValidationTests
-	ForgeSimSceneDocumentIOTests
-	ForgeSimSandboxSceneDocumentTests
-	ForgeSimSceneBoundsTests
-	PROPERTIES
-		FOLDER "ForgeSim/Tests"
-)
-
 add_executable(
     ForgeSimDirectionalShadowProjectionTests
     DirectionalShadowProjectionTest.cpp
@@ -1134,4 +1151,41 @@ set_target_properties(
 add_test(
     NAME ForgeSim.Renderer.DirectionalShadowProjection
     COMMAND ForgeSimDirectionalShadowProjectionTests
+)
+
+add_executable(
+    ForgeSimSceneCameraValidationTests
+    SceneCameraValidationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneCameraValidationTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneCameraValidationTests
+    PRIVATE
+        glm::glm-header-only
+)
+
+target_compile_features(
+    ForgeSimSceneCameraValidationTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(ForgeSimSceneCameraValidationTests)
+
+set_target_properties(
+    ForgeSimSceneCameraValidationTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneCameraValidation
+    COMMAND ForgeSimSceneCameraValidationTests
 )

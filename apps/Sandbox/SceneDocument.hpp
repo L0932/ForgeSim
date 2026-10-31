@@ -1,15 +1,17 @@
 #pragma once
 
+#include "SceneCameraData.hpp"
 #include "SceneLight.hpp"
 #include "Transform.hpp"
 
+#include <optional>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 namespace ForgeSim::Sandbox
 {
-    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 1;
+    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 2;
 
     struct SceneObjectData
     {
@@ -29,6 +31,9 @@ namespace ForgeSim::Sandbox
         std::uint32_t version = CurrentSceneDocumentVersion;
 
         std::string name = "Untitled";
+
+        // No saved camera means the application should frame the scene.
+        std::optional<SceneCameraData> camera;
 
         std::vector<SceneObjectData> objects;
 

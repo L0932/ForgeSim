@@ -70,6 +70,26 @@ namespace ForgeSim::Renderer
 			m_FarClippingPlane);
 	}
 
+	glm::vec3 PerspectiveCamera::UpDirection() const noexcept
+	{
+		return glm::normalize(m_Up);
+	}
+
+	float PerspectiveCamera::VerticalFieldOfViewRadians() const noexcept
+	{
+		return m_VerticalFieldOfViewRadians;
+	}
+
+	float PerspectiveCamera::NearClippingPlane() const noexcept
+	{
+		return m_NearClippingPlane;
+	}
+
+	float PerspectiveCamera::FarClippingPlane() const noexcept
+	{
+		return m_FarClippingPlane;
+	}
+
 	void PerspectiveCamera::Translate(
 		const glm::vec3& displacement) noexcept
 	{

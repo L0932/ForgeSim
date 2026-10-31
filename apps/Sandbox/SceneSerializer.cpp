@@ -38,6 +38,24 @@ namespace ForgeSim::Sandbox
             };
         }
 
+        [[nodiscard]] Json WriteCamera(const SceneCameraData& camera)
+        {
+            return Json{
+                { "position", WriteVector(camera.position) },
+                {
+                    "forwardDirection",
+                    WriteVector(camera.forwardDirection)
+                },
+                { "upDirection", WriteVector(camera.upDirection) },
+                {
+                    "verticalFieldOfViewRadians",
+                    camera.verticalFieldOfViewRadians
+                },
+                { "nearClippingPlane", camera.nearClippingPlane },
+                { "farClippingPlane", camera.farClippingPlane }
+            };
+        }
+
         [[nodiscard]] Json WriteObject(
             const SceneObjectData& object)
         {
@@ -259,6 +277,37 @@ namespace ForgeSim::Sandbox
             };
         }
 
+        [[nodiscard]] SceneCameraData ReadCamera(
+            const Json& value,
+            const std::string& property)
+        {
+            return SceneCameraData{
+                .position = ReadVector(
+                    ReadMember(value, "position", property),
+                    property + ".position"),
+
+                .forwardDirection = ReadVector(
+                    ReadMember(value, "forwardDirection", property),
+                    property + ".forwardDirection"),
+
+                .upDirection = ReadVector(
+                    ReadMember(value, "upDirection", property),
+                    property + ".upDirection"),
+
+                .verticalFieldOfViewRadians = ReadFloat(
+                    ReadMember(value, "verticalFieldOfViewRadians", property),
+                    property + ".verticalFieldOfViewRadians"),
+
+                .nearClippingPlane = ReadFloat(
+                    ReadMember(value, "nearClippingPlane", property),
+                    property + ".nearClippingPlane"),
+
+                .farClippingPlane = ReadFloat(
+                    ReadMember(value, "farClippingPlane", property),
+                    property + ".farClippingPlane")
+            };
+        }
+
         [[nodiscard]] SceneObjectData ReadObject(
             const Json& value,
             const std::string& property)
@@ -401,6 +450,12 @@ namespace ForgeSim::Sandbox
         const Json root{
             { "version", document.version },
             { "name", document.name },
+            {
+              "camera",
+                document.camera
+                    ? WriteCamera(*document.camera)
+                    : Json(nullptr)
+            },
             { "objects", objects },
             {
                 "directionalLight",
@@ -439,7 +494,7 @@ namespace ForgeSim::Sandbox
             ReadMember(root, "version", ""),
             "version");
 
-        if (version != CurrentSceneDocumentVersion)
+        if (version != 1 && version != CurrentSceneDocumentVersion)
         {
             ReadError(
                 "version",
@@ -447,12 +502,23 @@ namespace ForgeSim::Sandbox
                 std::to_string(version) + ".");
         }
 
+        // Older files are upgraded to the current in-memory representation.
         SceneDocument document;
-        document.version = static_cast<std::uint32_t>(version);
+        document.version = CurrentSceneDocumentVersion;
 
         document.name = ReadString(
             ReadMember(root, "name", ""),
             "name");
+
+        if (version == CurrentSceneDocumentVersion)
+        {
+            const Json& camera = ReadMember(root, "camera", "");
+
+            if (!camera.is_null())
+            {
+                document.camera = ReadCamera(camera, "camera");
+            }
+        }
 
         const Json& objects = ReadArray(
             ReadMember(root, "objects", ""),

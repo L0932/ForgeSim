@@ -1,8 +1,11 @@
 #pragma once
 
 #include "SandboxObject.hpp"
+#include "SceneCameraData.hpp"
+#include "SceneCameraValidation.hpp"
 #include "SceneLight.hpp"
 
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -49,11 +52,19 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] std::span<const PointLight>
 			PointLights() const noexcept;
 
+		[[nodiscard]] const std::optional<SceneCameraData>&
+			SavedCamera() const noexcept;
+
 		[[nodiscard]] std::span<SpotLight>
 			SpotLights() noexcept;
 
 		[[nodiscard]] std::span<const SpotLight>
 			SpotLights() const noexcept;
+
+		[[nodiscard]] std::optional<CameraValidationError>
+			TrySetSavedCamera(const SceneCameraData& camera) noexcept;
+
+		void ClearSavedCamera() noexcept;
 
 	private:
 		std::vector<SandboxObject> m_Objects;
@@ -79,5 +90,7 @@ namespace ForgeSim::Sandbox
 		std::vector<SpotLight> m_SpotLights;
 
 		SceneLightId m_NextLightId = 2;
+
+		std::optional<SceneCameraData> m_SavedCamera;
 	};
 }

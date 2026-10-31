@@ -548,6 +548,20 @@ namespace ForgeSim::Sandbox
 							framingBounds,
 							framingAspectRatio);
 
+					if (const auto& savedCamera = scene.SavedCamera())
+					{
+						const SceneCameraData& saved = *savedCamera;
+
+						framing.camera = Renderer::PerspectiveCamera{
+							saved.position,
+							saved.position + glm::normalize(saved.forwardDirection),
+							saved.upDirection,
+							saved.verticalFieldOfViewRadians,
+							saved.nearClippingPlane,
+							saved.farClippingPlane
+						};
+					}
+
 					camera = std::move(framing.camera);
 					cameraController = std::move(framing.controller);
 
@@ -758,6 +772,9 @@ namespace ForgeSim::Sandbox
 							? &*latestDiagnosticsSnapshot 
 							: nullptr,
 					.camera = camera,
+				.scene = scene,
+				.cameraEditingDisabled =
+					changePending || transformEditor.IsActive(),
 				}
 			);
 

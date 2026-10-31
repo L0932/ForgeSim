@@ -47,6 +47,9 @@ namespace ForgeSim::Sandbox
 			diagnosticsSnapshot = nullptr;
 
 		const Renderer::PerspectiveCamera& camera;
+
+		SandboxScene& scene;
+		bool cameraEditingDisabled = false;
 	};
 
 	class SandboxDebugUI final
