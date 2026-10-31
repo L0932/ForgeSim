@@ -959,6 +959,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -1005,6 +1006,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
