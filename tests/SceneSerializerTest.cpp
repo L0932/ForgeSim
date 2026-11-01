@@ -241,6 +241,267 @@ namespace
         Require(rejected, "Invalid scene JSON was accepted.");
     }
 
+    void RequireRenderingEqual(
+        const SceneRenderingSettings& actual,
+        const SceneRenderingSettings& expected)
+    {
+        Require(
+            actual.backgroundColor == expected.backgroundColor &&
+            actual.exposure == expected.exposure &&
+            actual.environmentIntensity == expected.environmentIntensity &&
+            actual.showEnvironmentBackground ==
+            expected.showEnvironmentBackground,
+            "Rendering settings changed during serialization.");
+    }
+
+    void TestRenderingRoundTrip()
+    {
+        SceneDocument source;
+        source.rendering.backgroundColor = { 0.15f, 0.25f, 0.35f };
+        source.rendering.exposure = 2.5f;
+        source.rendering.environmentIntensity = 0.75f;
+        source.rendering.showEnvironmentBackground = true;
+
+        const std::string text = SerializeSceneDocument(source);
+        const Json json = Json::parse(text);
+        const Json& rendering = json.at("rendering");
+
+        Require(
+            rendering.at("backgroundColor") ==
+            Json::array({ 0.15f, 0.25f, 0.35f }) &&
+            rendering.at("exposure") == 2.5f &&
+            rendering.at("environmentIntensity") == 0.75f &&
+            rendering.at("showEnvironmentBackground") == true,
+            "Serialized rendering fields are incorrect.");
+
+        const SceneDocument restored = DeserializeSceneDocument(text);
+
+        RequireRenderingEqual(restored.rendering, source.rendering);
+    }
+
+    void TestMissingRenderingUsesDefaults()
+    {
+        Json json = Json::parse(
+            SerializeSceneDocument(SceneDocument{}));
+
+        // Simulate a version 2 scene written before rendering persistence.
+        json["version"] = 2;
+        json.erase("rendering");
+
+        const SceneDocument restored =
+            DeserializeSceneDocument(json.dump());
+
+        RequireRenderingEqual(
+            restored.rendering,
+            SceneRenderingSettings{});
+
+        const Json saved = Json::parse(
+            SerializeSceneDocument(restored));
+
+        Require(
+            saved.contains("rendering"),
+            "Resaving an older scene omitted rendering settings.");
+    }
+
+    void TestMalformedRendering()
+    {
+        const Json valid = Json::parse(
+            SerializeSceneDocument(SceneDocument{}));
+
+        for (const char* field : {
+            "backgroundColor",
+            "exposure",
+            "environmentIntensity",
+            "showEnvironmentBackground" })
+        {
+            Json candidate = valid;
+            candidate["rendering"].erase(field);
+
+            ExpectReadError(
+                candidate.dump(),
+                std::string{ "rendering." } + field);
+        }
+
+        Json candidate = valid;
+        candidate["rendering"] = nullptr;
+        ExpectReadError(candidate.dump(), "rendering");
+
+        candidate = valid;
+        candidate["rendering"]["backgroundColor"] =
+            Json::array({ 0.1f, 0.2f });
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.backgroundColor");
+
+        candidate = valid;
+        candidate["rendering"]["backgroundColor"][0] = -0.1f;
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.backgroundColor");
+
+        candidate = valid;
+        candidate["rendering"]["exposure"] = "bright";
+        ExpectReadError(candidate.dump(), "rendering.exposure");
+
+        candidate = valid;
+        candidate["rendering"]["exposure"] = 0.0f;
+        ExpectReadError(candidate.dump(), "rendering.exposure");
+
+        candidate = valid;
+        candidate["rendering"]["environmentIntensity"] = -1.0f;
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.environmentIntensity");
+
+        candidate = valid;
+        candidate["rendering"]["showEnvironmentBackground"] = 1;
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.showEnvironmentBackground");
+    }
+
+    void TestCameraInputErrors()
+    {
+        SceneDocument source;
+        source.camera = SceneCameraData{};
+
+        const Json valid =
+            Json::parse(SerializeSceneDocument(source));
+
+        Json candidate = valid;
+        candidate.erase("camera");
+        ExpectReadError(candidate.dump(), "camera");
+
+        candidate = valid;
+        candidate["camera"] = Json::array();
+        ExpectReadError(candidate.dump(), "camera");
+
+        candidate = valid;
+        candidate["camera"].erase("position");
+        ExpectReadError(candidate.dump(), "camera.position");
+
+        candidate = valid;
+        candidate["camera"]["nearClippingPlane"] = "near";
+        ExpectReadError(
+            candidate.dump(),
+            "camera.nearClippingPlane");
+
+        candidate = valid;
+        candidate["camera"]["nearClippingPlane"] = 0.0f;
+        ExpectReadError(
+            candidate.dump(),
+            "camera.nearClippingPlane");
+
+        candidate = valid;
+        candidate["camera"]["farClippingPlane"] =
+            source.camera->nearClippingPlane;
+        ExpectReadError(
+            candidate.dump(),
+            "camera.farClippingPlane");
+    }
+
+    void TestCameraRoundTrip()
+    {
+        SceneDocument source;
+        SceneCameraData camera;
+
+        camera.position = { 4.0f, -2.0f, 7.0f };
+        camera.forwardDirection = { 1.0f, 0.0f, 0.0f };
+        camera.upDirection = { 0.0f, 0.0f, -1.0f };
+        camera.verticalFieldOfViewRadians = glm::radians(65.0f);
+        camera.nearClippingPlane = 0.025f;
+        camera.farClippingPlane = 750.0f;
+
+        source.camera = camera;
+
+        const std::string text = SerializeSceneDocument(source);
+        const Json json = Json::parse(text);
+
+        Require(
+            json.at("camera").is_object(),
+            "Saved camera must be written as an object.");
+
+        const SceneDocument restored = DeserializeSceneDocument(text);
+
+        Require(
+            restored.camera.has_value(),
+            "JSON round trip lost the camera.");
+
+        const SceneCameraData& result = *restored.camera;
+
+        Require(
+            result.position == camera.position &&
+            result.forwardDirection == camera.forwardDirection &&
+            result.upDirection == camera.upDirection &&
+            result.verticalFieldOfViewRadians ==
+            camera.verticalFieldOfViewRadians &&
+            result.nearClippingPlane == camera.nearClippingPlane &&
+            result.farClippingPlane == camera.farClippingPlane,
+            "JSON round trip changed camera data.");
+
+        source.camera.reset();
+
+        const Json withoutCamera =
+            Json::parse(SerializeSceneDocument(source));
+
+        Require(
+            withoutCamera.contains("camera") &&
+            withoutCamera.at("camera").is_null(),
+            "Absent camera must be written explicitly as null.");
+
+        Require(
+            !DeserializeSceneDocument(withoutCamera.dump()).camera,
+            "Null camera should remain absent.");
+    }
+
+    void TestVersionOneCameraMigration()
+    {
+        // Literal legacy fixture: independent of the current serializer.
+        constexpr std::string_view legacy = R"json(
+    {
+        "version": 1,
+        "name": "Legacy scene",
+        "objects": [],
+        "directionalLight": {
+            "id": 1,
+            "enabled": true,
+            "position": [0, 0, 0],
+            "color": [1, 1, 1],
+            "intensity": 3,
+            "directionToLight": [0, 1, 0]
+        },
+        "pointLights": [],
+        "spotLights": []
+    }
+    )json";
+
+        const SceneDocument restored =
+            DeserializeSceneDocument(legacy);
+
+        Require(
+            restored.version == CurrentSceneDocumentVersion,
+            "Legacy document was not upgraded.");
+
+        Require(
+            restored.name == "Legacy scene" &&
+            restored.objects.empty() &&
+            restored.directionalLight.intensity == 3.0f,
+            "Migration changed legacy scene content.");
+
+        Require(
+            !restored.camera,
+            "Migration invented an authored camera.");
+
+        const Json saved =
+            Json::parse(SerializeSceneDocument(restored));
+
+        Require(
+            saved.at("version").get<std::uint32_t>() ==
+            CurrentSceneDocumentVersion &&
+            saved.at("camera").is_null(),
+            "Saving a migrated scene did not use the current schema.");
+    }
+
     void TestMalformedInput()
     {
         ExpectReadError("{", "invalid JSON");
@@ -377,6 +638,9 @@ int main()
 {
     try
     {
+        TestCameraRoundTrip();
+        TestCameraInputErrors();
+        TestVersionOneCameraMigration();
         TestDocumentOutput();
         TestEmptyArrays();
         TestInvalidDocumentRejected();
@@ -384,6 +648,9 @@ int main()
         TestIdInput();
         TestSemanticInputValidation();
         TestEmptyDocumentRoundTrip();
+        TestRenderingRoundTrip();
+        TestMissingRenderingUsesDefaults();
+        TestMalformedRendering();
 
         return EXIT_SUCCESS;
     }

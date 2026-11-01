@@ -7,6 +7,12 @@
 #include "SceneSelection.hpp"
 #include "TransformEditorUIState.hpp"
 
+#include "SceneCameraData.hpp"
+#include "SceneRenderingSettings.hpp"
+
+#include <array>
+#include <functional>
+#include <string>
 #include <optional>
 #include <span>
 
@@ -47,6 +53,12 @@ namespace ForgeSim::Sandbox
 			diagnosticsSnapshot = nullptr;
 
 		const Renderer::PerspectiveCamera& camera;
+
+		SandboxScene& scene;
+		bool cameraEditingDisabled = false;
+        std::optional<SceneCaptureExtent> referenceViewport;
+        std::optional<SceneCameraData>& cameraRestoreRequest;
+        std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
 
 	class SandboxDebugUI final
@@ -67,6 +79,7 @@ namespace ForgeSim::Sandbox
 			SandboxDebugUI&&) = delete;
 
 		void BeginFrame();
+        void ResetSceneControls();
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
@@ -82,11 +95,6 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool WantsKeyboardCapture()
 			const noexcept;
 
-		[[nodiscard]] glm::vec3 BackgroundColor() const noexcept;
-		[[nodiscard]] float Exposure() const noexcept;
-		[[nodiscard]] float EnvironmentIntensity() const noexcept;
-
-		[[nodiscard]] bool ShowEnvironmentBackground() const noexcept;
 		[[nodiscard]] bool ShowGrid() const noexcept;
 		[[nodiscard]] bool ShowLights() const noexcept;
 
@@ -101,23 +109,15 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool RuntimeDiagnosticsEnabled()
 			const noexcept;
 
-		[[nodiscard]] const DirectionalShadowSettings&
-			ShadowSettings() const noexcept;
 
 	private:
-		DirectionalShadowSettings m_DirectionalShadowSettings{};
-
-		glm::vec3 m_BackgroundColor{
-			0.032f,
-			0.036f,
-			0.044f
-		};
-
-		float m_Exposure = 1.0f;
-		float m_EnvironmentIntensity = 0.2f;
+        std::array<char, 129> m_BookmarkName{};
+        std::string m_SelectedBookmark;
+        std::array<char, 4096> m_EnvironmentAsset{};
+        bool m_EnvironmentInputInitialized = false;
+        std::string m_PresentationMessage;
 
 		bool m_IsVisible = true;
-		bool m_ShowEnvironmentBackground = false;
 		bool m_ShowGrid = true;
 		bool m_ShowLights = true;
 		bool m_ShowObjectBounds = false;

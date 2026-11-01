@@ -74,8 +74,16 @@ target_sources(
 		SandboxScene.cpp
 		SceneBounds.hpp
         SceneBounds.cpp
+        SceneAssetPath.hpp
+        SceneEnvironment.hpp
+        SceneEnvironment.cpp
+        SceneCameraState.hpp
+        SceneCameraState.cpp
+		SceneCameraData.hpp
 		SceneCameraFraming.hpp
 		SceneCameraFraming.cpp
+		SceneCameraValidation.hpp
+		SceneCameraValidation.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
 		SceneFilePanel.hpp
@@ -90,6 +98,9 @@ target_sources(
 		SceneLightValidation.cpp
 		SceneTransformEditor.hpp
 		SceneTransformEditor.cpp
+		SceneRenderingSettings.hpp
+		SceneRenderingValidation.hpp
+		SceneRenderingValidation.cpp
 		SceneViewportPanel.hpp
 		SceneViewportPanel.cpp
 		ShaderFileMonitor.hpp

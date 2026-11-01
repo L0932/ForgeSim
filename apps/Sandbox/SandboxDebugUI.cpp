@@ -1,5 +1,6 @@
 #include "SandboxDebugUI.hpp"
 #include "SandboxScene.hpp"
+#include "SceneCameraState.hpp"
 #include "SandboxObject.hpp"
 #include "SceneLightEditing.hpp"
 
@@ -11,6 +12,7 @@
 #include <cstdio>
 #include <limits>
 #include <stdexcept>
+#include <string>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -18,6 +20,7 @@
 #include <glm/trigonometric.hpp>
 
 #include <ForgeSim/Build/Version.hpp>
+#include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
 #include <ForgeSim/Renderer/Bounds.hpp>
@@ -25,6 +28,15 @@
 
 namespace ForgeSim::Sandbox
 {
+    void SandboxDebugUI::ResetSceneControls()
+    {
+        m_SelectedBookmark.clear();
+        m_BookmarkName.fill(0);
+        m_EnvironmentAsset.fill(0);
+        m_EnvironmentInputInitialized = false;
+        m_PresentationMessage.clear();
+    }
+
 	SandboxDebugUI::SandboxDebugUI(
 		Platform::GlfwWindow& window)
 	{
@@ -290,61 +302,199 @@ namespace ForgeSim::Sandbox
 				cameraPose.data());
 		}
 
+		ImGui::BeginDisabled(context.cameraEditingDisabled);
+
+		if (ImGui::Button("Save current viewpoint"))
+		{
+            const SceneCameraData saved = CaptureSceneCamera(
+                context.camera, context.referenceViewport);
+
+			if (const auto error = context.scene.TrySetSavedCamera(saved))
+			{
+				Core::LogError(
+					std::string{ "Cannot save viewpoint at 'camera." } +
+					std::string{ error->property } +
+					"': " +
+					std::string{ error->message });
+			}
+		}
+
+		ImGui::BeginDisabled(!context.scene.SavedCamera());
+
+		if (ImGui::Button("Clear saved viewpoint"))
+		{
+			context.scene.ClearSavedCamera();
+		}
+
+		ImGui::EndDisabled();
+		ImGui::EndDisabled();
+
+		ImGui::TextUnformatted(
+			context.scene.SavedCamera()
+			? "Scene has a saved viewpoint."
+			: "Scene will use automatic framing.");
+
+		ImGui::TextWrapped(
+			"Save the scene file to keep viewpoint changes.");
+
+        const auto reportAction = [&](auto&& action)
+        {
+            try
+            {
+                action();
+                m_PresentationMessage.clear();
+            }
+            catch (const std::exception& error)
+            {
+                m_PresentationMessage = error.what();
+            }
+        };
+
+        ImGui::SeparatorText("Camera bookmarks");
+        ImGui::BeginDisabled(context.cameraEditingDisabled);
+        ImGui::InputText("Bookmark name", m_BookmarkName.data(), m_BookmarkName.size());
+        if (ImGui::Button("Add bookmark"))
+        {
+            reportAction([&]
+            {
+                context.scene.AddCameraBookmark(m_BookmarkName.data(),
+                    CaptureSceneCamera(context.camera, context.referenceViewport));
+                m_SelectedBookmark = m_BookmarkName.data();
+            });
+        }
+
+        std::optional<std::size_t> requestedBookmark;
+        if (ImGui::BeginCombo("Bookmarks",
+            m_SelectedBookmark.empty() ? "Select a bookmark" : m_SelectedBookmark.c_str()))
+        {
+            const auto bookmarks = context.scene.CameraBookmarks();
+            for (std::size_t index = 0; index < bookmarks.size(); ++index)
+            {
+                ImGui::PushID(static_cast<int>(index));
+                if (ImGui::Selectable(bookmarks[index].name.c_str(),
+                    bookmarks[index].name == m_SelectedBookmark))
+                {
+                    requestedBookmark = index;
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        if (requestedBookmark)
+        {
+            reportAction([&]
+            {
+                const auto& bookmark = context.scene.CameraBookmarks()[*requestedBookmark];
+                // Verify restoration before changing the active authored viewpoint.
+                static_cast<void>(CreateSceneCamera(bookmark.camera));
+                m_SelectedBookmark = bookmark.name;
+                context.scene.SelectCameraBookmark(*requestedBookmark);
+                context.cameraRestoreRequest = context.scene.SavedCamera();
+            });
+        }
+
+        const auto bookmarks = context.scene.CameraBookmarks();
+        const auto selected = std::find_if(bookmarks.begin(), bookmarks.end(), [&](const auto& bookmark)
+        {
+            return bookmark.name == m_SelectedBookmark;
+        });
+        ImGui::BeginDisabled(selected == bookmarks.end());
+        if (ImGui::Button("Update bookmark from current view"))
+        {
+            reportAction([&]
+            {
+                context.scene.UpdateCameraBookmark(
+                    static_cast<std::size_t>(selected - bookmarks.begin()),
+                    CaptureSceneCamera(context.camera, context.referenceViewport));
+            });
+        }
+        if (ImGui::Button("Delete bookmark"))
+        {
+            reportAction([&]
+            {
+                context.scene.RemoveCameraBookmark(
+                    static_cast<std::size_t>(selected - bookmarks.begin()));
+                m_SelectedBookmark.clear();
+            });
+        }
+        ImGui::EndDisabled();
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Selecting a bookmark also saves it as the active viewpoint. "
+            "Updating a bookmark changes its stored view; select it to make that view active.");
+        if (const auto& saved = context.scene.SavedCamera(); saved && saved->referenceViewport)
+        {
+            const auto extent = *saved->referenceViewport;
+            ImGui::Text("Reference viewport: %u x %u (aspect %.4f)",
+                extent.width, extent.height,
+                static_cast<double>(extent.width) / extent.height);
+            if (context.referenceViewport &&
+                (context.referenceViewport->width != extent.width ||
+                    context.referenceViewport->height != extent.height))
+                ImGui::TextWrapped("Current viewport dimensions differ from the reference capture.");
+        }
+
 		ImGui::SeparatorText("Rendering");
 
-		ImGui::Checkbox(
+		ImGui::BeginDisabled(context.cameraEditingDisabled);
+
+		SceneRenderingSettings rendering =
+			context.scene.RenderingSettings();
+
+		bool renderingChanged = ImGui::Checkbox(
 			"Show environment background",
-			&m_ShowEnvironmentBackground);
+			&rendering.showEnvironmentBackground);
 
 		ImGui::BeginDisabled(
-			m_ShowEnvironmentBackground);
+			rendering.showEnvironmentBackground);
 
-		ImGui::ColorEdit3(
+		renderingChanged |= ImGui::ColorEdit3(
 			"Fallback background color",
-			&m_BackgroundColor.x,
+			&rendering.backgroundColor.x,
 			ImGuiColorEditFlags_Float);
 
 		ImGui::EndDisabled();
 
-		ImGui::SliderFloat(
+		renderingChanged |= ImGui::SliderFloat(
 			"Exposure",
-			&m_Exposure,
+			&rendering.exposure,
 			0.05f,
-			5.0f, 
+			5.0f,
 			"%.2f",
-			ImGuiSliderFlags_Logarithmic);
-		
-		ImGui::SliderFloat(
+			ImGuiSliderFlags_Logarithmic |
+			ImGuiSliderFlags_AlwaysClamp);
+
+		renderingChanged |= ImGui::SliderFloat(
 			"Environment intensity",
-			&m_EnvironmentIntensity,
+			&rendering.environmentIntensity,
 			0.0f,
 			2.0f,
-			"%.2f");
-		
+			"%.2f",
+			ImGuiSliderFlags_AlwaysClamp);
+
 		ImGui::SeparatorText("Directional shadows");
 
-		ImGui::Checkbox(
+		renderingChanged |= ImGui::Checkbox(
 			"Enable shadows",
-			&m_DirectionalShadowSettings.enabled);
+			&rendering.directionalShadows.enabled);
 
 		ImGui::BeginDisabled(
-			!m_DirectionalShadowSettings.enabled);
+			!rendering.directionalShadows.enabled);
 
-		ImGui::Checkbox(
+		renderingChanged |= ImGui::Checkbox(
 			"Enable PCF",
-			&m_DirectionalShadowSettings.filteringEnabled);
+			&rendering.directionalShadows.filteringEnabled);
 
-		ImGui::SliderFloat(
+		renderingChanged |= ImGui::SliderFloat(
 			"Minimum bias",
-			&m_DirectionalShadowSettings.minimumBias,
+			&rendering.directionalShadows.minimumBias,
 			0.0f,
 			0.01f,
 			"%.6f",
 			ImGuiSliderFlags_AlwaysClamp);
 
-		ImGui::SliderFloat(
+		renderingChanged |= ImGui::SliderFloat(
 			"Slope bias",
-			&m_DirectionalShadowSettings.slopeBias,
+			&rendering.directionalShadows.slopeBias,
 			0.0f,
 			0.02f,
 			"%.6f",
@@ -354,9 +504,62 @@ namespace ForgeSim::Sandbox
 
 		if (ImGui::Button("Reset shadow settings"))
 		{
-			m_DirectionalShadowSettings =
+			rendering.directionalShadows =
 				DirectionalShadowSettings{};
+            renderingChanged = true;
 		}
+
+		if (renderingChanged)
+		{
+			if (const auto error =
+				context.scene.TrySetRenderingSettings(rendering))
+			{
+				ImGui::TextWrapped(
+					"Cannot update rendering.%.*s: %.*s",
+					static_cast<int>(error->property.size()),
+					error->property.data(),
+					static_cast<int>(error->message.size()),
+					error->message.data());
+			}
+		}
+
+
+        ImGui::EndDisabled();
+
+        ImGui::SeparatorText("Environment asset");
+        ImGui::BeginDisabled(context.cameraEditingDisabled);
+        if (!m_EnvironmentInputInitialized)
+        {
+            std::snprintf(m_EnvironmentAsset.data(), m_EnvironmentAsset.size(), "%s",
+                context.scene.RenderingSettings().environmentAsset.c_str());
+            m_EnvironmentInputInitialized = true;
+        }
+        int environmentSource = static_cast<int>(context.scene.RenderingSettings().environmentSource);
+        const bool environmentSourceChanged = ImGui::Combo("Source", &environmentSource,
+            "Bundled studio\0None\0Project HDR asset\0");
+        ImGui::InputText("Project-relative HDR path", m_EnvironmentAsset.data(), m_EnvironmentAsset.size());
+        const bool applyEnvironment = ImGui::Button("Apply project HDR");
+        if (environmentSourceChanged || applyEnvironment)
+        {
+            try
+            {
+                auto settings = context.scene.RenderingSettings();
+                settings.environmentSource = applyEnvironment ? SceneEnvironmentSource::ProjectAsset
+                    : static_cast<SceneEnvironmentSource>(environmentSource);
+                settings.environmentAsset = settings.environmentSource == SceneEnvironmentSource::ProjectAsset
+                    ? std::string{ m_EnvironmentAsset.data() } : std::string{};
+                context.applyEnvironment(settings);
+                m_PresentationMessage = "Environment applied. Save the scene to keep it.";
+            }
+            catch (const std::exception& error)
+            {
+                m_PresentationMessage = error.what();
+            }
+        }
+        ImGui::TextWrapped("Example: environments/Cathedral.hdr (relative to the project root).");
+        ImGui::EndDisabled();
+        if (!m_PresentationMessage.empty())
+            ImGui::TextWrapped("%s", m_PresentationMessage.c_str());
 
 		ImGui::SeparatorText("Selection");
 
@@ -458,34 +661,6 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	glm::vec3 SandboxDebugUI::BackgroundColor()
-		const noexcept
-	{
-		return m_BackgroundColor;
-	}
-
-	const DirectionalShadowSettings&
-	SandboxDebugUI::ShadowSettings() const noexcept
-	{
-		return m_DirectionalShadowSettings;
-	}
-
-	float SandboxDebugUI::Exposure() const noexcept
-	{
-		return m_Exposure;
-	}
-
-	float SandboxDebugUI::EnvironmentIntensity()
-		const noexcept
-	{
-		return m_EnvironmentIntensity;
-	}
-
-	bool SandboxDebugUI::ShowEnvironmentBackground()
-		const noexcept
-	{
-		return m_ShowEnvironmentBackground;
-	}
 
 	bool SandboxDebugUI::WantsMouseCapture()
 		const noexcept

@@ -193,16 +193,248 @@ namespace
             rejected,
             "Restoring an exhausted scene reset its ID sequence.");
     }
+
+    void TestSavedCameraPreservation()
+    {
+        SceneDocument source = MakeDocument();
+
+        const SandboxScene withoutCamera{ source };
+
+        Require(
+            !withoutCamera.ToDocument().camera,
+            "Conversion invented a saved camera.");
+
+        SceneCameraData camera;
+        camera.position = { 4.0f, 2.0f, -3.0f };
+        camera.forwardDirection = { 0.0f, 0.0f, 1.0f };
+        camera.upDirection = { 1.0f, 0.0f, 0.0f };
+        camera.verticalFieldOfViewRadians = glm::radians(60.0f);
+        camera.nearClippingPlane = 0.025f;
+        camera.farClippingPlane = 250.0f;
+
+        source.camera = camera;
+
+        SandboxScene scene{ source };
+
+        // Ordinary scene edits must not discard the authored viewpoint.
+        scene.FindObject(42)->transform.position.x = 8.0f;
+
+        const SceneDocument captured = scene.ToDocument();
+
+        Require(
+            captured.camera.has_value(),
+            "Conversion lost the saved camera.");
+
+        const SceneCameraData& restored = *captured.camera;
+
+        Require(
+            restored.position == camera.position &&
+            restored.forwardDirection == camera.forwardDirection &&
+            restored.upDirection == camera.upDirection &&
+            restored.verticalFieldOfViewRadians ==
+            camera.verticalFieldOfViewRadians &&
+            restored.nearClippingPlane == camera.nearClippingPlane &&
+            restored.farClippingPlane == camera.farClippingPlane,
+            "Conversion changed saved camera data.");
+
+        // Reconstruction must use document-level camera validation.
+        source.camera->farClippingPlane =
+            source.camera->nearClippingPlane;
+
+        bool rejected = false;
+
+        try
+        {
+            const SandboxScene invalidScene{ source };
+            static_cast<void>(invalidScene);
+        }
+        catch (const std::invalid_argument& exception)
+        {
+            rejected = true;
+
+            Require(
+                std::string{ exception.what() }.find(
+                    "camera.farClippingPlane") != std::string::npos,
+                "Construction error omitted the camera property.");
+        }
+
+        Require(rejected, "Construction accepted an invalid saved camera.");
+    }
+
+    void TestSavedCameraEditing()
+    {
+        SandboxScene scene{ MakeDocument() };
+
+        Require(
+            !scene.SavedCamera().has_value(),
+            "Scene unexpectedly started with a saved camera.");
+
+        const std::string original =
+            SerializeSceneDocument(scene.ToDocument());
+
+        SceneCameraData camera;
+        camera.position = { 7.0f, 3.0f, -2.0f };
+        camera.forwardDirection = { 1.0f, 0.0f, 0.0f };
+        camera.upDirection = { 0.0f, 0.0f, 1.0f };
+        camera.verticalFieldOfViewRadians = glm::radians(60.0f);
+        camera.nearClippingPlane = 0.1f;
+        camera.farClippingPlane = 500.0f;
+
+        Require(
+            !scene.TrySetSavedCamera(camera).has_value(),
+            "Valid camera was rejected.");
+
+        Require(
+            scene.SavedCamera().has_value(),
+            "Saving a camera did not retain it.");
+
+        const SceneCameraData& saved = *scene.SavedCamera();
+
+        Require(
+            saved.position == camera.position &&
+            saved.forwardDirection == camera.forwardDirection &&
+            saved.upDirection == camera.upDirection &&
+            saved.verticalFieldOfViewRadians ==
+            camera.verticalFieldOfViewRadians &&
+            saved.nearClippingPlane == camera.nearClippingPlane &&
+            saved.farClippingPlane == camera.farClippingPlane,
+            "Saving a camera changed its values.");
+
+        const std::string captured =
+            SerializeSceneDocument(scene.ToDocument());
+
+        Require(
+            captured != original,
+            "Saving a camera did not change the scene document.");
+
+        SceneCameraData invalid = camera;
+        invalid.nearClippingPlane = 0.0f;
+
+        const auto error = scene.TrySetSavedCamera(invalid);
+
+        Require(
+            error.has_value(),
+            "Invalid camera was accepted.");
+
+        Require(
+            error->property == "nearClippingPlane",
+            "Camera error identified the wrong property.");
+
+        Require(
+            SerializeSceneDocument(scene.ToDocument()) == captured,
+            "Rejected camera edit changed the scene document.");
+
+        scene.ClearSavedCamera();
+
+        Require(
+            !scene.SavedCamera().has_value(),
+            "Clearing the camera retained a saved viewpoint.");
+
+        Require(
+            SerializeSceneDocument(scene.ToDocument()) == original,
+            "Clearing the camera changed unrelated scene data.");
+
+        scene.ClearSavedCamera();
+
+        Require(
+            SerializeSceneDocument(scene.ToDocument()) == original,
+            "Clearing an absent camera changed the scene document.");
+    }
+
+    void TestRenderingSettingsEditing()
+    {
+        SceneDocument document = MakeDocument();
+        document.rendering.backgroundColor = { 0.1f, 0.2f, 0.3f };
+        document.rendering.exposure = 2.0f;
+        document.rendering.environmentIntensity = 0.8f;
+        document.rendering.showEnvironmentBackground = true;
+
+        SandboxScene scene{ document };
+
+        const auto requireSettings = [](
+            const SceneRenderingSettings& actual,
+            const SceneRenderingSettings& expected)
+            {
+                Require(
+                    actual.backgroundColor == expected.backgroundColor &&
+                    actual.exposure == expected.exposure &&
+                    actual.environmentIntensity ==
+                    expected.environmentIntensity &&
+                    actual.showEnvironmentBackground ==
+                    expected.showEnvironmentBackground,
+                    "Rendering settings were not preserved.");
+            };
+
+        requireSettings(scene.RenderingSettings(), document.rendering);
+        requireSettings(scene.ToDocument().rendering, document.rendering);
+
+        SceneRenderingSettings edited = document.rendering;
+        edited.backgroundColor = { 0.4f, 0.5f, 0.6f };
+        edited.exposure = 3.0f;
+        edited.environmentIntensity = 0.0f;
+        edited.showEnvironmentBackground = false;
+
+        Require(
+            !scene.TrySetRenderingSettings(edited).has_value(),
+            "Valid rendering edit was rejected.");
+
+        requireSettings(scene.RenderingSettings(), edited);
+        requireSettings(scene.ToDocument().rendering, edited);
+
+        const SandboxScene restored{ scene.ToDocument() };
+        requireSettings(restored.RenderingSettings(), edited);
+
+        SceneRenderingSettings invalid = edited;
+        invalid.exposure = 0.0f;
+
+        const auto error = scene.TrySetRenderingSettings(invalid);
+
+        Require(
+            error.has_value(),
+            "Invalid rendering edit was accepted.");
+
+        Require(
+            error->property == "exposure",
+            "Rendering edit error identified the wrong property.");
+
+        requireSettings(scene.RenderingSettings(), edited);
+        requireSettings(scene.ToDocument().rendering, edited);
+
+        document.rendering.exposure = 0.0f;
+        bool rejected = false;
+
+        try
+        {
+            const SandboxScene invalidScene{ document };
+            static_cast<void>(invalidScene);
+        }
+        catch (const std::invalid_argument& exception)
+        {
+            rejected = true;
+
+            Require(
+                std::string{ exception.what() }.find(
+                    "rendering.exposure") != std::string::npos,
+                "Construction error omitted the rendering property.");
+        }
+
+        Require(
+            rejected,
+            "Scene construction accepted invalid rendering settings.");
+    }
 }
 
 int main()
 {
     try
     {
+        TestSavedCameraPreservation();
         TestSceneRoundTrip();
         TestEmptyScene();
         TestInvalidDocument();
         TestIdExhaustion();
+        TestSavedCameraEditing();
+        TestRenderingSettingsEditing();
 
         return EXIT_SUCCESS;
     }

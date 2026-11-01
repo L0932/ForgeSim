@@ -230,12 +230,38 @@ namespace
             document,
             "spotLights[0].outerConeAngleRadians");
     }
+
+    void TestCameraValidationIntegration()
+    {
+        SceneDocument document = MakeDocument();
+
+        Require(
+            !document.camera &&
+            !ValidateSceneDocument(document),
+            "A scene without a saved camera must remain valid.");
+
+        document.camera = SceneCameraData{};
+
+        Require(
+            !ValidateSceneDocument(document),
+            "Valid saved camera was rejected.");
+
+        document.camera->nearClippingPlane = 0.0f;
+        ExpectError(document, "camera.nearClippingPlane");
+
+        document.camera = SceneCameraData{};
+        document.camera->upDirection =
+            document.camera->forwardDirection;
+
+        ExpectError(document, "camera.upDirection");
+    }
 }
 
 int main()
 {
     try
     {
+        TestCameraValidationIntegration();
         TestValidDocuments();
         TestVersionAndNames();
         TestIds();

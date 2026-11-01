@@ -309,9 +309,9 @@ namespace ForgeSim::Sandbox
 
 		constexpr std::array<float, 3>
 			fallbackEnvironmentPixels{
-				0.03f,
-				0.03f,
-				0.03f
+				0.0f,
+				0.0f,
+				0.0f
 		};
 
 		constexpr std::uint32_t baseColorTextureUnit = 0;
@@ -812,6 +812,11 @@ namespace ForgeSim::Sandbox
 			m_GpuSamplers,
 			m_GpuMaterialResources);
 
+        if (specification.environmentFilename)
+        {
+            m_EnvironmentPath = std::filesystem::absolute(
+                EnvironmentPath(*specification.environmentFilename)).lexically_normal();
+        }
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
 	}
@@ -2211,6 +2216,39 @@ namespace ForgeSim::Sandbox
 		m_RenderSubmissions.clear();
 		m_BoundsVertices.clear();
 	}
+
+
+    void SandboxRenderer::LoadSceneResources(
+        const std::optional<std::filesystem::path>& modelPath,
+        const std::optional<std::filesystem::path>& environmentPath)
+    {
+        auto replacementPath = environmentPath;
+        if (replacementPath)
+            replacementPath = std::filesystem::absolute(*replacementPath).lexically_normal();
+
+        if (replacementPath == m_EnvironmentPath)
+        {
+            if (modelPath) LoadObjectModel(*modelPath);
+            return;
+        }
+
+        // All IBL textures are built in temporaries. The BRDF LUT is independent
+        // of the environment and can be reused.
+        auto texture = LoadEnvironmentTexture(replacementPath);
+        auto cubemap = m_EnvironmentMapProcessor.ConvertEquirectangularToCubemap(texture, 512);
+        auto diffuse = m_EnvironmentMapProcessor.CreateDiffuseIrradianceMap(cubemap, 32);
+        auto specular = m_EnvironmentMapProcessor.CreatePrefilteredSpecularMap(cubemap, 128, 5);
+
+        // LoadObjectModel itself commits only after successful import/upload.
+        if (modelPath) LoadObjectModel(*modelPath);
+        static_assert(std::is_nothrow_move_assignable_v<decltype(texture)>);
+        static_assert(std::is_nothrow_move_assignable_v<decltype(cubemap)>);
+        m_EnvironmentEquirectangularTexture = std::move(texture);
+        m_EnvironmentCubemap = std::move(cubemap);
+        m_DiffuseIrradianceMap = std::move(diffuse);
+        m_PrefilteredSpecularMap = std::move(specular);
+        m_EnvironmentPath.swap(replacementPath);
+    }
 
 
 	const Renderer::AxisAlignedBoundingBox&
