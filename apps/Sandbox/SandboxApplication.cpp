@@ -4,6 +4,8 @@
 #include "SandboxApplication.hpp"
 #include "SandboxPaths.hpp"
 #include "SceneCameraFraming.hpp"
+#include "SceneCameraState.hpp"
+#include "SceneEnvironment.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneFilePanel.hpp"
 #include "SceneHierarchyPanel.hpp"
@@ -41,10 +43,27 @@
 
 namespace ForgeSim::Sandbox
 {
+    namespace
+    {
+        SandboxRendererSpecification InitialRendererSpecification(
+            const SandboxApplicationSpecification& specification)
+        {
+            auto renderer = specification.rendererSpec;
+            if (specification.initialScene)
+            {
+                renderer.environmentFilename = ResolveSceneEnvironment(
+                    specification.initialScene->rendering,
+                    specification.projectRoot.value_or(BundledAssetDirectory().parent_path()),
+                    BundledAssetDirectory() / "environments");
+            }
+            return renderer;
+        }
+    }
+
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_Renderer(spec.rendererSpec)
+		, m_Renderer(InitialRendererSpecification(spec))
 		, m_DebugUI(m_Window)
 		, m_LoadedScene(spec.initialScene.has_value())
 	{
@@ -276,6 +295,7 @@ namespace ForgeSim::Sandbox
 
 		bool exitRequested = false;
 		bool cameraFramingRequested = true;
+        std::optional<SceneCameraData> cameraRestoreRequest;
 		bool viewportNavigationActive = false;
 
 		// Light guides and their picking radius follow the transformed
@@ -528,6 +548,15 @@ namespace ForgeSim::Sandbox
 					viewport.framebufferExtent.height)
 				: 1.0f;
 
+            if (cameraRestoreRequest && viewport.IsDrawable())
+            {
+                camera = CreateSceneCamera(*cameraRestoreRequest);
+                cameraRestoreRequest.reset();
+                cameraFramingRequested = false;
+                viewportNavigationActive = false;
+                m_Window.SetCursorMode(Platform::CursorMode::Normal);
+            }
+
 			if (cameraFramingRequested && viewport.IsDrawable())
 			{
 				cameraFramingRequested = false;
@@ -550,16 +579,7 @@ namespace ForgeSim::Sandbox
 
 					if (const auto& savedCamera = scene.SavedCamera())
 					{
-						const SceneCameraData& saved = *savedCamera;
-
-						framing.camera = Renderer::PerspectiveCamera{
-							saved.position,
-							saved.position + glm::normalize(saved.forwardDirection),
-							saved.upDirection,
-							saved.verticalFieldOfViewRadians,
-							saved.nearClippingPlane,
-							saved.farClippingPlane
-						};
+                        framing.camera = CreateSceneCamera(*savedCamera);
 					}
 
 					camera = std::move(framing.camera);
@@ -730,7 +750,7 @@ namespace ForgeSim::Sandbox
 
 				.showLights = m_DebugUI.ShowLights(),
 
-				.directionalShadows = m_DebugUI.ShadowSettings(),
+				.directionalShadows = scene.RenderingSettings().directionalShadows,
 
 				.lightDebugBounds = lightDebugBounds,
 
@@ -774,7 +794,26 @@ namespace ForgeSim::Sandbox
 					.camera = camera,
 				.scene = scene,
 				.cameraEditingDisabled =
-					changePending || transformEditor.IsActive(),
+                    changePending || transformEditor.IsActive() || rightMouseDown || !viewport.IsDrawable(),
+                .referenceViewport = viewport.IsDrawable()
+                    ? std::optional<SceneCaptureExtent>{ SceneCaptureExtent{
+                        static_cast<std::uint32_t>(viewport.framebufferExtent.width),
+                        static_cast<std::uint32_t>(viewport.framebufferExtent.height) } }
+                    : std::nullopt,
+                .cameraRestoreRequest = cameraRestoreRequest,
+                .applyEnvironment = [&](const SceneRenderingSettings& settings)
+                {
+                    // Prepare authored state before touching GPU resources.
+                    SandboxScene replacement = scene;
+                    if (const auto error = replacement.TrySetRenderingSettings(settings))
+                        throw std::invalid_argument(std::string{ error->message });
+                    const auto environment = ResolveSceneEnvironment(settings,
+                        m_EditorSession->ProjectRoot(), BundledAssetDirectory() / "environments");
+                    m_Renderer.LoadSceneResources(std::nullopt, environment);
+                    static_assert(std::is_nothrow_move_assignable_v<SandboxScene>);
+                    scene = std::move(replacement);
+                    static_cast<void>(timer.Restart());
+                },
 				}
 			);
 
@@ -956,9 +995,15 @@ namespace ForgeSim::Sandbox
 							EditorSession replacement =
 								m_EditorSession->PrepareNew();
 
+                            m_Renderer.LoadSceneResources(std::nullopt,
+                                ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
+                                    replacement.ProjectRoot(), BundledAssetDirectory() / "environments"));
+
 							// Keep the EditorSession and its SandboxScene
 							// at their existing addresses.
 							*m_EditorSession = std::move(replacement);
+                            m_DebugUI.ResetSceneControls();
+                            cameraRestoreRequest.reset();
 
 							lightDebugBounds =
 								scene.Objects().empty()
@@ -988,16 +1033,19 @@ namespace ForgeSim::Sandbox
 								const auto modelPath =
 									replacement.SharedModelPath();
 
-								if (modelPath)
-								{
-									// Import and GPU upload finish before committing
-									// the replacement session.
-									m_Renderer.LoadObjectModel(*modelPath);
-								}
+                                m_Renderer.LoadSceneResources(modelPath,
+                                    ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
+                                        replacement.ProjectRoot(), BundledAssetDirectory() / "environments"));
 
 								// Empty scenes render no objects and can retain
 								// the renderer's existing unused model resources.
 								*m_EditorSession = std::move(replacement);
+                                m_DebugUI.ResetSceneControls();
+                                cameraRestoreRequest.reset();
+
+                                lightDebugBounds = scene.Objects().empty()
+                                    ? emptySceneBounds
+                                    : CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
 
 								selection.Clear();
 								transformEditor.ClearHistory();

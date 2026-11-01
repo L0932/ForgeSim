@@ -1,5 +1,6 @@
 #include "SceneCameraValidation.hpp"
 #include "SceneDocumentValidation.hpp"
+#include "SceneAssetPath.hpp"
 #include "SceneLightValidation.hpp"
 #include "SceneRenderingValidation.hpp"
 
@@ -21,62 +22,6 @@ namespace ForgeSim::Sandbox
             return std::isfinite(value.x) &&
                 std::isfinite(value.y) &&
                 std::isfinite(value.z);
-        }
-
-        [[nodiscard]] bool IsValidModelPath(std::string_view path)
-        {
-            if (path.empty())
-            {
-                return false;
-            }
-
-            // Reject platform-specific separators, drive prefixes,
-            // embedded nulls, and other control characters.
-            for (const char character : path)
-            {
-                const auto byte =
-                    static_cast<unsigned char>(character);
-
-                if (character == '\\' ||
-                    character == ':' ||
-                    byte < 32 ||
-                    byte == 127)
-                {
-                    return false;
-                }
-            }
-
-            // Require nonempty, ordinary relative components.
-            // This also rejects leading/trailing or repeated slashes.
-            std::size_t begin = 0;
-
-            while (begin < path.size())
-            {
-                const std::size_t end = path.find('/', begin);
-
-                const std::string_view component =
-                    path.substr(
-                        begin,
-                        end == std::string_view::npos
-                        ? path.size() - begin
-                        : end - begin);
-
-                if (component.empty() ||
-                    component == "." ||
-                    component == "..")
-                {
-                    return false;
-                }
-
-                if (end == std::string_view::npos)
-                {
-                    return true;
-                }
-
-                begin = end + 1;
-            }
-
-            return false;
         }
 
         [[nodiscard]] std::optional<Error> ValidateTransform(
@@ -178,6 +123,26 @@ namespace ForgeSim::Sandbox
             }
         }
 
+        std::unordered_set<std::string> bookmarkNames;
+        for (std::size_t index = 0; index < document.cameraBookmarks.size(); ++index)
+        {
+            const auto& bookmark = document.cameraBookmarks[index];
+            const std::string property = "cameraBookmarks[" + std::to_string(index) + "]";
+            if (const auto error = ValidateCameraBookmarkName(bookmark.name))
+            {
+                return Error{ property + ".name", std::string{ error->message } };
+            }
+            if (!bookmarkNames.insert(bookmark.name).second)
+            {
+                return Error{ property + ".name", "Bookmark name already exists." };
+            }
+            if (const auto error = ValidateSceneCamera(bookmark.camera))
+            {
+                return Error{ property + ".camera." + std::string{ error->property },
+                    std::string{ error->message } };
+            }
+        }
+
         if (const auto error = ValidateSceneRendering(document.rendering))
         {
             return Error{
@@ -229,7 +194,7 @@ namespace ForgeSim::Sandbox
                 return error;
             }
 
-            if (!IsValidModelPath(object.modelPath))
+            if (!IsValidSceneAssetPath(object.modelPath))
             {
                 return Error{
                     property + ".modelPath",

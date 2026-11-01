@@ -20,6 +20,7 @@ namespace ForgeSim::Sandbox
 
         m_Name = document.name;
         m_SavedCamera = document.camera;
+        m_CameraBookmarks = document.cameraBookmarks;
         m_RenderingSettings = document.rendering;
 
         m_Objects.reserve(document.objects.size());
@@ -63,6 +64,7 @@ namespace ForgeSim::Sandbox
         SceneDocument document;
         document.name = m_Name;
         document.camera = m_SavedCamera;
+        document.cameraBookmarks = m_CameraBookmarks;
         document.rendering = m_RenderingSettings;
 
         document.objects.reserve(m_Objects.size());

@@ -57,6 +57,19 @@ namespace ForgeSim::Sandbox
                         "regular file: " + resolvedPath.string());
                 }
             }
+
+            if (document.rendering.environmentSource == SceneEnvironmentSource::ProjectAsset)
+            {
+                const fs::path environmentPath = projectRoot /
+                    ModelPathFromUtf8(document.rendering.environmentAsset);
+                error.clear();
+                if (!fs::is_regular_file(environmentPath, error) || error)
+                {
+                    throw std::runtime_error(
+                        "rendering.environment.asset: Environment is not an accessible regular file: " +
+                        environmentPath.string());
+                }
+            }
         }
 
         class PendingSceneFile final

@@ -70,7 +70,15 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] std::optional<RenderingValidationError>
 			TrySetRenderingSettings(
-				const SceneRenderingSettings& settings) noexcept;
+				const SceneRenderingSettings& settings);
+
+        [[nodiscard]] std::span<const SceneCameraBookmark>
+            CameraBookmarks() const noexcept;
+
+        void AddCameraBookmark(std::string name, const SceneCameraData& camera);
+        void UpdateCameraBookmark(std::size_t index, const SceneCameraData& camera);
+        void SelectCameraBookmark(std::size_t index);
+        void RemoveCameraBookmark(std::size_t index);
 
 		void ClearSavedCamera() noexcept;
 
@@ -100,6 +108,7 @@ namespace ForgeSim::Sandbox
 		SceneLightId m_NextLightId = 2;
 
 		std::optional<SceneCameraData> m_SavedCamera;
+        std::vector<SceneCameraBookmark> m_CameraBookmarks;
 
 		SceneRenderingSettings m_RenderingSettings;
 	};

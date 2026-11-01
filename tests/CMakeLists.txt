@@ -1237,3 +1237,51 @@ add_test(
     NAME ForgeSim.Sandbox.SceneRenderingValidation
     COMMAND ForgeSimSceneRenderingValidationTests
 )
+
+add_executable(
+    ForgeSimShowcasePersistenceTests
+    ShowcasePersistenceTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraState.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEnvironment.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+)
+
+target_include_directories(
+    ForgeSimShowcasePersistenceTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimShowcasePersistenceTests
+    PRIVATE
+        ForgeSim::Renderer
+        nlohmann_json::nlohmann_json
+)
+
+target_compile_features(
+    ForgeSimShowcasePersistenceTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(ForgeSimShowcasePersistenceTests)
+
+set_target_properties(
+    ForgeSimShowcasePersistenceTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.ShowcasePersistence
+    COMMAND ForgeSimShowcasePersistenceTests
+)

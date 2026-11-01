@@ -1,8 +1,9 @@
 #include "SandboxScene.hpp"
 
+#include <stdexcept>
+#include <utility>
 #include <algorithm>
 #include <limits>
-#include <stdexcept>
 
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
@@ -180,14 +181,66 @@ namespace ForgeSim::Sandbox
 
 	std::optional<RenderingValidationError>
 		SandboxScene::TrySetRenderingSettings(
-			const SceneRenderingSettings& settings) noexcept
+			const SceneRenderingSettings& settings)
 	{
 		if (const auto error = ValidateSceneRendering(settings))
 		{
 			return error;
 		}
 
-		m_RenderingSettings = settings;
+		SceneRenderingSettings replacement = settings;
+        using std::swap;
+        swap(m_RenderingSettings, replacement);
 		return std::nullopt;
 	}
+
+    std::span<const SceneCameraBookmark> SandboxScene::CameraBookmarks() const noexcept
+    {
+        return m_CameraBookmarks;
+    }
+
+    void SandboxScene::AddCameraBookmark(std::string name, const SceneCameraData& camera)
+    {
+        if (const auto error = ValidateCameraBookmarkName(name))
+        {
+            throw std::invalid_argument(std::string{ error->message });
+        }
+        if (const auto error = ValidateSceneCamera(camera))
+        {
+            throw std::invalid_argument("camera." + std::string{ error->property } +
+                ": " + std::string{ error->message });
+        }
+        for (const auto& bookmark : m_CameraBookmarks)
+        {
+            if (bookmark.name == name)
+            {
+                throw std::invalid_argument("Bookmark name already exists.");
+            }
+        }
+        m_CameraBookmarks.push_back({ std::move(name), camera });
+    }
+
+    void SandboxScene::UpdateCameraBookmark(std::size_t index, const SceneCameraData& camera)
+    {
+        auto& bookmark = m_CameraBookmarks.at(index);
+        if (const auto error = ValidateSceneCamera(camera))
+        {
+            throw std::invalid_argument("camera." + std::string{ error->property } +
+                ": " + std::string{ error->message });
+        }
+        bookmark.camera = camera;
+    }
+
+    void SandboxScene::SelectCameraBookmark(std::size_t index)
+    {
+        m_SavedCamera = m_CameraBookmarks.at(index).camera;
+    }
+
+    void SandboxScene::RemoveCameraBookmark(std::size_t index)
+    {
+        static_cast<void>(m_CameraBookmarks.at(index));
+        m_CameraBookmarks.erase(m_CameraBookmarks.begin() +
+            static_cast<std::ptrdiff_t>(index));
+        // The active viewpoint is an independent snapshot and remains valid.
+    }
 }

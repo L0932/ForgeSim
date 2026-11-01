@@ -2,10 +2,19 @@
 
 #include "DirectionalShadowSettings.hpp"
 
+#include <string>
+
 #include <glm/vec3.hpp>
 
 namespace ForgeSim::Sandbox
 {
+    enum class SceneEnvironmentSource
+    {
+        BundledStudio,
+        None,
+        ProjectAsset
+    };
+
     struct SceneRenderingSettings
     {
         glm::vec3 backgroundColor{
@@ -18,6 +27,10 @@ namespace ForgeSim::Sandbox
         float environmentIntensity = 0.2f;
 
         bool showEnvironmentBackground = false;
-        DirectionalShadowSettings directionalShadows;
+        DirectionalShadowSettings directionalShadows{};
+
+        SceneEnvironmentSource environmentSource =
+            SceneEnvironmentSource::BundledStudio;
+        std::string environmentAsset{};
     };
 }

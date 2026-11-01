@@ -1,4 +1,5 @@
 #include "SceneRenderingValidation.hpp"
+#include "SceneAssetPath.hpp"
 
 #include <cmath>
 
@@ -72,6 +73,34 @@ namespace ForgeSim::Sandbox
                 .message =
                     "Slope shadow bias must be finite "
                     "and between zero and 0.02."
+            };
+        }
+
+        switch (settings.environmentSource)
+        {
+        case SceneEnvironmentSource::BundledStudio:
+        case SceneEnvironmentSource::None:
+            if (!settings.environmentAsset.empty())
+            {
+                return RenderingValidationError{
+                    "environment.asset",
+                    "Only project environments may have an asset reference."
+                };
+            }
+            break;
+        case SceneEnvironmentSource::ProjectAsset:
+            if (!IsValidSceneAssetPath(settings.environmentAsset))
+            {
+                return RenderingValidationError{
+                    "environment.asset",
+                    "Environment path must be project-relative, use forward "
+                    "slashes, and contain no empty, '.' or '..' components."
+                };
+            }
+            break;
+        default:
+            return RenderingValidationError{
+                "environment.source", "Unknown environment source."
             };
         }
 

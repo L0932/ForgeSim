@@ -116,6 +116,12 @@ namespace ForgeSim::Sandbox
 
 		void ReloadChangedShaders();
 
+        // Prepare the environment and model before committing either replacement.
+        // An absent model retains unused existing model resources for empty scenes.
+        void LoadSceneResources(
+            const std::optional<std::filesystem::path>& modelPath,
+            const std::optional<std::filesystem::path>& environmentPath);
+
 		// Replace the shared model only after all replacement resources are ready.
 		void LoadObjectModel(
 			const std::filesystem::path& path);
@@ -227,6 +233,7 @@ namespace ForgeSim::Sandbox
         glm::mat4 m_DirectionalLightViewProjection{ 1.0f };
 
 		std::filesystem::path m_ObjectModelPath;
+        std::optional<std::filesystem::path> m_EnvironmentPath;
 		Assets::SceneAsset m_ObjectSceneAsset;
 		Renderer::AxisAlignedBoundingBox m_ObjectLocalBounds;
 

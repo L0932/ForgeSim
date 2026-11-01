@@ -1,5 +1,6 @@
 #include "SceneCameraValidation.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include <glm/geometric.hpp>
@@ -32,6 +33,24 @@ namespace ForgeSim::Sandbox
 
             return std::abs(lengthSquared - 1.0) <= 0.001;
         }
+    }
+
+    std::optional<CameraValidationError> ValidateCameraBookmarkName(
+        std::string_view name) noexcept
+    {
+        if (name.empty() || name.size() > 128 ||
+            std::all_of(name.begin(), name.end(), [](char c) { return c == ' '; }) ||
+            std::any_of(name.begin(), name.end(), [](unsigned char c)
+            {
+                return c < 32 || c == 127;
+            }))
+        {
+            return CameraValidationError{
+                "name", "Bookmark names must contain 1 to 128 UTF-8 bytes, "
+                "include a non-space character, and contain no control characters."
+            };
+        }
+        return std::nullopt;
     }
 
     std::optional<CameraValidationError> ValidateSceneCamera(
@@ -105,6 +124,27 @@ namespace ForgeSim::Sandbox
                 "farClippingPlane",
                 "Far clipping distance must be finite and "
                 "greater than the near clipping distance."
+            };
+        }
+
+        if (camera.referenceViewport &&
+            (camera.referenceViewport->width == 0 ||
+                camera.referenceViewport->height == 0))
+        {
+            return CameraValidationError{
+                "referenceViewport", "Reference viewport dimensions must be positive."
+            };
+        }
+
+        // The current renderer represents orientation as target - position.
+        // Reject a pose whose unit-length target offset disappears at float precision.
+        const glm::vec3 target = camera.position + glm::normalize(camera.forwardDirection);
+        const glm::vec3 difference = target - camera.position;
+        const float distanceSquared = glm::dot(difference, difference);
+        if (!IsFinite(target) || !std::isfinite(distanceSquared) || distanceSquared <= 0.0f)
+        {
+            return CameraValidationError{
+                "position", "Position exceeds the precision supported by camera restoration."
             };
         }
 

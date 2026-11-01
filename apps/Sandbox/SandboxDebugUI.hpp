@@ -7,6 +7,12 @@
 #include "SceneSelection.hpp"
 #include "TransformEditorUIState.hpp"
 
+#include "SceneCameraData.hpp"
+#include "SceneRenderingSettings.hpp"
+
+#include <array>
+#include <functional>
+#include <string>
 #include <optional>
 #include <span>
 
@@ -50,6 +56,9 @@ namespace ForgeSim::Sandbox
 
 		SandboxScene& scene;
 		bool cameraEditingDisabled = false;
+        std::optional<SceneCaptureExtent> referenceViewport;
+        std::optional<SceneCameraData>& cameraRestoreRequest;
+        std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
 
 	class SandboxDebugUI final
@@ -70,6 +79,7 @@ namespace ForgeSim::Sandbox
 			SandboxDebugUI&&) = delete;
 
 		void BeginFrame();
+        void ResetSceneControls();
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
@@ -99,11 +109,13 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool RuntimeDiagnosticsEnabled()
 			const noexcept;
 
-		[[nodiscard]] const DirectionalShadowSettings&
-			ShadowSettings() const noexcept;
 
 	private:
-		DirectionalShadowSettings m_DirectionalShadowSettings{};
+        std::array<char, 129> m_BookmarkName{};
+        std::string m_SelectedBookmark;
+        std::array<char, 4096> m_EnvironmentAsset{};
+        bool m_EnvironmentInputInitialized = false;
+        std::string m_PresentationMessage;
 
 		bool m_IsVisible = true;
 		bool m_ShowGrid = true;

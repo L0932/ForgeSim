@@ -40,7 +40,7 @@ namespace ForgeSim::Sandbox
 
         [[nodiscard]] Json WriteCamera(const SceneCameraData& camera)
         {
-            return Json{
+            Json result{
                 { "position", WriteVector(camera.position) },
                 {
                     "forwardDirection",
@@ -54,6 +54,11 @@ namespace ForgeSim::Sandbox
                 { "nearClippingPlane", camera.nearClippingPlane },
                 { "farClippingPlane", camera.farClippingPlane }
             };
+            result["referenceViewport"] = camera.referenceViewport
+                ? Json{ { "width", camera.referenceViewport->width },
+                    { "height", camera.referenceViewport->height } }
+                : Json(nullptr);
+            return result;
         }
 
         [[nodiscard]] Json WriteDirectionalShadows(
@@ -88,6 +93,13 @@ namespace ForgeSim::Sandbox
                     "directionalShadows",
                     WriteDirectionalShadows(settings.directionalShadows)
                 },
+                { "environment", {
+                    { "source", settings.environmentSource == SceneEnvironmentSource::BundledStudio
+                        ? "bundledStudio" : settings.environmentSource == SceneEnvironmentSource::None
+                            ? "none" : "projectAsset" },
+                    { "asset", settings.environmentSource == SceneEnvironmentSource::ProjectAsset
+                        ? Json(settings.environmentAsset) : Json(nullptr) }
+                } },
             };
         }
 
@@ -316,7 +328,7 @@ namespace ForgeSim::Sandbox
             const Json& value,
             const std::string& property)
         {
-            return SceneCameraData{
+            SceneCameraData camera{
                 .position = ReadVector(
                     ReadMember(value, "position", property),
                     property + ".position"),
@@ -341,6 +353,23 @@ namespace ForgeSim::Sandbox
                     ReadMember(value, "farClippingPlane", property),
                     property + ".farClippingPlane")
             };
+            const auto extent = value.find("referenceViewport");
+            if (extent != value.end() && !extent->is_null())
+            {
+                const auto width = ReadUnsigned(
+                    ReadMember(*extent, "width", property + ".referenceViewport"),
+                    property + ".referenceViewport.width");
+                const auto height = ReadUnsigned(
+                    ReadMember(*extent, "height", property + ".referenceViewport"),
+                    property + ".referenceViewport.height");
+                if (width == 0 || width > std::numeric_limits<std::uint32_t>::max())
+                    ReadError(property + ".referenceViewport.width", "Expected a positive uint32 dimension.");
+                if (height == 0 || height > std::numeric_limits<std::uint32_t>::max())
+                    ReadError(property + ".referenceViewport.height", "Expected a positive uint32 dimension.");
+                camera.referenceViewport = SceneCaptureExtent{
+                    static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height) };
+            }
+            return camera;
         }
 
         [[nodiscard]] DirectionalShadowSettings ReadDirectionalShadows(
@@ -397,6 +426,30 @@ namespace ForgeSim::Sandbox
                     property + ".directionalShadows");
             }
 
+            const auto environment = value.find("environment");
+            if (environment != value.end())
+            {
+                const std::string parent = property + ".environment";
+                const std::string source = ReadString(
+                    ReadMember(*environment, "source", parent), parent + ".source");
+                const Json& asset = ReadMember(*environment, "asset", parent);
+                if (source == "projectAsset")
+                {
+                    settings.environmentSource = SceneEnvironmentSource::ProjectAsset;
+                    settings.environmentAsset = ReadString(asset, parent + ".asset");
+                }
+                else
+                {
+                    if (source == "bundledStudio")
+                        settings.environmentSource = SceneEnvironmentSource::BundledStudio;
+                    else if (source == "none")
+                        settings.environmentSource = SceneEnvironmentSource::None;
+                    else
+                        ReadError(parent + ".source", "Unknown environment source.");
+                    if (!asset.is_null())
+                        ReadError(parent + ".asset", "Expected null for a non-project environment.");
+                }
+            }
             return settings;
         }
 
@@ -539,6 +592,13 @@ namespace ForgeSim::Sandbox
             spotLights.push_back(WriteLight(light));
         }
 
+        Json bookmarks = Json::array();
+        for (const auto& bookmark : document.cameraBookmarks)
+        {
+            bookmarks.push_back({ { "name", bookmark.name },
+                { "camera", WriteCamera(bookmark.camera) } });
+        }
+
         const Json root{
             { "version", document.version },
             { "name", document.name },
@@ -549,6 +609,7 @@ namespace ForgeSim::Sandbox
                     : Json(nullptr)
             },
             { "rendering", WriteRendering(document.rendering) },
+            { "cameraBookmarks", bookmarks },
             { "objects", objects },
             {
                 "directionalLight",
@@ -610,6 +671,20 @@ namespace ForgeSim::Sandbox
             if (!camera.is_null())
             {
                 document.camera = ReadCamera(camera, "camera");
+            }
+        }
+
+        const auto bookmarks = root.find("cameraBookmarks");
+        if (bookmarks != root.end())
+        {
+            const Json& entries = ReadArray(*bookmarks, "cameraBookmarks");
+            for (std::size_t index = 0; index < entries.size(); ++index)
+            {
+                const std::string property = "cameraBookmarks[" + std::to_string(index) + "]";
+                document.cameraBookmarks.push_back({
+                    ReadString(ReadMember(entries[index], "name", property), property + ".name"),
+                    ReadCamera(ReadMember(entries[index], "camera", property), property + ".camera")
+                });
             }
         }
 

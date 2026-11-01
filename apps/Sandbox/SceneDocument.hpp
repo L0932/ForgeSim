@@ -35,6 +35,7 @@ namespace ForgeSim::Sandbox
 
         // No saved camera means the application should frame the scene.
         std::optional<SceneCameraData> camera;
+        std::vector<SceneCameraBookmark> cameraBookmarks;
         SceneRenderingSettings rendering;
 
         std::vector<SceneObjectData> objects;
