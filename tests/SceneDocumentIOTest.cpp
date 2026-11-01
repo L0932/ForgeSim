@@ -573,6 +573,114 @@ namespace
             active.HasUnsavedChanges(),
             "Failed Open damaged the active session.");
     }
+
+    void TestRenderingSettingsPersistence()
+    {
+        TemporaryDirectory temporary;
+
+        EditorSession session{
+            SceneDocument{},
+            temporary.Path()
+        };
+
+        session.SaveAs("Rendering.scene.json");
+
+        const SceneRenderingSettings original =
+            session.Scene().RenderingSettings();
+
+        const auto applySettings = [&session](
+            const SceneRenderingSettings& settings)
+            {
+                Require(
+                    !session.Scene().TrySetRenderingSettings(settings),
+                    "Valid rendering settings were rejected.");
+            };
+
+        // Each individual field must participate in change detection.
+        for (int field = 0; field < 4; ++field)
+        {
+            SceneRenderingSettings edited = original;
+
+            switch (field)
+            {
+            case 0:
+                edited.backgroundColor = { 0.2f, 0.3f, 0.4f };
+                break;
+
+            case 1:
+                edited.exposure = 2.5f;
+                break;
+
+            case 2:
+                edited.environmentIntensity = 0.75f;
+                break;
+
+            case 3:
+                edited.showEnvironmentBackground =
+                    !original.showEnvironmentBackground;
+                break;
+            }
+
+            applySettings(edited);
+
+            Require(
+                session.HasUnsavedChanges(),
+                "Rendering edit did not mark the session modified.");
+
+            applySettings(original);
+
+            Require(
+                !session.HasUnsavedChanges(),
+                "Restoring rendering settings did not clear dirty state.");
+        }
+
+        SceneRenderingSettings edited = original;
+        edited.backgroundColor = { 0.2f, 0.3f, 0.4f };
+        edited.exposure = 2.5f;
+        edited.environmentIntensity = 0.75f;
+        edited.showEnvironmentBackground = true;
+
+        applySettings(edited);
+        session.Save();
+
+        Require(
+            !session.HasUnsavedChanges(),
+            "Saving rendering settings did not clear dirty state.");
+
+        const EditorSession reopened =
+            session.PrepareOpen("Rendering.scene.json");
+
+        const SceneRenderingSettings& restored =
+            reopened.Scene().RenderingSettings();
+
+        Require(
+            restored.backgroundColor == edited.backgroundColor &&
+            restored.exposure == edited.exposure &&
+            restored.environmentIntensity ==
+            edited.environmentIntensity &&
+            restored.showEnvironmentBackground ==
+            edited.showEnvironmentBackground,
+            "Reopening the scene lost rendering settings.");
+
+        Require(
+            !reopened.HasUnsavedChanges(),
+            "Reopened rendering settings appeared modified.");
+
+        const EditorSession fresh = session.PrepareNew();
+        const SceneRenderingSettings defaults;
+
+        const SceneRenderingSettings& freshSettings =
+            fresh.Scene().RenderingSettings();
+
+        Require(
+            freshSettings.backgroundColor == defaults.backgroundColor &&
+            freshSettings.exposure == defaults.exposure &&
+            freshSettings.environmentIntensity ==
+            defaults.environmentIntensity &&
+            freshSettings.showEnvironmentBackground ==
+            defaults.showEnvironmentBackground,
+            "New scene inherited the previous scene's rendering settings.");
+    }
 }
 
 int main()
@@ -583,6 +691,7 @@ int main()
         TestFileSaving();
         TestEditorSession();
         TestPreparedSceneChanges();
+        TestRenderingSettingsPersistence();
         return EXIT_SUCCESS;
     }
     catch (const std::exception& exception)

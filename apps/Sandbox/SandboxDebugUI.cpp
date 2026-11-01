@@ -345,35 +345,58 @@ namespace ForgeSim::Sandbox
 
 		ImGui::SeparatorText("Rendering");
 
-		ImGui::Checkbox(
+		ImGui::BeginDisabled(context.cameraEditingDisabled);
+
+		SceneRenderingSettings rendering =
+			context.scene.RenderingSettings();
+
+		bool renderingChanged = ImGui::Checkbox(
 			"Show environment background",
-			&m_ShowEnvironmentBackground);
+			&rendering.showEnvironmentBackground);
 
 		ImGui::BeginDisabled(
-			m_ShowEnvironmentBackground);
+			rendering.showEnvironmentBackground);
 
-		ImGui::ColorEdit3(
+		renderingChanged |= ImGui::ColorEdit3(
 			"Fallback background color",
-			&m_BackgroundColor.x,
+			&rendering.backgroundColor.x,
 			ImGuiColorEditFlags_Float);
 
 		ImGui::EndDisabled();
 
-		ImGui::SliderFloat(
+		renderingChanged |= ImGui::SliderFloat(
 			"Exposure",
-			&m_Exposure,
+			&rendering.exposure,
 			0.05f,
-			5.0f, 
+			5.0f,
 			"%.2f",
-			ImGuiSliderFlags_Logarithmic);
-		
-		ImGui::SliderFloat(
+			ImGuiSliderFlags_Logarithmic |
+			ImGuiSliderFlags_AlwaysClamp);
+
+		renderingChanged |= ImGui::SliderFloat(
 			"Environment intensity",
-			&m_EnvironmentIntensity,
+			&rendering.environmentIntensity,
 			0.0f,
 			2.0f,
-			"%.2f");
-		
+			"%.2f",
+			ImGuiSliderFlags_AlwaysClamp);
+
+		if (renderingChanged)
+		{
+			if (const auto error =
+				context.scene.TrySetRenderingSettings(rendering))
+			{
+				ImGui::TextWrapped(
+					"Cannot update rendering.%.*s: %.*s",
+					static_cast<int>(error->property.size()),
+					error->property.data(),
+					static_cast<int>(error->message.size()),
+					error->message.data());
+			}
+		}
+
+		ImGui::EndDisabled();
+
 		ImGui::SeparatorText("Directional shadows");
 
 		ImGui::Checkbox(
@@ -511,33 +534,10 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	glm::vec3 SandboxDebugUI::BackgroundColor()
-		const noexcept
-	{
-		return m_BackgroundColor;
-	}
-
 	const DirectionalShadowSettings&
 	SandboxDebugUI::ShadowSettings() const noexcept
 	{
 		return m_DirectionalShadowSettings;
-	}
-
-	float SandboxDebugUI::Exposure() const noexcept
-	{
-		return m_Exposure;
-	}
-
-	float SandboxDebugUI::EnvironmentIntensity()
-		const noexcept
-	{
-		return m_EnvironmentIntensity;
-	}
-
-	bool SandboxDebugUI::ShowEnvironmentBackground()
-		const noexcept
-	{
-		return m_ShowEnvironmentBackground;
 	}
 
 	bool SandboxDebugUI::WantsMouseCapture()

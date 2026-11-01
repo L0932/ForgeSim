@@ -171,4 +171,23 @@ namespace ForgeSim::Sandbox
 	{
 		m_SavedCamera.reset();
 	}
+
+	const SceneRenderingSettings&
+		SandboxScene::RenderingSettings() const noexcept
+	{
+		return m_RenderingSettings;
+	}
+
+	std::optional<RenderingValidationError>
+		SandboxScene::TrySetRenderingSettings(
+			const SceneRenderingSettings& settings) noexcept
+	{
+		if (const auto error = ValidateSceneRendering(settings))
+		{
+			return error;
+		}
+
+		m_RenderingSettings = settings;
+		return std::nullopt;
+	}
 }

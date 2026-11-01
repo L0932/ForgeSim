@@ -3,6 +3,7 @@
 #include "SandboxObject.hpp"
 #include "SceneCameraData.hpp"
 #include "SceneCameraValidation.hpp"
+#include "SceneRenderingValidation.hpp"
 #include "SceneLight.hpp"
 
 #include <optional>
@@ -64,6 +65,13 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] std::optional<CameraValidationError>
 			TrySetSavedCamera(const SceneCameraData& camera) noexcept;
 
+		[[nodiscard]] const SceneRenderingSettings&
+			RenderingSettings() const noexcept;
+
+		[[nodiscard]] std::optional<RenderingValidationError>
+			TrySetRenderingSettings(
+				const SceneRenderingSettings& settings) noexcept;
+
 		void ClearSavedCamera() noexcept;
 
 	private:
@@ -92,5 +100,7 @@ namespace ForgeSim::Sandbox
 		SceneLightId m_NextLightId = 2;
 
 		std::optional<SceneCameraData> m_SavedCamera;
+
+		SceneRenderingSettings m_RenderingSettings;
 	};
 }

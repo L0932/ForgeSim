@@ -241,6 +241,125 @@ namespace
         Require(rejected, "Invalid scene JSON was accepted.");
     }
 
+    void RequireRenderingEqual(
+        const SceneRenderingSettings& actual,
+        const SceneRenderingSettings& expected)
+    {
+        Require(
+            actual.backgroundColor == expected.backgroundColor &&
+            actual.exposure == expected.exposure &&
+            actual.environmentIntensity == expected.environmentIntensity &&
+            actual.showEnvironmentBackground ==
+            expected.showEnvironmentBackground,
+            "Rendering settings changed during serialization.");
+    }
+
+    void TestRenderingRoundTrip()
+    {
+        SceneDocument source;
+        source.rendering.backgroundColor = { 0.15f, 0.25f, 0.35f };
+        source.rendering.exposure = 2.5f;
+        source.rendering.environmentIntensity = 0.75f;
+        source.rendering.showEnvironmentBackground = true;
+
+        const std::string text = SerializeSceneDocument(source);
+        const Json json = Json::parse(text);
+        const Json& rendering = json.at("rendering");
+
+        Require(
+            rendering.at("backgroundColor") ==
+            Json::array({ 0.15f, 0.25f, 0.35f }) &&
+            rendering.at("exposure") == 2.5f &&
+            rendering.at("environmentIntensity") == 0.75f &&
+            rendering.at("showEnvironmentBackground") == true,
+            "Serialized rendering fields are incorrect.");
+
+        const SceneDocument restored = DeserializeSceneDocument(text);
+
+        RequireRenderingEqual(restored.rendering, source.rendering);
+    }
+
+    void TestMissingRenderingUsesDefaults()
+    {
+        Json json = Json::parse(
+            SerializeSceneDocument(SceneDocument{}));
+
+        // Simulate a version 2 scene written before rendering persistence.
+        json["version"] = 2;
+        json.erase("rendering");
+
+        const SceneDocument restored =
+            DeserializeSceneDocument(json.dump());
+
+        RequireRenderingEqual(
+            restored.rendering,
+            SceneRenderingSettings{});
+
+        const Json saved = Json::parse(
+            SerializeSceneDocument(restored));
+
+        Require(
+            saved.contains("rendering"),
+            "Resaving an older scene omitted rendering settings.");
+    }
+
+    void TestMalformedRendering()
+    {
+        const Json valid = Json::parse(
+            SerializeSceneDocument(SceneDocument{}));
+
+        for (const char* field : {
+            "backgroundColor",
+            "exposure",
+            "environmentIntensity",
+            "showEnvironmentBackground" })
+        {
+            Json candidate = valid;
+            candidate["rendering"].erase(field);
+
+            ExpectReadError(
+                candidate.dump(),
+                std::string{ "rendering." } + field);
+        }
+
+        Json candidate = valid;
+        candidate["rendering"] = nullptr;
+        ExpectReadError(candidate.dump(), "rendering");
+
+        candidate = valid;
+        candidate["rendering"]["backgroundColor"] =
+            Json::array({ 0.1f, 0.2f });
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.backgroundColor");
+
+        candidate = valid;
+        candidate["rendering"]["backgroundColor"][0] = -0.1f;
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.backgroundColor");
+
+        candidate = valid;
+        candidate["rendering"]["exposure"] = "bright";
+        ExpectReadError(candidate.dump(), "rendering.exposure");
+
+        candidate = valid;
+        candidate["rendering"]["exposure"] = 0.0f;
+        ExpectReadError(candidate.dump(), "rendering.exposure");
+
+        candidate = valid;
+        candidate["rendering"]["environmentIntensity"] = -1.0f;
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.environmentIntensity");
+
+        candidate = valid;
+        candidate["rendering"]["showEnvironmentBackground"] = 1;
+        ExpectReadError(
+            candidate.dump(),
+            "rendering.showEnvironmentBackground");
+    }
+
     void TestCameraInputErrors()
     {
         SceneDocument source;
@@ -529,6 +648,9 @@ int main()
         TestIdInput();
         TestSemanticInputValidation();
         TestEmptyDocumentRoundTrip();
+        TestRenderingRoundTrip();
+        TestMissingRenderingUsesDefaults();
+        TestMalformedRendering();
 
         return EXIT_SUCCESS;
     }

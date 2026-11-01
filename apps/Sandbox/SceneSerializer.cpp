@@ -56,6 +56,41 @@ namespace ForgeSim::Sandbox
             };
         }
 
+        [[nodiscard]] Json WriteDirectionalShadows(
+            const DirectionalShadowSettings& settings)
+        {
+            return Json{
+                { "enabled", settings.enabled },
+                { "filteringEnabled", settings.filteringEnabled },
+                { "minimumBias", settings.minimumBias },
+                { "slopeBias", settings.slopeBias }
+            };
+        }
+
+        [[nodiscard]] Json WriteRendering(
+            const SceneRenderingSettings& settings)
+        {
+            return Json{
+                {
+                    "backgroundColor",
+                    WriteVector(settings.backgroundColor)
+                },
+                { "exposure", settings.exposure },
+                {
+                    "environmentIntensity",
+                    settings.environmentIntensity
+                },
+                {
+                    "showEnvironmentBackground",
+                    settings.showEnvironmentBackground
+                },
+                {
+                    "directionalShadows",
+                    WriteDirectionalShadows(settings.directionalShadows)
+                },
+            };
+        }
+
         [[nodiscard]] Json WriteObject(
             const SceneObjectData& object)
         {
@@ -308,6 +343,63 @@ namespace ForgeSim::Sandbox
             };
         }
 
+        [[nodiscard]] DirectionalShadowSettings ReadDirectionalShadows(
+            const Json& value,
+            const std::string& property)
+        {
+            return DirectionalShadowSettings{
+                .enabled = ReadBool(
+                    ReadMember(value, "enabled", property),
+                    property + ".enabled"),
+
+                .filteringEnabled = ReadBool(
+                    ReadMember(value, "filteringEnabled", property),
+                    property + ".filteringEnabled"),
+
+                .minimumBias = ReadFloat(
+                    ReadMember(value, "minimumBias", property),
+                    property + ".minimumBias"),
+
+                .slopeBias = ReadFloat(
+                    ReadMember(value, "slopeBias", property),
+                    property + ".slopeBias")
+            };
+        }
+
+        [[nodiscard]] SceneRenderingSettings ReadRendering(
+            const Json& value,
+            const std::string& property)
+        {
+            SceneRenderingSettings settings{
+                .backgroundColor = ReadVector(
+                    ReadMember(value, "backgroundColor", property),
+                    property + ".backgroundColor"),
+
+                .exposure = ReadFloat(
+                    ReadMember(value, "exposure", property),
+                    property + ".exposure"),
+
+                .environmentIntensity = ReadFloat(
+                    ReadMember(value, "environmentIntensity", property),
+                    property + ".environmentIntensity"),
+
+                .showEnvironmentBackground = ReadBool(
+                    ReadMember(value, "showEnvironmentBackground", property),
+                    property + ".showEnvironmentBackground")
+            };
+
+            const auto shadows = value.find("directionalShadows");
+
+            if (shadows != value.end())
+            {
+                settings.directionalShadows = ReadDirectionalShadows(
+                    *shadows,
+                    property + ".directionalShadows");
+            }
+
+            return settings;
+        }
+
         [[nodiscard]] SceneObjectData ReadObject(
             const Json& value,
             const std::string& property)
@@ -456,6 +548,7 @@ namespace ForgeSim::Sandbox
                     ? WriteCamera(*document.camera)
                     : Json(nullptr)
             },
+            { "rendering", WriteRendering(document.rendering) },
             { "objects", objects },
             {
                 "directionalLight",
@@ -518,6 +611,15 @@ namespace ForgeSim::Sandbox
             {
                 document.camera = ReadCamera(camera, "camera");
             }
+        }
+
+        const auto rendering = root.find("rendering");
+
+        if (rendering != root.end())
+        {
+            document.rendering = ReadRendering(
+                *rendering,
+                "rendering");
         }
 
         const Json& objects = ReadArray(

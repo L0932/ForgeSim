@@ -93,6 +93,9 @@ target_sources(
 		SceneLightValidation.cpp
 		SceneTransformEditor.hpp
 		SceneTransformEditor.cpp
+		SceneRenderingSettings.hpp
+		SceneRenderingValidation.hpp
+		SceneRenderingValidation.cpp
 		SceneViewportPanel.hpp
 		SceneViewportPanel.cpp
 		ShaderFileMonitor.hpp

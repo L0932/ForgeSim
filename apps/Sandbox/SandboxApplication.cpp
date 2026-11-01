@@ -713,15 +713,15 @@ namespace ForgeSim::Sandbox
 						viewport.framebufferExtent.height),
 
 				.backgroundColor =
-					m_DebugUI.BackgroundColor(),
+					scene.RenderingSettings().backgroundColor,
 
-				.exposure = m_DebugUI.Exposure(),
+				.exposure = scene.RenderingSettings().exposure,
 
 				.environmentIntensity =
-					m_DebugUI.EnvironmentIntensity(),
+					scene.RenderingSettings().environmentIntensity,
 
 				.showEnvironmentBackground =
-					m_DebugUI.ShowEnvironmentBackground(),
+					scene.RenderingSettings().showEnvironmentBackground,
 
 				.showGrid = m_DebugUI.ShowGrid(),
 

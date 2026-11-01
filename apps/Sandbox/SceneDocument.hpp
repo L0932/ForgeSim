@@ -2,6 +2,7 @@
 
 #include "SceneCameraData.hpp"
 #include "SceneLight.hpp"
+#include "SceneRenderingSettings.hpp"
 #include "Transform.hpp"
 
 #include <optional>
@@ -34,6 +35,7 @@ namespace ForgeSim::Sandbox
 
         // No saved camera means the application should frame the scene.
         std::optional<SceneCameraData> camera;
+        SceneRenderingSettings rendering;
 
         std::vector<SceneObjectData> objects;
 

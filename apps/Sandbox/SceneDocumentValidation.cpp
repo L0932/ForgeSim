@@ -1,6 +1,7 @@
 #include "SceneCameraValidation.hpp"
 #include "SceneDocumentValidation.hpp"
 #include "SceneLightValidation.hpp"
+#include "SceneRenderingValidation.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -175,6 +176,14 @@ namespace ForgeSim::Sandbox
                     std::string{ error->message }
                 };
             }
+        }
+
+        if (const auto error = ValidateSceneRendering(document.rendering))
+        {
+            return Error{
+                "rendering." + std::string{ error->property },
+                std::string{ error->message }
+            };
         }
 
         std::unordered_set<std::uint64_t> objectIds;

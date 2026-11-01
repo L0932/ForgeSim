@@ -219,6 +219,7 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -546,6 +547,7 @@ target_sources(
         SceneLightTest.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -668,6 +670,7 @@ target_sources(
         SceneSelectionValidationTest.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
         ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -756,6 +759,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -840,6 +844,7 @@ add_executable(
     LightSubmissionTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightSubmission.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -917,6 +922,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -1050,6 +1056,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
 )
 
 target_include_directories(
@@ -1190,4 +1197,43 @@ set_target_properties(
 add_test(
     NAME ForgeSim.Sandbox.SceneCameraValidation
     COMMAND ForgeSimSceneCameraValidationTests
+)
+
+add_executable(
+    ForgeSimSceneRenderingValidationTests
+    SceneRenderingValidationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+)
+
+target_include_directories(
+    ForgeSimSceneRenderingValidationTests
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/apps/Sandbox
+)
+
+target_link_libraries(
+    ForgeSimSceneRenderingValidationTests
+    PRIVATE
+        glm::glm-header-only
+)
+
+target_compile_features(
+    ForgeSimSceneRenderingValidationTests
+    PRIVATE
+        cxx_std_20
+)
+
+forgesim_set_project_warnings(
+    ForgeSimSceneRenderingValidationTests
+)
+
+set_target_properties(
+    ForgeSimSceneRenderingValidationTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Sandbox.SceneRenderingValidation
+    COMMAND ForgeSimSceneRenderingValidationTests
 )

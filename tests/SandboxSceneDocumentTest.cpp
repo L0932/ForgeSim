@@ -340,6 +340,88 @@ namespace
             SerializeSceneDocument(scene.ToDocument()) == original,
             "Clearing an absent camera changed the scene document.");
     }
+
+    void TestRenderingSettingsEditing()
+    {
+        SceneDocument document = MakeDocument();
+        document.rendering.backgroundColor = { 0.1f, 0.2f, 0.3f };
+        document.rendering.exposure = 2.0f;
+        document.rendering.environmentIntensity = 0.8f;
+        document.rendering.showEnvironmentBackground = true;
+
+        SandboxScene scene{ document };
+
+        const auto requireSettings = [](
+            const SceneRenderingSettings& actual,
+            const SceneRenderingSettings& expected)
+            {
+                Require(
+                    actual.backgroundColor == expected.backgroundColor &&
+                    actual.exposure == expected.exposure &&
+                    actual.environmentIntensity ==
+                    expected.environmentIntensity &&
+                    actual.showEnvironmentBackground ==
+                    expected.showEnvironmentBackground,
+                    "Rendering settings were not preserved.");
+            };
+
+        requireSettings(scene.RenderingSettings(), document.rendering);
+        requireSettings(scene.ToDocument().rendering, document.rendering);
+
+        SceneRenderingSettings edited = document.rendering;
+        edited.backgroundColor = { 0.4f, 0.5f, 0.6f };
+        edited.exposure = 3.0f;
+        edited.environmentIntensity = 0.0f;
+        edited.showEnvironmentBackground = false;
+
+        Require(
+            !scene.TrySetRenderingSettings(edited).has_value(),
+            "Valid rendering edit was rejected.");
+
+        requireSettings(scene.RenderingSettings(), edited);
+        requireSettings(scene.ToDocument().rendering, edited);
+
+        const SandboxScene restored{ scene.ToDocument() };
+        requireSettings(restored.RenderingSettings(), edited);
+
+        SceneRenderingSettings invalid = edited;
+        invalid.exposure = 0.0f;
+
+        const auto error = scene.TrySetRenderingSettings(invalid);
+
+        Require(
+            error.has_value(),
+            "Invalid rendering edit was accepted.");
+
+        Require(
+            error->property == "exposure",
+            "Rendering edit error identified the wrong property.");
+
+        requireSettings(scene.RenderingSettings(), edited);
+        requireSettings(scene.ToDocument().rendering, edited);
+
+        document.rendering.exposure = 0.0f;
+        bool rejected = false;
+
+        try
+        {
+            const SandboxScene invalidScene{ document };
+            static_cast<void>(invalidScene);
+        }
+        catch (const std::invalid_argument& exception)
+        {
+            rejected = true;
+
+            Require(
+                std::string{ exception.what() }.find(
+                    "rendering.exposure") != std::string::npos,
+                "Construction error omitted the rendering property.");
+        }
+
+        Require(
+            rejected,
+            "Scene construction accepted invalid rendering settings.");
+    }
 }
 
 int main()
@@ -352,6 +434,7 @@ int main()
         TestInvalidDocument();
         TestIdExhaustion();
         TestSavedCameraEditing();
+        TestRenderingSettingsEditing();
 
         return EXIT_SUCCESS;
     }
