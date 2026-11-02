@@ -262,6 +262,7 @@ target_sources(
     ForgeSimGltfLoaderTests
     PRIVATE
         GltfLoaderTest.cpp
+        GltfTextureFallbackTest.cpp
 )
 
 target_link_libraries(

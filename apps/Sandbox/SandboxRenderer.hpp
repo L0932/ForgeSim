@@ -17,6 +17,7 @@
 #include <glm/vec4.hpp>
 
 #include <ForgeSim/Assets/MeshData.hpp>
+#include <ForgeSim/Assets/GltfLoader.hpp>
 #include <ForgeSim/Assets/SceneAsset.hpp>
 #include <ForgeSim/Renderer/DebugGeometry.hpp>
 #include <ForgeSim/Renderer/Bounds.hpp>
@@ -83,6 +84,9 @@ namespace ForgeSim::Sandbox
 			std::filesystem::path{
 				"Studio_Small_01_4k.hdr"
 		};
+
+		Assets::GltfTexturePolicy texturePolicy =
+			Assets::GltfTexturePolicy::Strict;
 	};
 
 	class SandboxRenderer final
@@ -232,6 +236,7 @@ namespace ForgeSim::Sandbox
         Renderer::OpenGL::ShadowMap m_DirectionalShadowMap;
         glm::mat4 m_DirectionalLightViewProjection{ 1.0f };
 
+		const Assets::GltfTexturePolicy m_TexturePolicy;
 		std::filesystem::path m_ObjectModelPath;
         std::optional<std::filesystem::path> m_EnvironmentPath;
 		Assets::SceneAsset m_ObjectSceneAsset;

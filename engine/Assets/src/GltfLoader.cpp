@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <exception>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <span>
@@ -741,6 +742,76 @@ namespace ForgeSim::Assets
 			return material;
 		}
 
+		// Copy the source material before filtering: shared source materials
+		// must remain usable by primitives that do have primary UVs.
+		[[nodiscard]] std::pair<cgltf_material, std::uint8_t>
+			FilterPrimitiveTextures(
+				const cgltf_material& source,
+				bool hasPrimaryUvs,
+				const std::filesystem::path& path,
+				std::size_t meshIndex,
+				std::size_t primitiveIndex,
+				std::size_t materialIndex,
+				const GltfImportOptions& options)
+		{
+			cgltf_material filtered = source;
+			std::uint8_t skippedMask = 0;
+			const std::array<std::pair<cgltf_texture_view*, const char*>, 5> usages{{
+				{ &filtered.pbr_metallic_roughness.base_color_texture, "base color" },
+				{ &filtered.pbr_metallic_roughness.metallic_roughness_texture, "metallic-roughness" },
+				{ &filtered.normal_texture, "normal" },
+				{ &filtered.occlusion_texture, "occlusion" },
+				{ &filtered.emissive_texture, "emissive" }
+			}};
+
+			for (std::size_t index = 0; index < usages.size(); ++index)
+			{
+				auto& [view, usage] = usages[index];
+				if (view->texture == nullptr)
+				{
+					continue;
+				}
+
+				const char* reason = nullptr;
+				if (view->texcoord < 0)
+				{
+					reason = "negative texture-coordinate set";
+				}
+				else if (view->texcoord != 0)
+				{
+					reason = "only TEXCOORD_0 is currently supported";
+				}
+				else if (!hasPrimaryUvs)
+				{
+					reason = "primitive has no TEXCOORD_0";
+				}
+
+				if (reason == nullptr)
+				{
+					continue;
+				}
+
+				if (options.onWarning)
+				{
+					const std::string message =
+						"glTF texture fallback in '" + path.string() +
+						"', mesh " + std::to_string(meshIndex) +
+						", primitive " + std::to_string(primitiveIndex) +
+						", material " + std::to_string(materialIndex) +
+						" ('" + (source.name != nullptr ? source.name : "unnamed") +
+						"'): skipped " + usage + " texture using TEXCOORD_" +
+						std::to_string(view->texcoord) + ": " + reason +
+						"; material factors retained.";
+					options.onWarning(message);
+				}
+
+				view->texture = nullptr;
+				skippedMask |= static_cast<std::uint8_t>(1u << index);
+			}
+
+			return { filtered, skippedMask };
+		}
+
 		[[nodiscard]] std::optional<TextureFilter>
 			ConvertTextureFilter(
 				cgltf_filter_type filter)
@@ -1060,7 +1131,8 @@ namespace ForgeSim::Assets
 	}
 
 	SceneAsset LoadGltfScene(
-		const std::filesystem::path& path)
+		const std::filesystem::path& path,
+		const GltfImportOptions& options)
 	{
 		const GltfDataPointer data =
 			LoadGltfDocument(path);
@@ -1077,15 +1149,24 @@ namespace ForgeSim::Assets
 		sceneAsset.materials.reserve(
 			data->materials_count);
 
-		for (cgltf_size materialIndex = 0;
-			materialIndex < data->materials_count;
-			++materialIndex)
+		// Strict retains authored material indices and existing validation.
+		// Fallback creates only referenced variants, keyed by source material
+		// and skipped usages, so invalid unused materials cannot reach the GPU.
+		std::map<std::pair<std::size_t, std::uint8_t>, MaterialIndex>
+			materialVariants;
+
+		if (options.texturePolicy == GltfTexturePolicy::Strict)
 		{
-			sceneAsset.materials.push_back(
-				LoadMaterial(
-					data->materials[materialIndex],
-					*data,
-					path));
+			for (cgltf_size materialIndex = 0;
+				materialIndex < data->materials_count;
+				++materialIndex)
+			{
+				sceneAsset.materials.push_back(
+					LoadMaterial(
+						data->materials[materialIndex],
+						*data,
+						path));
+			}
 		}
 
 		sceneAsset.textureResources.images.reserve(
@@ -1206,6 +1287,36 @@ namespace ForgeSim::Assets
 						}
 						: std::nullopt
 				};
+
+				if (options.texturePolicy == GltfTexturePolicy::SkipUnusableTextures &&
+					destinationPrimitive.materialIndex)
+				{
+					const std::size_t sourceIndex =
+						*destinationPrimitive.materialIndex;
+					const auto [filteredMaterial, skippedMask] =
+						FilterPrimitiveTextures(
+							*sourcePrimitive.material,
+							destinationPrimitive.geometry.availableAttributes.textureCoordinates,
+							path,
+							static_cast<std::size_t>(meshIndex),
+							static_cast<std::size_t>(primitiveIndex),
+							sourceIndex,
+							options);
+					const auto key = std::pair{ sourceIndex, skippedMask };
+					const auto existing = materialVariants.find(key);
+					if (existing != materialVariants.end())
+					{
+						destinationPrimitive.materialIndex = existing->second;
+					}
+					else
+					{
+						const MaterialIndex variantIndex = sceneAsset.materials.size();
+						sceneAsset.materials.push_back(
+							LoadMaterial(filteredMaterial, *data, path));
+						materialVariants.emplace(key, variantIndex);
+						destinationPrimitive.materialIndex = variantIndex;
+					}
+				}
 
 				destinationMesh.primitives.push_back(
 					std::move(destinationPrimitive));
