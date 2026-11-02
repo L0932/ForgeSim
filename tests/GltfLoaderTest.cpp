@@ -1,15 +1,20 @@
 #include <ForgeSim/Assets/GltfLoader.hpp>
 
 #include <cstdlib>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
 
+void RunGltfTextureFallbackTests();
+
 int main()
 {
 	try
 	{
+		RunGltfTextureFallbackTests();
+
 		const std::filesystem::path assetDirectory{
 			FORGESIM_TEST_ASSET_DIRECTORY
 		};

@@ -26,6 +26,7 @@ namespace
 
         bool modelSpecified = false;
         bool help = false;
+        bool allowTextureFallbacks = false;
 
         std::optional<fs::path> scenePath;
         std::optional<fs::path> projectRoot;
@@ -45,6 +46,18 @@ namespace
             if (argument == "--help" || argument == "-h")
             {
                 result.help = true;
+                continue;
+            }
+
+            if (argument == "--allow-texture-fallbacks")
+            {
+                if (result.allowTextureFallbacks)
+                {
+                    throw std::invalid_argument(
+                        "Repeated option: --allow-texture-fallbacks.");
+                }
+
+                result.allowTextureFallbacks = true;
                 continue;
             }
 
@@ -129,6 +142,9 @@ namespace
             "  --scene FILE         Load a scene document.\n"
             "  --project-root DIR   Root for document model references.\n"
             "  --save-scene FILE    Save the scene after normal exit.\n"
+            "  --allow-texture-fallbacks\n"
+            "                      Skip textures with missing or unusable UV sets.\n"
+            "                      Applies to all model loads in this session.\n"
             "  --help               Show this help.\n"
             "\n"
             "The default project root contains the copied assets folder.\n"
@@ -210,6 +226,13 @@ int main(int argumentCount, char* arguments[])
             "Shader directory: " +
             ForgeSim::Sandbox::ShaderDirectory().string());
 
+        if (commandLine.allowTextureFallbacks)
+        {
+            ForgeSim::Core::LogWarning(
+                "glTF texture fallbacks enabled for this session. "
+                "Skipped textures will be reported; material factors are retained.");
+        }
+
         const fs::path projectRoot =
             fs::weakly_canonical(
                 fs::absolute(
@@ -240,7 +263,10 @@ int main(int argumentCount, char* arguments[])
                     .verticalSync = true
                 },
                 .rendererSpec = {
-                    .sceneFilename = modelFilename
+                    .sceneFilename = modelFilename,
+                    .texturePolicy = commandLine.allowTextureFallbacks
+                        ? ForgeSim::Assets::GltfTexturePolicy::SkipUnusableTextures
+                        : ForgeSim::Assets::GltfTexturePolicy::Strict
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,

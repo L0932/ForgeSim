@@ -39,6 +39,18 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+		[[nodiscard]] Assets::SceneAsset LoadSceneWithTexturePolicy(
+			const std::filesystem::path& path,
+			Assets::GltfTexturePolicy policy)
+		{
+			return Assets::LoadGltfScene(path, Assets::GltfImportOptions{
+				.texturePolicy = policy,
+				.onWarning = [](std::string_view message)
+				{
+					Core::LogWarning(message);
+				}
+			});
+		}
 
         namespace DirectionalShadowUniform
         {
@@ -719,10 +731,11 @@ namespace ForgeSim::Sandbox
                 m_DirectionalShadowShaderMonitor.FragmentShaderPath(),
                 DirectionalShadowUniform::required))
 		, m_DirectionalShadowMap(2048)
+        , m_TexturePolicy(specification.texturePolicy)
         , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
-			Assets::LoadGltfScene(m_ObjectModelPath))
+			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy))
 		, m_ObjectLocalBounds(
 			CalculateSceneBounds(
 				m_ObjectSceneAsset))
@@ -2180,7 +2193,7 @@ namespace ForgeSim::Sandbox
 				std::filesystem::absolute(path));
 
 		Assets::SceneAsset replacementScene =
-			Assets::LoadGltfScene(replacementPath);
+			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy);
 
 		const Renderer::AxisAlignedBoundingBox replacementBounds =
 			CalculateSceneBounds(replacementScene);
