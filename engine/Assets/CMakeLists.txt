@@ -12,6 +12,7 @@ target_sources(
 		src/GltfLoader.cpp
 		src/ImageLoader.cpp
 		src/MeshProcessing.cpp
+		src/TextureTransform.cpp
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS include
@@ -22,6 +23,7 @@ target_sources(
 			include/ForgeSim/Assets/MeshData.hpp
 			include/ForgeSim/Assets/MeshProcessing.hpp
 			include/ForgeSim/Assets/TextureData.hpp
+			include/ForgeSim/Assets/TextureTransform.hpp
 )
 
 target_link_libraries(

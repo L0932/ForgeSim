@@ -199,3 +199,16 @@ instance can be selected and transformed independently in the editor.
 - Third-party attribution: None
 - License: No separate public license is currently granted
 - External files or textures: None
+
+
+## TextureTransformTest.gltf
+
+An original ForgeSim validation model with embedded asymmetric color, tilted
+normal, and alpha-mask textures. Its panel layout exercises texture repetition,
+rotation, mirroring, normal-basis orientation, and matching cutout shadows.
+See `docs/TextureTransforms.md` for the layout and validation procedure.
+
+- Source: Original ForgeSim project asset
+- Third-party attribution: None
+- License: No separate public license is currently granted
+- External files or textures: None

@@ -134,6 +134,19 @@ namespace ForgeSim::Assets
 					parseResult);
 			}
 
+			// Optional extensions may use their core glTF fallback, but required
+			// extensions must never be silently interpreted as core materials.
+			for (cgltf_size index = 0; index < data->extensions_required_count; ++index)
+			{
+				const std::string_view extension{ data->extensions_required[index] };
+				if (extension != "KHR_texture_transform")
+				{
+					throw std::runtime_error(
+						"Unsupported required glTF extension '" + std::string{ extension } +
+						"': " + path.string());
+				}
+			}
+
 			const cgltf_result bufferResult =
 				cgltf_load_buffers(
 					&options,
@@ -577,6 +590,36 @@ namespace ForgeSim::Assets
 				path.string());
 		}
 
+		[[nodiscard]] cgltf_int EffectiveTextureCoordinateSet(
+			const cgltf_texture_view& view) noexcept
+		{
+			return view.has_transform && view.transform.has_texcoord
+				? view.transform.texcoord
+				: view.texcoord;
+		}
+
+		[[nodiscard]] TextureTransform LoadTextureTransform(
+			const cgltf_texture_view& view,
+			const std::filesystem::path& path)
+		{
+			TextureTransform transform;
+			if (view.has_transform)
+			{
+				transform.offset = { view.transform.offset[0], view.transform.offset[1] };
+				transform.rotationRadians = view.transform.rotation;
+				transform.scale = { view.transform.scale[0], view.transform.scale[1] };
+			}
+
+			if (!IsFiniteTextureTransform(transform))
+			{
+				throw std::runtime_error(
+					"glTF KHR_texture_transform offset, rotation, and scale "
+					"must contain finite values: " + path.string());
+			}
+
+			return transform;
+		}
+
 		[[nodiscard]] MaterialTextureReference
 			LoadMaterialTextureReference(
 				const cgltf_texture_view& textureView,
@@ -590,7 +633,9 @@ namespace ForgeSim::Assets
 					path.string());
 			}
 
-			if (textureView.texcoord < 0)
+			const TextureTransform transform = LoadTextureTransform(textureView, path);
+			const cgltf_int coordinateSet = EffectiveTextureCoordinateSet(textureView);
+			if (coordinateSet < 0)
 			{
 				throw std::runtime_error(
 					"glTF material contains a negative texture-coordinate set: " +
@@ -608,7 +653,8 @@ namespace ForgeSim::Assets
 
 				.textureCoordinateSet =
 					static_cast<std::uint32_t>(
-						textureView.texcoord)
+						coordinateSet),
+				.transform = transform
 			};
 		}
 
@@ -772,12 +818,16 @@ namespace ForgeSim::Assets
 					continue;
 				}
 
+				// Invalid transform values are errors, even when this texture
+				// would otherwise be skipped by the UV compatibility policy.
+				static_cast<void>(LoadTextureTransform(*view, path));
+				const cgltf_int coordinateSet = EffectiveTextureCoordinateSet(*view);
 				const char* reason = nullptr;
-				if (view->texcoord < 0)
+				if (coordinateSet < 0)
 				{
 					reason = "negative texture-coordinate set";
 				}
-				else if (view->texcoord != 0)
+				else if (coordinateSet != 0)
 				{
 					reason = "only TEXCOORD_0 is currently supported";
 				}
@@ -800,7 +850,7 @@ namespace ForgeSim::Assets
 						", material " + std::to_string(materialIndex) +
 						" ('" + (source.name != nullptr ? source.name : "unnamed") +
 						"'): skipped " + usage + " texture using TEXCOORD_" +
-						std::to_string(view->texcoord) + ": " + reason +
+						std::to_string(coordinateSet) + ": " + reason +
 						"; material factors retained.";
 					options.onWarning(message);
 				}

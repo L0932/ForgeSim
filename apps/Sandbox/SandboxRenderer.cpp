@@ -39,6 +39,16 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+		void UploadTextureTransform(
+			const Renderer::OpenGL::ShaderProgram& program,
+			const Assets::TextureTransformRows& rows,
+			std::string_view firstRowName,
+			std::string_view secondRowName)
+		{
+			program.SetVector3(firstRowName, glm::vec3{ rows[0][0], rows[0][1], rows[0][2] });
+			program.SetVector3(secondRowName, glm::vec3{ rows[1][0], rows[1][1], rows[1][2] });
+		}
+
 		[[nodiscard]] Assets::SceneAsset LoadSceneWithTexturePolicy(
 			const std::filesystem::path& path,
 			Assets::GltfTexturePolicy policy)
@@ -57,13 +67,16 @@ namespace ForgeSim::Sandbox
             constexpr std::string_view model = "uModel";
             constexpr std::string_view lightViewProjection = "uLightViewProjection";
             constexpr std::string_view baseColorTexture = "uBaseColorTexture";
+            constexpr std::string_view baseColorUvRow0 = "uBaseColorUvRow0";
+            constexpr std::string_view baseColorUvRow1 = "uBaseColorUvRow1";
             constexpr std::string_view baseColorAlpha = "uBaseColorAlpha";
             constexpr std::string_view alphaMaskEnabled = "uAlphaMaskEnabled";
             constexpr std::string_view alphaCutoff = "uAlphaCutoff";
 
             constexpr std::array required{
                 model, lightViewProjection, baseColorTexture,
-                baseColorAlpha, alphaMaskEnabled, alphaCutoff
+                baseColorAlpha, alphaMaskEnabled, alphaCutoff,
+                baseColorUvRow0, baseColorUvRow1
             };
         }
 
@@ -263,7 +276,25 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view directionalShadowSlopeBias =
 				"uDirectionalShadowSlopeBias";
 
+			constexpr std::string_view baseColorUvRow0 = "uBaseColorUvRow0";
+			constexpr std::string_view baseColorUvRow1 = "uBaseColorUvRow1";
+			constexpr std::string_view metallicRoughnessUvRow0 = "uMetallicRoughnessUvRow0";
+			constexpr std::string_view metallicRoughnessUvRow1 = "uMetallicRoughnessUvRow1";
+			constexpr std::string_view normalUvRow0 = "uNormalUvRow0";
+			constexpr std::string_view normalUvRow1 = "uNormalUvRow1";
+			constexpr std::string_view occlusionUvRow0 = "uOcclusionUvRow0";
+			constexpr std::string_view occlusionUvRow1 = "uOcclusionUvRow1";
+			constexpr std::string_view emissiveUvRow0 = "uEmissiveUvRow0";
+			constexpr std::string_view emissiveUvRow1 = "uEmissiveUvRow1";
+			constexpr std::string_view normalUvBasisMode = "uNormalUvBasisMode";
+
 			constexpr std::array required{
+				baseColorUvRow0, baseColorUvRow1,
+				metallicRoughnessUvRow0, metallicRoughnessUvRow1,
+				normalUvRow0, normalUvRow1,
+				occlusionUvRow0, occlusionUvRow1,
+				emissiveUvRow0, emissiveUvRow1,
+				normalUvBasisMode,
 				model,
 				view,
 				projection,
@@ -1130,6 +1161,8 @@ namespace ForgeSim::Sandbox
 				{
 					return binding;
 				}
+
+				binding.uvRows = Assets::CalculateTextureTransformRows(reference->transform);
 
 				if (reference->textureCoordinateSet != 0)
 				{
@@ -2011,6 +2044,10 @@ namespace ForgeSim::Sandbox
                     .sampler = &m_DefaultSampler
                 };
 
+            UploadTextureTransform(m_DirectionalShadowShaderProgram, baseColor.uvRows,
+                DirectionalShadowUniform::baseColorUvRow0,
+                DirectionalShadowUniform::baseColorUvRow1);
+
             baseColor.texture->Bind(shadowAlphaTextureUnit);
             baseColor.sampler->Bind(shadowAlphaTextureUnit);
 
@@ -2398,6 +2435,32 @@ namespace ForgeSim::Sandbox
 			emissive = material.emissive;
 			emissiveFactor = material.emissiveFactor;
 		}
+
+		UploadTextureTransform(m_ObjectShaderProgram, baseColor.uvRows,
+			SandboxRendererShaderUniform::baseColorUvRow0,
+			SandboxRendererShaderUniform::baseColorUvRow1);
+		UploadTextureTransform(m_ObjectShaderProgram, metallicRoughness.uvRows,
+			SandboxRendererShaderUniform::metallicRoughnessUvRow0,
+			SandboxRendererShaderUniform::metallicRoughnessUvRow1);
+		UploadTextureTransform(m_ObjectShaderProgram, normal.uvRows,
+			SandboxRendererShaderUniform::normalUvRow0,
+			SandboxRendererShaderUniform::normalUvRow1);
+		UploadTextureTransform(m_ObjectShaderProgram, occlusion.uvRows,
+			SandboxRendererShaderUniform::occlusionUvRow0,
+			SandboxRendererShaderUniform::occlusionUvRow1);
+		UploadTextureTransform(m_ObjectShaderProgram, emissive.uvRows,
+			SandboxRendererShaderUniform::emissiveUvRow0,
+			SandboxRendererShaderUniform::emissiveUvRow1);
+
+		// 0 preserves authored tangents; 1 derives a frame for transformed UVs;
+		// 2 disables normal perturbation when no 2D frame exists.
+		const auto& row0 = normal.uvRows[0];
+		const auto& row1 = normal.uvRows[1];
+		const float determinant = row0[0] * row1[1] - row0[1] * row1[0];
+		const bool identityLinear = row0[0] == 1.0f && row0[1] == 0.0f &&
+			row1[0] == 0.0f && row1[1] == 1.0f;
+		m_ObjectShaderProgram.SetInt(SandboxRendererShaderUniform::normalUvBasisMode,
+			determinant == 0.0f ? 2 : (identityLinear ? 0 : 1));
 
 		baseColor.texture->Bind(
 			baseColorTextureUnit);
