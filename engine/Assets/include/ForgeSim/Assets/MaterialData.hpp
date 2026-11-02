@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <optional>
 
+#include <ForgeSim/Assets/TextureTransform.hpp>
+
 namespace ForgeSim::Assets
 {
 	enum class AlphaMode : std::uint8_t
@@ -18,6 +20,7 @@ namespace ForgeSim::Assets
 	{
 		std::size_t textureIndex;
 		std::uint32_t textureCoordinateSet = 0;
+		TextureTransform transform{};
 	};
 
 	struct NormalTextureReference

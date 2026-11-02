@@ -296,6 +296,47 @@ add_test(
     COMMAND ForgeSimGltfLoaderTests
 )
 
+add_executable(ForgeSimTextureTransformTests)
+
+target_sources(
+    ForgeSimTextureTransformTests
+    PRIVATE
+        TextureTransformTest.cpp
+)
+
+target_link_libraries(
+    ForgeSimTextureTransformTests
+    PRIVATE
+        ForgeSim::Assets
+        nlohmann_json::nlohmann_json
+)
+
+target_compile_features(
+    ForgeSimTextureTransformTests
+    PRIVATE
+        cxx_std_20
+)
+
+target_compile_definitions(
+    ForgeSimTextureTransformTests
+    PRIVATE
+        FORGESIM_TEST_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        FORGESIM_TEXTURE_TRANSFORM_VISUAL_ASSET="${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/TextureTransformTest.gltf"
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimTextureTransformTests)
+
+set_target_properties(
+    ForgeSimTextureTransformTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Assets.TextureTransform
+    COMMAND ForgeSimTextureTransformTests
+)
+
 add_executable(ForgeSimRendererPickingTests)
 
 target_sources(

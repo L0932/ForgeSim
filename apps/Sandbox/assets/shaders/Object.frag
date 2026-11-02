@@ -28,6 +28,19 @@ uniform float uOcclusionStrength;
 uniform sampler2D uEmissiveTexture;
 uniform vec3 uEmissiveFactor;
 
+uniform vec3 uBaseColorUvRow0;
+uniform vec3 uBaseColorUvRow1;
+uniform vec3 uMetallicRoughnessUvRow0;
+uniform vec3 uMetallicRoughnessUvRow1;
+uniform vec3 uNormalUvRow0;
+uniform vec3 uNormalUvRow1;
+uniform vec3 uOcclusionUvRow0;
+uniform vec3 uOcclusionUvRow1;
+uniform vec3 uEmissiveUvRow0;
+uniform vec3 uEmissiveUvRow1;
+uniform int uNormalUvBasisMode;
+
+
 uniform vec3 uSelectionColor;
 uniform float uSelectionAmount;
 
@@ -431,8 +444,89 @@ float DirectionalLightVisibility(vec3 geometricNormal)
 	return visibility / 9.0;
 }
 
+vec2 TransformTextureCoordinates(vec2 uv, vec3 row0, vec3 row1)
+{
+    vec3 coordinate = vec3(uv, 1.0);
+    return vec2(dot(row0, coordinate), dot(row1, coordinate));
+}
+
+float MaximumAbsoluteComponent(vec3 value)
+{
+    return max(max(abs(value.x), abs(value.y)), abs(value.z));
+}
+
+bool BuildNormalBasis(vec3 normal, vec3 positionDx, vec3 positionDy,
+    vec2 uvDx, vec2 uvDy, out mat3 basis)
+{
+    if (uNormalUvBasisMode == 2)
+    {
+        return false;
+    }
+
+    vec3 tangent;
+    vec3 bitangent;
+    if (uNormalUvBasisMode == 0)
+    {
+        // Preserve authored/generated tangent-space conventions for identity
+        // mappings (a translation does not change the basis).
+        tangent = vWorldTangent.xyz - normal * dot(vWorldTangent.xyz, normal);
+        float lengthSquared = dot(tangent, tangent);
+        if (lengthSquared <= 0.000001) return false;
+        tangent *= inversesqrt(lengthSquared);
+        bitangent = normalize(cross(normal, tangent)) * vWorldTangent.w;
+    }
+    else
+    {
+        // Reconstruct dP/dU' and dP/dV' from transformed UV gradients.
+        // Normalize common magnitudes first to avoid scale-dependent guards.
+        float uvMagnitude = max(max(abs(uvDx.x), abs(uvDx.y)),
+            max(abs(uvDy.x), abs(uvDy.y)));
+        float positionMagnitude = max(MaximumAbsoluteComponent(positionDx),
+            MaximumAbsoluteComponent(positionDy));
+        if (uvMagnitude <= 0.0 || positionMagnitude <= 0.0 ||
+            isinf(uvMagnitude) || isinf(positionMagnitude) ||
+            isnan(uvMagnitude) || isnan(positionMagnitude)) return false;
+        uvDx /= uvMagnitude;
+        uvDy /= uvMagnitude;
+        positionDx /= positionMagnitude;
+        positionDy /= positionMagnitude;
+        float determinant = uvDx.x * uvDy.y - uvDx.y * uvDy.x;
+        if (abs(determinant) <= 0.000001) return false;
+
+        // Only direction is needed, so retain the inverse determinant's sign
+        // without dividing by its potentially very small magnitude.
+        vec3 rawTangent = (positionDx * uvDy.y - positionDy * uvDx.y) * sign(determinant);
+        vec3 rawBitangent = (positionDy * uvDx.x - positionDx * uvDy.x) * sign(determinant);
+        tangent = rawTangent - normal * dot(normal, rawTangent);
+        float lengthSquared = dot(tangent, tangent);
+        if (lengthSquared <= 0.000000000001) return false;
+        tangent *= inversesqrt(lengthSquared);
+        vec3 perpendicular = normalize(cross(normal, tangent));
+        float orientation = dot(perpendicular, rawBitangent);
+        if (abs(orientation) <= 0.000000000001) return false;
+        bitangent = perpendicular * sign(orientation);
+    }
+
+    basis = mat3(tangent, bitangent, normal);
+    return true;
+}
+
 void main()
 {
+    vec2 baseColorUv = TransformTextureCoordinates(vTextureCoordinates, uBaseColorUvRow0, uBaseColorUvRow1);
+    vec2 metallicRoughnessUv = TransformTextureCoordinates(vTextureCoordinates, uMetallicRoughnessUvRow0, uMetallicRoughnessUvRow1);
+    vec2 normalUv = TransformTextureCoordinates(vTextureCoordinates, uNormalUvRow0, uNormalUvRow1);
+    vec2 occlusionUv = TransformTextureCoordinates(vTextureCoordinates, uOcclusionUvRow0, uOcclusionUvRow1);
+    vec2 emissiveUv = TransformTextureCoordinates(vTextureCoordinates, uEmissiveUvRow0, uEmissiveUvRow1);
+    // Evaluate derivatives and the normal sample before any alpha discard or
+    // non-uniform control flow. dFdx/dFdy use neighboring fragment invocations.
+    vec3 positionDx = dFdx(vWorldPosition);
+    vec3 positionDy = dFdy(vWorldPosition);
+    vec2 normalUvDx = dFdx(normalUv);
+    vec2 normalUvDy = dFdy(normalUv);
+    vec3 sampledTangentNormal = texture(uNormalTexture, normalUv).xyz * 2.0 - 1.0;
+    sampledTangentNormal.xy *= uNormalScale;
+
 
 	vec3 shadowNormal = normalize(vWorldNormal);
 
@@ -447,7 +541,7 @@ void main()
 	vec4 sampledBaseColor =
 		texture(
 			uBaseColorTexture,
-			vTextureCoordinates) *
+			baseColorUv) *
 		uBaseColorFactor *
 		vec4(vColor, 1.0);
 
@@ -467,53 +561,16 @@ void main()
 			-geometricNormal;
 	}
 
-	vec3 projectedTangent =
-		vWorldTangent.xyz -
-		geometricNormal *
-		dot(
-			vWorldTangent.xyz,
-			geometricNormal);
-
-	vec3 normal = geometricNormal;
-
-	float tangentLengthSquared =
-		dot(
-			projectedTangent,
-			projectedTangent);
-
-	if (tangentLengthSquared > 0.000001)
-	{
-		vec3 tangent =
-			projectedTangent *
-			inversesqrt(tangentLengthSquared);
-
-		vec3 bitangent =
-			normalize(
-				cross(
-					geometricNormal,
-					tangent)) *
-				vWorldTangent.w;
-
-		vec3 tangentSpaceNormal =
-			texture(
-				uNormalTexture,
-				vTextureCoordinates).xyz *
-			2.0 -
-			1.0;
-
-		tangentSpaceNormal.xy *= uNormalScale;
-
-		mat3 tangentToWorld =
-			mat3(
-				tangent,
-				bitangent,
-				geometricNormal);
-
-		normal =
-			normalize(
-				tangentToWorld *
-				tangentSpaceNormal);
-	}
+    vec3 normal = geometricNormal;
+    mat3 tangentToWorld;
+    if (BuildNormalBasis(geometricNormal, positionDx, positionDy,
+        normalUvDx, normalUvDy, tangentToWorld))
+    {
+        vec3 mappedNormal = tangentToWorld * sampledTangentNormal;
+        float lengthSquared = dot(mappedNormal, mappedNormal);
+        if (lengthSquared > 0.000000000001)
+            normal = mappedNormal * inversesqrt(lengthSquared);
+    }
 
 	vec3 viewDirection =
 		normalize(
@@ -523,7 +580,7 @@ void main()
 	vec4 sampledMetallicRoughness =
 		texture(
 			uMetallicRoughnessTexture,
-			vTextureCoordinates);
+			metallicRoughnessUv);
 
 	// glTF stores roughness in green and metallic in blue.
 	float metallic =
@@ -664,7 +721,7 @@ void main()
 	float sampledOcclusion =
 		texture(
 			uOcclusionTexture,
-			vTextureCoordinates).r;
+			occlusionUv).r;
 
 	float ambientOcclusion =
 		mix(
@@ -700,7 +757,7 @@ void main()
 	vec3 emissiveLighting =
 		texture(
 			uEmissiveTexture,
-			vTextureCoordinates).rgb *
+			emissiveUv).rgb *
 		uEmissiveFactor;
 
 	vec3 reflectionDirection =

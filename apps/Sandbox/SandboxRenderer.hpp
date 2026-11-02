@@ -197,6 +197,10 @@ namespace ForgeSim::Sandbox
 		{
 			const Renderer::OpenGL::Texture2D* texture = nullptr;
 			const Renderer::OpenGL::Sampler* sampler = nullptr;
+			Assets::TextureTransformRows uvRows{{
+				{ 1.0f, 0.0f, 0.0f },
+				{ 0.0f, 1.0f, 0.0f }
+			}};
 		};
 
 		struct GpuMaterialResource

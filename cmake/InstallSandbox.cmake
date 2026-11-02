@@ -32,6 +32,7 @@ install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/PbrMaterialGallery.glb"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/ShadowTestCube.gltf"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/TextureTransformTest.gltf"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/BoxVertexColors.glb"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/README.md"
     DESTINATION assets/models
