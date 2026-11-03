@@ -14,6 +14,7 @@ target_sources(
 		src/ColorRenderTarget.cpp
 		src/DebugLineRenderer.cpp
 		src/EnvironmentMapProcessor.cpp
+		src/FxaaRenderer.cpp
 		src/GpuMesh.cpp
 		src/HdrRenderTarget.cpp
 		src/ShaderProgram.cpp
@@ -32,6 +33,7 @@ target_sources(
 			include/ForgeSim/Renderer/OpenGL/ColorRenderTarget.hpp
 			include/ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/EnvironmentMapProcessor.hpp
+			include/ForgeSim/Renderer/OpenGL/FxaaRenderer.hpp
 			include/ForgeSim/Renderer/OpenGL/GpuMesh.hpp
 			include/ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp
 			include/ForgeSim/Renderer/OpenGL/Sampler.hpp

@@ -751,6 +751,7 @@ namespace ForgeSim::Sandbox
 				.showLights = m_DebugUI.ShowLights(),
 
 				.directionalShadows = scene.RenderingSettings().directionalShadows,
+                .fxaa = m_DebugUI.Fxaa(),
 
 				.lightDebugBounds = lightDebugBounds,
 
