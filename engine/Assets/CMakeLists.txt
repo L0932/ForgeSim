@@ -31,6 +31,7 @@ target_link_libraries(
 	PRIVATE
 		ForgeSimStb
 		ForgeSim::Cgltf
+		nlohmann_json::nlohmann_json
 		glm::glm-header-only
 )
 

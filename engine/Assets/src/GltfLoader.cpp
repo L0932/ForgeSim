@@ -17,6 +17,7 @@
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
+#include <nlohmann/json.hpp>
 
 #include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Assets/MeshProcessing.hpp>
@@ -25,6 +26,39 @@ namespace ForgeSim::Assets
 {
 	namespace
 	{
+        // This custom property applies only to the mesh attached to this node.
+        [[nodiscard]] bool ReadDirectionalShadowCasting(
+            const cgltf_node& node,
+            const std::filesystem::path& path,
+            std::size_t nodeIndex)
+        {
+            if (node.extras.data == nullptr)
+                return true;
+
+            const auto extras = nlohmann::json::parse(node.extras.data, nullptr, false);
+            if (!extras.is_object())
+                return true;
+
+            const auto value = extras.find("forgesim_cast_directional_shadows");
+            if (value == extras.end())
+                return true;
+
+            if (value->is_boolean())
+                return value->get<bool>();
+
+            // Blender can author this as an integer custom property.
+            if (value->is_number_integer())
+            {
+                if (*value == 0) return false;
+                if (*value == 1) return true;
+            }
+
+            throw std::runtime_error(
+                "Invalid forgesim_cast_directional_shadows on glTF node " +
+                std::to_string(nodeIndex) + ": expected a boolean or integer 0/1. " +
+                path.string());
+        }
+
 		[[nodiscard]] bool UsesFloatComponents(
 			const cgltf_accessor& accessor) noexcept
 		{
@@ -1387,6 +1421,8 @@ namespace ForgeSim::Assets
 				data->nodes[nodeIndex];
 
 			SceneNodeData destinationNode;
+            destinationNode.castsDirectionalShadows =
+                ReadDirectionalShadowCasting(sourceNode, path, nodeIndex);
 
 			if (sourceNode.name != nullptr)
 			{

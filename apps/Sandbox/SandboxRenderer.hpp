@@ -179,6 +179,7 @@ namespace ForgeSim::Sandbox
 			std::optional<Assets::MaterialIndex> materialIndex;
 			glm::mat4 modelTransform{ 1.0f };
 			bool isSelected = false;
+			bool castsDirectionalShadows = true;
 		};
 
 		struct GpuPrimitiveResource
