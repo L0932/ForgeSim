@@ -915,7 +915,8 @@ namespace ForgeSim::Sandbox
 						.modelTransform =
 							objectTransform *
 							nodeTransform,
-						.isSelected = isSelected
+						.isSelected = isSelected,
+						.castsDirectionalShadows = node.castsDirectionalShadows
 					});
 			}
 		}
@@ -2025,7 +2026,7 @@ namespace ForgeSim::Sandbox
 
         for (const RenderSubmission& submission : m_RenderSubmissions)
         {
-            if (submission.mesh == nullptr)
+            if (submission.mesh == nullptr || !submission.castsDirectionalShadows)
             {
                 continue;
             }

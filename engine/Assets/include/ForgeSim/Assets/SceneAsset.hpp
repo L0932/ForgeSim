@@ -63,6 +63,7 @@ namespace ForgeSim::Assets
 
 		std::optional<SceneMeshIndex> meshIndex;
 		std::vector<SceneNodeIndex> childIndices;
+		bool castsDirectionalShadows = true;
 	};
 
 	struct SceneAsset

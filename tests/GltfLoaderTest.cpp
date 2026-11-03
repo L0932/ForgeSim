@@ -19,6 +19,22 @@ int main()
 			FORGESIM_TEST_ASSET_DIRECTORY
 		};
 
+        // Overrides are per node, even when every instance shares one mesh and material.
+        {
+            const auto scene = ForgeSim::Assets::LoadGltfScene(
+                assetDirectory / "DirectionalShadowCasterNodes.gltf");
+            constexpr bool expected[]{false, true, false, true, true, true};
+            if (scene.nodes.size() != 6)
+                throw std::runtime_error("Unexpected shadow-caster fixture node count.");
+
+            for (std::size_t i = 0; i < scene.nodes.size(); ++i)
+            {
+                if (scene.nodes[i].meshIndex != 0 ||
+                    scene.nodes[i].castsDirectionalShadows != expected[i])
+                    throw std::runtime_error("Directional shadow override did not stay local to its node.");
+            }
+        }
+
 		// Missing files should produce a descriptive exception.
 		{
 			const std::filesystem::path missingPath =
