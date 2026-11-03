@@ -1,3 +1,36 @@
+add_executable(ForgeSimFxaaSettingsTests)
+
+target_sources(
+    ForgeSimFxaaSettingsTests
+    PRIVATE
+        FxaaSettingsTest.cpp
+)
+
+target_link_libraries(
+    ForgeSimFxaaSettingsTests
+    PRIVATE
+        ForgeSim::Renderer
+)
+
+target_compile_features(
+    ForgeSimFxaaSettingsTests
+    PRIVATE
+        cxx_std_20
+)
+
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimFxaaSettingsTests)
+
+set_target_properties(
+    ForgeSimFxaaSettingsTests
+    PROPERTIES
+        FOLDER "ForgeSim/Tests"
+)
+
+add_test(
+    NAME ForgeSim.Renderer.FxaaSettings
+    COMMAND ForgeSimFxaaSettingsTests
+)
+
 add_executable(ForgeSimCoreSmokeTests)
 
 target_sources(

@@ -25,6 +25,7 @@
 #include <ForgeSim/Renderer/OpenGL/ColorRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/DebugLineRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/EnvironmentMapProcessor.hpp>
+#include <ForgeSim/Renderer/OpenGL/FxaaRenderer.hpp>
 #include <ForgeSim/Renderer/OpenGL/GpuMesh.hpp>
 #include <ForgeSim/Renderer/OpenGL/HdrRenderTarget.hpp>
 #include <ForgeSim/Renderer/OpenGL/Sampler.hpp>
@@ -65,6 +66,7 @@ namespace ForgeSim::Sandbox
 		bool showObjectBounds = false;
 		bool showLights = true;
 		DirectionalShadowSettings directionalShadows{};
+		Renderer::FxaaSettings fxaa{};
 
 		std::optional<Renderer::AxisAlignedBoundingBox> lightDebugBounds;
 		std::optional<SceneLightId> selectedLightId;
@@ -310,5 +312,10 @@ namespace ForgeSim::Sandbox
 
 		Renderer::OpenGL::ToneMappingRenderer
 			m_ToneMappingRenderer;
+
+        // ImGui always displays m_ColorRenderTarget, even when FXAA is toggled.
+        std::optional<Renderer::OpenGL::ColorRenderTarget> m_FxaaSource;
+        ShaderFileMonitor m_FxaaShaderMonitor;
+        Renderer::OpenGL::FxaaRenderer m_FxaaRenderer;
 	};
 }

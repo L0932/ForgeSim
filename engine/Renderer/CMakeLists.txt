@@ -11,6 +11,7 @@ target_sources(
 	PRIVATE
 		src/DebugGeometry.cpp
         src/DirectionalShadowProjection.cpp
+        src/FxaaSettings.cpp
 		src/PerspectiveCamera.cpp
 		src/Picking.cpp
 	PUBLIC
@@ -20,6 +21,7 @@ target_sources(
 			include/ForgeSim/Renderer/Bounds.hpp
 			include/ForgeSim/Renderer/DebugGeometry.hpp
             include/ForgeSim/Renderer/DirectionalShadowProjection.hpp
+            include/ForgeSim/Renderer/FxaaSettings.hpp
 			include/ForgeSim/Renderer/PerspectiveCamera.hpp
 			include/ForgeSim/Renderer/Picking.hpp
 )

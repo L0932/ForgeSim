@@ -471,7 +471,20 @@ namespace ForgeSim::Sandbox
 			"%.2f",
 			ImGuiSliderFlags_AlwaysClamp);
 
-		ImGui::SeparatorText("Directional shadows");
+		ImGui::SeparatorText("Anti-aliasing");
+        ImGui::Checkbox("Enable FXAA", &m_FxaaSettings.enabled);
+        ImGui::BeginDisabled(!m_FxaaSettings.enabled);
+        ImGui::SliderFloat("Relative edge threshold", &m_FxaaSettings.relativeContrastThreshold,
+            0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderFloat("Minimum edge threshold", &m_FxaaSettings.minimumContrastThreshold,
+            0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderFloat("Subpixel smoothing", &m_FxaaSettings.subpixelBlending,
+            0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
+        if (ImGui::Button("Reset FXAA settings"))
+            m_FxaaSettings = Renderer::FxaaSettings{};
+
+        ImGui::SeparatorText("Directional shadows");
 
 		renderingChanged |= ImGui::Checkbox(
 			"Enable shadows",

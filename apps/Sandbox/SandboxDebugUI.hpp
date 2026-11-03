@@ -18,6 +18,7 @@
 
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
+#include <ForgeSim/Renderer/FxaaSettings.hpp>
 
 namespace ForgeSim::Platform
 {
@@ -96,6 +97,7 @@ namespace ForgeSim::Sandbox
 			const noexcept;
 
 		[[nodiscard]] bool ShowGrid() const noexcept;
+        [[nodiscard]] const Renderer::FxaaSettings& Fxaa() const noexcept { return m_FxaaSettings; }
 		[[nodiscard]] bool ShowLights() const noexcept;
 
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
@@ -118,6 +120,7 @@ namespace ForgeSim::Sandbox
         std::string m_PresentationMessage;
 
 		bool m_IsVisible = true;
+		Renderer::FxaaSettings m_FxaaSettings{};
 		bool m_ShowGrid = true;
 		bool m_ShowLights = true;
 		bool m_ShowObjectBounds = false;

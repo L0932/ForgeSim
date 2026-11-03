@@ -847,6 +847,10 @@ namespace ForgeSim::Sandbox
 				m_ToneMappingShaderMonitor.VertexShaderPath()),
 			LoadTextFile(
 				m_ToneMappingShaderMonitor.FragmentShaderPath()))
+        , m_FxaaShaderMonitor(ShaderPath("Fxaa.vert"), ShaderPath("Fxaa.frag"))
+        , m_FxaaRenderer(
+            LoadTextFile(m_FxaaShaderMonitor.VertexShaderPath()),
+            LoadTextFile(m_FxaaShaderMonitor.FragmentShaderPath()))
 	{
 
 		UploadObjectModelResources(
@@ -1947,7 +1951,24 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		if (settings.renderToTexture)
+        if (settings.fxaa.enabled)
+        {
+            if (!m_FxaaSource)
+                m_FxaaSource.emplace(settings.framebufferWidth, settings.framebufferHeight);
+            m_ToneMappingRenderer.RenderToTarget(
+                *m_HdrRenderTarget, *m_FxaaSource, settings.exposure);
+            if (settings.renderToTexture)
+            {
+                if (!m_ColorRenderTarget)
+                    m_ColorRenderTarget.emplace(settings.framebufferWidth, settings.framebufferHeight);
+                m_FxaaRenderer.RenderToTarget(*m_FxaaSource, *m_ColorRenderTarget, settings.fxaa);
+            }
+            else
+            {
+                m_FxaaRenderer.RenderToDefaultFramebuffer(*m_FxaaSource, settings.fxaa);
+            }
+        }
+        else if (settings.renderToTexture)
 		{
 			if (!m_ColorRenderTarget)
 			{
@@ -2085,7 +2106,23 @@ namespace ForgeSim::Sandbox
 	}
 
 	void SandboxRenderer::ReloadChangedShaders()
-	{
+    {
+        if (m_FxaaShaderMonitor.PollForChanges())
+        {
+            try
+            {
+                m_FxaaRenderer.ReloadShaders(
+                    LoadTextFile(m_FxaaShaderMonitor.VertexShaderPath()),
+                    LoadTextFile(m_FxaaShaderMonitor.FragmentShaderPath()));
+                ForgeSim::Core::LogInfo("Reloaded FXAA shader program.");
+            }
+            catch (const std::exception& error)
+            {
+                ForgeSim::Core::LogError(
+                    "Failed to reload FXAA shader program: " + std::string{error.what()});
+            }
+        }
+
         if (m_DirectionalShadowShaderMonitor.PollForChanges())
         {
             try
