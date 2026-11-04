@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "name": "Directional Transmission Test",
+  "objects": [
+    {
+      "id": 1,
+      "name": "Glass transmission fixture",
+      "modelPath": "assets/models/DirectionalTransmissionTest.gltf",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationRadians": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "directionalLight": {
+    "id": 1,
+    "enabled": true,
+    "position": [
+      -4,
+      6,
+      3
+    ],
+    "directionToLight": [
+      0.35,
+      1,
+      0.42
+    ],
+    "color": [
+      1,
+      1,
+      1
+    ],
+    "intensity": 3.0
+  },
+  "pointLights": [],
+  "spotLights": []
+}

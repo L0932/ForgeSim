@@ -9,7 +9,8 @@ namespace ForgeSim::Renderer::OpenGL
     class ShadowMap final
     {
     public:
-        explicit ShadowMap(std::uint32_t resolution);
+        enum class Contents { DepthOnly, Transmission };
+        explicit ShadowMap(std::uint32_t resolution, Contents contents = Contents::DepthOnly);
         ~ShadowMap();
 
         ShadowMap(const ShadowMap&) = delete;
@@ -24,6 +25,8 @@ namespace ForgeSim::Renderer::OpenGL
         void BindDepthTexture(
             std::uint32_t textureUnit) const noexcept;
 
+        void BindColorTexture(std::uint32_t textureUnit) const noexcept;
+
         [[nodiscard]]
         std::uint32_t Resolution() const noexcept;
 
@@ -32,6 +35,7 @@ namespace ForgeSim::Renderer::OpenGL
 
         unsigned int m_Framebuffer = 0;
         unsigned int m_DepthTexture = 0;
+        unsigned int m_ColorTexture = 0;
         std::uint32_t m_Resolution = 0;
     };
 }

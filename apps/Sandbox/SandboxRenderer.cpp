@@ -73,7 +73,11 @@ namespace ForgeSim::Sandbox
             constexpr std::string_view alphaMaskEnabled = "uAlphaMaskEnabled";
             constexpr std::string_view alphaCutoff = "uAlphaCutoff";
 
+            constexpr std::string_view transmissionTint = "uTransmissionTint";
+            constexpr std::string_view transmissionUsesTexture = "uTransmissionUsesTexture";
+
             constexpr std::array required{
+                transmissionTint, transmissionUsesTexture,
                 model, lightViewProjection, baseColorTexture,
                 baseColorAlpha, alphaMaskEnabled, alphaCutoff,
                 baseColorUvRow0, baseColorUvRow1
@@ -258,6 +262,12 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view spotLightCount =
 				"uSpotLightCount";
 
+			constexpr std::string_view directionalTransmissionMap =
+				"uDirectionalTransmissionMap";
+
+			constexpr std::string_view directionalTransmissionEnabled =
+				"uDirectionalTransmissionEnabled";
+
 			constexpr std::string_view directionalShadowMap =
 				"uDirectionalShadowMap";
 
@@ -325,6 +335,8 @@ namespace ForgeSim::Sandbox
 				pointLightCount,
 				spotLightCount,
 				directionalShadowMap,
+				directionalTransmissionMap,
+				directionalTransmissionEnabled,
 				directionalLightViewProjection,
 				directionalShadowsEnabled,
 				directionalShadowFilteringEnabled,
@@ -1319,7 +1331,8 @@ namespace ForgeSim::Sandbox
 
 				.alphaCutoff = material.alphaCutoff,
 
-				.doubleSided = material.doubleSided
+				.doubleSided = material.doubleSided,
+				.directionalTransmission = material.directionalTransmission
 			};
 
 			materials.push_back(
@@ -1406,6 +1419,7 @@ namespace ForgeSim::Sandbox
 		}
 
 
+        bool transmissionActive = false;
         if (settings.directionalShadows.enabled && light.enabled &&
             !m_RenderSubmissions.empty())
         {
@@ -1415,7 +1429,22 @@ namespace ForgeSim::Sandbox
             m_DirectionalLightViewProjection = Renderer::CreateDirectionalShadowMatrix(
                 worldBounds, light.directionToLight);
 
-            RenderDirectionalShadowMap(m_DirectionalLightViewProjection);
+            RenderDirectionalShadowMap(m_DirectionalLightViewProjection, false);
+            transmissionActive = std::any_of(
+                m_RenderSubmissions.begin(), m_RenderSubmissions.end(),
+                [this](const RenderSubmission& submission)
+                {
+                    return submission.mesh != nullptr && submission.castsDirectionalShadows &&
+                        submission.materialIndex &&
+                        m_GpuMaterialResources.at(*submission.materialIndex).directionalTransmission.has_value();
+                });
+            if (transmissionActive)
+            {
+                if (!m_DirectionalTransmissionMap)
+                    m_DirectionalTransmissionMap.emplace(m_DirectionalShadowMap.Resolution(),
+                        Renderer::OpenGL::ShadowMap::Contents::Transmission);
+                RenderDirectionalShadowMap(m_DirectionalLightViewProjection, true);
+            }
         }
 
 		if (!m_HdrRenderTarget)
@@ -1471,6 +1500,14 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.Bind();
 
 		constexpr std::uint32_t shadowTextureUnit = 8;
+		constexpr std::uint32_t transmissionTextureUnit = 9;
+		glBindSampler(transmissionTextureUnit, 0);
+		if (transmissionActive)
+			m_DirectionalTransmissionMap->BindColorTexture(transmissionTextureUnit);
+		else
+			m_FallbackWhiteTexture.Bind(transmissionTextureUnit);
+		m_ObjectShaderProgram.SetInt(SandboxRendererShaderUniform::directionalTransmissionMap, transmissionTextureUnit);
+		m_ObjectShaderProgram.SetInt(SandboxRendererShaderUniform::directionalTransmissionEnabled, transmissionActive ? 1 : 0);
 
 		// Use the depth texture's own sampling settings.
 		glBindSampler(shadowTextureUnit, 0);
@@ -1994,11 +2031,11 @@ namespace ForgeSim::Sandbox
 
 
     void SandboxRenderer::RenderDirectionalShadowMap(
-        const glm::mat4& lightViewProjection)
+        const glm::mat4& lightViewProjection, bool transmissionPass)
     {
         const DirectionalShadowPassState savedState;
 
-        m_DirectionalShadowMap.Bind();
+        (transmissionPass ? *m_DirectionalTransmissionMap : m_DirectionalShadowMap).Bind();
         const auto resolution = static_cast<GLsizei>(
             m_DirectionalShadowMap.Resolution());
         glViewport(0, 0, resolution, resolution);
@@ -2015,6 +2052,11 @@ namespace ForgeSim::Sandbox
 
         constexpr GLfloat farDepth = 1.0f;
         glClearBufferfv(GL_DEPTH, 0, &farDepth);
+        if (transmissionPass)
+        {
+            constexpr GLfloat clearTransmission[]{1.0f, 1.0f, 1.0f, 1.0f};
+            glClearBufferfv(GL_COLOR, 0, clearTransmission);
+        }
 
         m_DirectionalShadowShaderProgram.Bind();
         m_DirectionalShadowShaderProgram.SetMatrix4x4(
@@ -2042,14 +2084,14 @@ namespace ForgeSim::Sandbox
                 material = &m_GpuMaterialResources[*submission.materialIndex];
             }
 
-            // Blended surfaces do not cast opaque shadows in this version.
-            if (material != nullptr &&
-                material->alphaMode == Assets::AlphaMode::Blend)
+            const bool transmits = material != nullptr && material->directionalTransmission.has_value();
+            if (transmissionPass != transmits ||
+                (!transmissionPass && material != nullptr && material->alphaMode == Assets::AlphaMode::Blend))
             {
                 continue;
             }
 
-            if (material != nullptr && material->doubleSided)
+            if (transmissionPass || (material != nullptr && material->doubleSided))
             {
                 glDisable(GL_CULL_FACE);
             }
@@ -2072,6 +2114,15 @@ namespace ForgeSim::Sandbox
 
             baseColor.texture->Bind(shadowAlphaTextureUnit);
             baseColor.sampler->Bind(shadowAlphaTextureUnit);
+
+            const auto transmission = transmits
+                ? *material->directionalTransmission : Assets::DirectionalTransmissionData{};
+            m_DirectionalShadowShaderProgram.SetVector3(
+                DirectionalShadowUniform::transmissionTint,
+                glm::vec3{transmission.tint[0], transmission.tint[1], transmission.tint[2]});
+            m_DirectionalShadowShaderProgram.SetInt(
+                DirectionalShadowUniform::transmissionUsesTexture,
+                transmission.useBaseColorTexture ? 1 : 0);
 
             m_DirectionalShadowShaderProgram.SetFloat(
                 DirectionalShadowUniform::baseColorAlpha,

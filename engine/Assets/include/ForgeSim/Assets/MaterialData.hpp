@@ -54,6 +54,13 @@ namespace ForgeSim::Assets
 			metallicRoughnessTexture;
 	};
 
+	// Linear RGB fraction of direct light transmitted by a thin surface.
+	struct DirectionalTransmissionData
+	{
+		std::array<float, 3> tint{ 1.0f, 1.0f, 1.0f };
+		bool useBaseColorTexture = false;
+	};
+
 	struct MaterialData
 	{
 		MetallicRoughnessData metallicRoughness;
@@ -76,5 +83,7 @@ namespace ForgeSim::Assets
 		AlphaMode alphaMode = AlphaMode::Opaque;
 		float alphaCutoff = 0.5f;
 		bool doubleSided = false;
+
+		std::optional<DirectionalTransmissionData> directionalTransmission;
 	};
 }

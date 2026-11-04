@@ -1,5 +1,6 @@
 #include <ForgeSim/Assets/GltfLoader.hpp>
 
+#include <array>
 #include <cstdlib>
 #include <cmath>
 #include <filesystem>
@@ -33,6 +34,33 @@ int main()
                     scene.nodes[i].castsDirectionalShadows != expected[i])
                     throw std::runtime_error("Directional shadow override did not stay local to its node.");
             }
+        }
+
+        {
+            const auto scene = ForgeSim::Assets::LoadGltfScene(
+                assetDirectory / "DirectionalTransmissionMaterials.gltf");
+            const auto& textured = scene.materials.at(0).directionalTransmission;
+            const auto& uniform = scene.materials.at(1).directionalTransmission;
+            if (!textured || !textured->useBaseColorTexture ||
+                textured->tint != std::array{ 0.25f, 0.5f, 0.75f } ||
+                !uniform || uniform->useBaseColorTexture ||
+                uniform->tint != std::array{ 0.5f, 0.75f, 1.0f } ||
+                scene.materials.at(2).directionalTransmission)
+                throw std::runtime_error("Unexpected directional transmission material data.");
+
+            bool rejected = false;
+            try
+            {
+                static_cast<void>(ForgeSim::Assets::LoadGltfScene(
+                    assetDirectory / "InvalidDirectionalTransmissionMaterial.gltf"));
+            }
+            catch (const std::runtime_error& error)
+            {
+                rejected = std::string_view(error.what()).find(
+                    "forgesim_directional_transmission") != std::string_view::npos;
+            }
+            if (!rejected)
+                throw std::runtime_error("Out-of-range directional transmission tint was accepted.");
         }
 
 		// Missing files should produce a descriptive exception.
