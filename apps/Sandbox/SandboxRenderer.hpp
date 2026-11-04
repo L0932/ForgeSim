@@ -156,7 +156,7 @@ namespace ForgeSim::Sandbox
 	private:
 
 		void RenderDirectionalShadowMap(
-			const glm::mat4& lightViewProjection);
+			const glm::mat4& lightViewProjection, bool transmissionPass);
 
 		void BindMaterial(
 			std::optional<Assets::MaterialIndex> materialIndex);
@@ -227,6 +227,7 @@ namespace ForgeSim::Sandbox
 
 			float alphaCutoff = 0.5f;
 			bool doubleSided = false;
+			std::optional<Assets::DirectionalTransmissionData> directionalTransmission;
 		};
 
 		void UploadObjectModelResources(
@@ -241,6 +242,7 @@ namespace ForgeSim::Sandbox
         ShaderFileMonitor m_DirectionalShadowShaderMonitor;
         Renderer::OpenGL::ShaderProgram m_DirectionalShadowShaderProgram;
         Renderer::OpenGL::ShadowMap m_DirectionalShadowMap;
+        std::optional<Renderer::OpenGL::ShadowMap> m_DirectionalTransmissionMap;
         glm::mat4 m_DirectionalLightViewProjection{ 1.0f };
 
 		const Assets::GltfTexturePolicy m_TexturePolicy;

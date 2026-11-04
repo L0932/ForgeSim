@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
@@ -712,12 +713,71 @@ namespace ForgeSim::Assets
 			}
 		}
 
+		[[nodiscard]] std::optional<DirectionalTransmissionData> ReadDirectionalTransmission(
+			const cgltf_material& material,
+			const std::filesystem::path& path)
+		{
+			if (!material.extras.data)
+				return std::nullopt;
+
+			const auto extras = nlohmann::json::parse(material.extras.data, nullptr, false);
+			if (!extras.is_object())
+				return std::nullopt;
+
+			const auto value = extras.find("forgesim_directional_transmission");
+			if (value == extras.end())
+				return std::nullopt;
+
+			const auto fail = [&](std::string_view reason)
+			{
+				throw std::runtime_error(
+					"Invalid forgesim_directional_transmission on glTF material '" +
+					std::string(material.name ? material.name : "<unnamed>") +
+					"': " + std::string(reason) + " " + path.string());
+			};
+
+			if (!value->is_object())
+				fail("Expected an object.");
+
+			DirectionalTransmissionData result;
+			const auto tint = value->find("tint");
+			if (tint != value->end())
+			{
+				if (!tint->is_array() || tint->size() != result.tint.size())
+					fail("Expected tint to contain three linear RGB values.");
+
+				for (std::size_t i = 0; i < result.tint.size(); ++i)
+				{
+					if (!(*tint)[i].is_number())
+						fail("Expected numeric tint components.");
+
+					const double component = (*tint)[i].get<double>();
+					if (!std::isfinite(component) || component < 0.0 || component > 1.0)
+						fail("Tint components must be in [0, 1].");
+
+					result.tint[i] = static_cast<float>(component);
+				}
+			}
+
+			const auto useTexture = value->find("useBaseColorTexture");
+			if (useTexture != value->end())
+			{
+				if (!useTexture->is_boolean())
+					fail("Expected useBaseColorTexture to be a boolean.");
+
+				result.useBaseColorTexture = useTexture->get<bool>();
+			}
+
+			return result;
+		}
+
 		[[nodiscard]] MaterialData LoadMaterial(
 			const cgltf_material& sourceMaterial,
 			const cgltf_data& data,
 			const std::filesystem::path& path)
 		{
 			MaterialData material;
+			material.directionalTransmission = ReadDirectionalTransmission(sourceMaterial, path);
 
 			if (sourceMaterial.has_pbr_metallic_roughness)
 			{

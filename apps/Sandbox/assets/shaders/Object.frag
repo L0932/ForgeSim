@@ -49,6 +49,8 @@ uniform vec3 uLightDirection;
 uniform vec3 uLightRadiance;
 
 uniform sampler2D uDirectionalShadowMap;
+uniform sampler2D uDirectionalTransmissionMap;
+uniform int uDirectionalTransmissionEnabled;
 uniform mat4 uDirectionalLightViewProjection;
 uniform int uDirectionalShadowsEnabled;
 
@@ -283,71 +285,47 @@ float DistanceAttenuation(
 		(distanceSquared + softeningDistanceSquared);
 }
 
-float FilteredShadowComparison(
-    vec2 uv,
-    float receiverDepth,
-    vec2 depthGradient)
+vec3 DirectionalShadowSample(vec2 uv, float receiverDepth)
 {
-    vec2 mapSize =
-        vec2(textureSize(uDirectionalShadowMap, 0));
+    if (receiverDepth > texture(uDirectionalShadowMap, uv).r)
+        return vec3(0.0);
 
-    // Express the position relative to texel centers.
+    if (uDirectionalTransmissionEnabled != 0)
+    {
+        vec4 transmission = texture(uDirectionalTransmissionMap, uv);
+        if (receiverDepth > transmission.a)
+            return transmission.rgb;
+    }
+
+    return vec3(1.0);
+}
+
+vec3 FilteredShadowComparison(vec2 uv, float receiverDepth, vec2 depthGradient)
+{
+    vec2 mapSize = vec2(textureSize(uDirectionalShadowMap, 0));
     vec2 texelPosition = uv * mapSize - 0.5;
-    vec2 baseTexel = floor(texelPosition);
     vec2 weight = fract(texelPosition);
-
-    vec2 uv00 = (baseTexel + vec2(0.5)) / mapSize;
+    vec2 uv00 = (floor(texelPosition) + vec2(0.5)) / mapSize;
     vec2 texelSize = 1.0 / mapSize;
-
-	float depth00 =
-    texture(uDirectionalShadowMap, uv00).r;
-
-	float depth10 =
-		texture(
-			uDirectionalShadowMap,
-			uv00 + vec2(texelSize.x, 0.0)).r;
-
-	float depth01 =
-		texture(
-			uDirectionalShadowMap,
-			uv00 + vec2(0.0, texelSize.y)).r;
-
-	float depth11 =
-		texture(
-			uDirectionalShadowMap,
-			uv00 + texelSize).r;
-
-	float depthAt00 =
-		receiverDepth +
-		dot(depthGradient, uv00 - uv);
-
-	float depthStepX = depthGradient.x * texelSize.x;
-	float depthStepY = depthGradient.y * texelSize.y;
-
-	float visibility00 =
-		depthAt00 <= depth00 ? 1.0 : 0.0;
-
-	float visibility10 =
-		depthAt00 + depthStepX <= depth10 ? 1.0 : 0.0;
-
-	float visibility01 =
-		depthAt00 + depthStepY <= depth01 ? 1.0 : 0.0;
-
-	float visibility11 =
-		depthAt00 + depthStepX + depthStepY <= depth11
-			? 1.0 : 0.0;
+    vec2 x = vec2(texelSize.x, 0.0);
+    vec2 y = vec2(0.0, texelSize.y);
+    float depth00 = receiverDepth + dot(depthGradient, uv00 - uv);
+    float dx = dot(depthGradient, x);
+    float dy = dot(depthGradient, y);
 
     return mix(
-        mix(visibility00, visibility10, weight.x),
-        mix(visibility01, visibility11, weight.x),
+        mix(DirectionalShadowSample(uv00, depth00),
+            DirectionalShadowSample(uv00 + x, depth00 + dx), weight.x),
+        mix(DirectionalShadowSample(uv00 + y, depth00 + dy),
+            DirectionalShadowSample(uv00 + x + y, depth00 + dx + dy), weight.x),
         weight.y);
 }
 
-float DirectionalLightVisibility(vec3 geometricNormal)
+vec3 DirectionalLightVisibility(vec3 geometricNormal)
 {
     if (uDirectionalShadowsEnabled == 0)
     {
-        return 1.0;
+        return vec3(1.0);
     }
 
     vec4 lightClipPosition =
@@ -356,7 +334,7 @@ float DirectionalLightVisibility(vec3 geometricNormal)
 
     if (lightClipPosition.w <= 0.0)
     {
-        return 1.0;
+        return vec3(1.0);
     }
 
     vec3 shadowPosition =
@@ -391,7 +369,7 @@ float DirectionalLightVisibility(vec3 geometricNormal)
     if (any(lessThan(shadowPosition, vec3(0.0))) ||
         any(greaterThan(shadowPosition, vec3(1.0))))
     {
-        return 1.0;
+        return vec3(1.0);
     }
 
     float normalDotLight =
@@ -412,18 +390,13 @@ float DirectionalLightVisibility(vec3 geometricNormal)
 
 	if (uDirectionalShadowFilteringEnabled == 0)
 	{
-		float storedDepth =
-			texture(
-				uDirectionalShadowMap,
-				shadowPosition.xy).r;
-
-		return receiverDepth <= storedDepth ? 1.0 : 0.0;
+		return DirectionalShadowSample(shadowPosition.xy, receiverDepth);
 	}
 
 	vec2 texelSize =
 		1.0 / vec2(textureSize(uDirectionalShadowMap, 0));
 
-	float visibility = 0.0;
+	vec3 visibility = vec3(0.0);
 
 	for (int y = -1; y <= 1; ++y)
 	{
@@ -535,7 +508,7 @@ void main()
 		shadowNormal = -shadowNormal;
 	}
 
-	float directionalVisibility =
+	vec3 directionalVisibility =
 		DirectionalLightVisibility(shadowNormal);
 
 	vec4 sampledBaseColor =
