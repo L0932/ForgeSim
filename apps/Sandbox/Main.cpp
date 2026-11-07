@@ -28,6 +28,9 @@ namespace
         bool modelSpecified = false;
         bool help = false;
         bool allowTextureFallbacks = false;
+        bool loadingDiagnostics = false;
+        bool parallelImageDecode = true;
+        bool imageDecodeModeSpecified = false;
 
         std::optional<fs::path> scenePath;
         std::optional<fs::path> projectRoot;
@@ -47,6 +50,23 @@ namespace
             if (argument == "--help" || argument == "-h")
             {
                 result.help = true;
+                continue;
+            }
+
+            if (argument == "--loading-diagnostics")
+            {
+                if (result.loadingDiagnostics)
+                    throw std::invalid_argument("Repeated option: --loading-diagnostics.");
+                result.loadingDiagnostics = true;
+                continue;
+            }
+
+            if (argument == "--parallel-image-decode" || argument == "--serial-image-decode")
+            {
+                if (result.imageDecodeModeSpecified)
+                    throw std::invalid_argument("Specify only one image decode mode.");
+                result.imageDecodeModeSpecified = true;
+                result.parallelImageDecode = argument == "--parallel-image-decode";
                 continue;
             }
 
@@ -146,6 +166,9 @@ namespace
             "  --allow-texture-fallbacks\n"
             "                      Skip textures with missing or unusable UV sets.\n"
             "                      Applies to all model loads in this session.\n"
+            "  --loading-diagnostics   Log scene loading progress and timings.\n"
+            "  --parallel-image-decode Decode glTF images concurrently (default).\n"
+            "  --serial-image-decode   Decode glTF images one at a time.\n"
             "  --help               Show this help.\n"
             "\n"
             "The default project root contains the copied assets folder.\n"
@@ -254,7 +277,8 @@ int main(int argumentCount, char* arguments[])
 
             const auto sceneMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - sceneStart).count();
-            ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
+            if (commandLine.loadingDiagnostics)
+                ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
                 " ms (" + commandLine.scenePath->string() + ")");
 
             modelFilename = ResolveSharedModel(
@@ -274,7 +298,9 @@ int main(int argumentCount, char* arguments[])
                     .sceneFilename = modelFilename,
                     .texturePolicy = commandLine.allowTextureFallbacks
                         ? ForgeSim::Assets::GltfTexturePolicy::SkipUnusableTextures
-                        : ForgeSim::Assets::GltfTexturePolicy::Strict
+                        : ForgeSim::Assets::GltfTexturePolicy::Strict,
+                    .loadingDiagnostics = commandLine.loadingDiagnostics,
+                    .parallelImageDecode = commandLine.parallelImageDecode
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,
@@ -282,7 +308,7 @@ int main(int argumentCount, char* arguments[])
             }
         };
 
-        app.Run(startupStart);
+        app.Run(commandLine.loadingDiagnostics ? std::optional{startupStart} : std::nullopt);
 
         if (commandLine.saveScenePath && app.ShouldSaveOnExit())
         {

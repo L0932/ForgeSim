@@ -39,6 +39,9 @@ namespace ForgeSim::Assets
 
 		// Optional synchronous observer. A stage starts before any of its work.
 		std::function<void(const GltfLoadProgress&)> onProgress;
+
+		// Decode independent images concurrently while the scene load remains synchronous.
+		bool parallelImageDecode = false;
 	};
 
 	// Strict preserves the existing import behavior. The opt-in fallback

@@ -89,6 +89,8 @@ namespace ForgeSim::Sandbox
 
 		Assets::GltfTexturePolicy texturePolicy =
 			Assets::GltfTexturePolicy::Strict;
+		bool loadingDiagnostics = false;
+		bool parallelImageDecode = true;
 	};
 
 	class SandboxRenderer final
@@ -246,6 +248,8 @@ namespace ForgeSim::Sandbox
         glm::mat4 m_DirectionalLightViewProjection{ 1.0f };
 
 		const Assets::GltfTexturePolicy m_TexturePolicy;
+		const bool m_LoadingDiagnostics;
+		const bool m_ParallelImageDecode;
 		std::filesystem::path m_ObjectModelPath;
         std::optional<std::filesystem::path> m_EnvironmentPath;
 		Assets::SceneAsset m_ObjectSceneAsset;

@@ -52,9 +52,11 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] Assets::SceneAsset LoadSceneWithTexturePolicy(
 			const std::filesystem::path& path,
-			Assets::GltfTexturePolicy policy)
+			Assets::GltfTexturePolicy policy,
+			bool loadingDiagnostics, bool parallelImageDecode)
 		{
-			Core::LogInfo("Loading glTF: " + path.string());
+			if (loadingDiagnostics)
+				Core::LogInfo("Loading glTF: " + path.string());
 			const auto start = std::chrono::steady_clock::now();
 			std::string_view activeStage = "Initialize import";
 			const Assets::GltfImportOptions options{
@@ -63,27 +65,28 @@ namespace ForgeSim::Sandbox
 				{
 					Core::LogWarning(message);
 				},
-				.onProgress = [&activeStage](const Assets::GltfLoadProgress& progress)
+				.onProgress = [&activeStage, loadingDiagnostics](const Assets::GltfLoadProgress& progress)
 				{
+					if (progress.phase == Assets::GltfProgressPhase::Started)
+						activeStage = progress.stage;
+					else if (progress.phase == Assets::GltfProgressPhase::Completed)
+						activeStage = "Between import stages or finalizing scene";
+					if (!loadingDiagnostics)
+						return;
+
 					std::string message = "glTF " + std::string{progress.stage};
 					if (progress.total)
 						message += " (" + std::to_string(progress.completed) +
 							"/" + std::to_string(*progress.total) + ")";
 
 					if (progress.phase == Assets::GltfProgressPhase::Started)
-					{
-						activeStage = progress.stage;
 						message += ": started";
-					}
 					else
-					{
-						if (progress.phase == Assets::GltfProgressPhase::Completed)
-							activeStage = "Between import stages or finalizing scene";
 						message += ": " + std::to_string(progress.elapsed.count()) + " ms";
-					}
 
 					Core::LogInfo(message);
-				}
+				},
+				.parallelImageDecode = parallelImageDecode
 			};
 			auto scene = [&]() -> Assets::SceneAsset
 			{
@@ -99,7 +102,8 @@ namespace ForgeSim::Sandbox
 			}();
 			const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::steady_clock::now() - start).count();
-			Core::LogInfo("CPU glTF load: " + std::to_string(elapsed) + " ms (" + path.string() + ")");
+			if (loadingDiagnostics)
+				Core::LogInfo("CPU glTF load: " + std::to_string(elapsed) + " ms (" + path.string() + ")");
 			return scene;
 		}
 
@@ -816,10 +820,12 @@ namespace ForgeSim::Sandbox
                 DirectionalShadowUniform::required))
 		, m_DirectionalShadowMap(2048)
         , m_TexturePolicy(specification.texturePolicy)
+        , m_LoadingDiagnostics(specification.loadingDiagnostics)
+        , m_ParallelImageDecode(specification.parallelImageDecode)
         , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
-			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy))
+			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode))
 		, m_ObjectLocalBounds(
 			CalculateSceneBounds(
 				m_ObjectSceneAsset))
@@ -915,8 +921,9 @@ namespace ForgeSim::Sandbox
 			m_GpuMaterialResources);
 		const auto uploadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now() - uploadStart).count();
-		Core::LogInfo("GPU resource preparation (CPU wall time): " +
-			std::to_string(uploadMs) + " ms (" + m_ObjectModelPath.string() + ")");
+		if (m_LoadingDiagnostics)
+			Core::LogInfo("GPU resource preparation (CPU wall time): " +
+				std::to_string(uploadMs) + " ms (" + m_ObjectModelPath.string() + ")");
 
         if (specification.environmentFilename)
         {
@@ -2365,7 +2372,7 @@ namespace ForgeSim::Sandbox
 				std::filesystem::absolute(path));
 
 		Assets::SceneAsset replacementScene =
-			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy);
+			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode);
 
 		const Renderer::AxisAlignedBoundingBox replacementBounds =
 			CalculateSceneBounds(replacementScene);
@@ -2384,8 +2391,9 @@ namespace ForgeSim::Sandbox
 			replacementMaterials);
 		const auto uploadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now() - uploadStart).count();
-		Core::LogInfo("GPU resource preparation (CPU wall time): " +
-			std::to_string(uploadMs) + " ms (" + replacementPath.string() + ")");
+		if (m_LoadingDiagnostics)
+			Core::LogInfo("GPU resource preparation (CPU wall time): " +
+				std::to_string(uploadMs) + " ms (" + replacementPath.string() + ")");
 
 		// Everything that can fail during import/upload has completed.
 		static_assert(

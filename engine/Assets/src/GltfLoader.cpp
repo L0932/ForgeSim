@@ -1,6 +1,9 @@
 #include <ForgeSim/Assets/GltfLoader.hpp>
 
+#include <algorithm>
 #include <array>
+#include <future>
+#include <thread>
 #include <cstddef>
 #include <cmath>
 #include <cstdint>
@@ -1375,17 +1378,35 @@ namespace ForgeSim::Assets
 			data->images_count);
 
 		LoadStage images{&options, "Load and decode images", data->images_count};
-		for (cgltf_size imageIndex = 0;
-			imageIndex < data->images_count;
-			++imageIndex)
+		const auto decodeImage = [&](cgltf_size index)
 		{
-			sceneAsset.textureResources.images.push_back(
-				LoadGltfImage(
-					data->images[imageIndex],
-					path,
-					static_cast<std::size_t>(
-						imageIndex)));
-			images.Advance(imageIndex + 1);
+			return LoadGltfImage(data->images[index], path, index);
+		};
+		const auto appendImage = [&](ImageData image)
+		{
+			sceneAsset.textureResources.images.push_back(std::move(image));
+			images.Advance(sceneAsset.textureResources.images.size());
+		};
+		const cgltf_size batchSize = options.parallelImageDecode
+			? std::clamp(std::thread::hardware_concurrency(), 1u, 4u) : 1u;
+		for (cgltf_size first = 0; first < data->images_count;)
+		{
+			const cgltf_size count = std::min(batchSize, data->images_count - first);
+			if (count == 1)
+			{
+				appendImage(decodeImage(first));
+			}
+			else
+			{
+				// Join in source order to preserve image indices and error order.
+				// Futures also join on unwind before the glTF document is freed.
+				std::array<std::future<ImageData>, 4> jobs;
+				for (cgltf_size offset = 0; offset < count; ++offset)
+					jobs[offset] = std::async(std::launch::async, decodeImage, first + offset);
+				for (cgltf_size offset = 0; offset < count; ++offset)
+					appendImage(jobs[offset].get());
+			}
+			first += count;
 		}
 		images.Finish();
 

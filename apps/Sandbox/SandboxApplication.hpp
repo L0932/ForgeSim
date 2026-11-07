@@ -43,7 +43,7 @@ namespace ForgeSim::Sandbox
 		SandboxApplication(SandboxApplication&&) = delete;
 		SandboxApplication& operator=(SandboxApplication&&) = delete;
 
-		void Run(std::chrono::steady_clock::time_point startupStart); // owns the outer interactive loop
+		void Run(std::optional<std::chrono::steady_clock::time_point> startupStart); // owns the outer interactive loop
 
 		void SaveScene(const std::filesystem::path& path);
 
