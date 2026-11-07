@@ -268,32 +268,43 @@ int main(int argumentCount, char* arguments[])
 
         fs::path modelFilename = commandLine.modelFilename;
 
+        const ForgeSim::Platform::WindowSpecification windowSpec{
+            .width = 1280,
+            .height = 720,
+            .title = "ForgeSim Sandbox",
+            .verticalSync = true
+        };
+
         if (commandLine.scenePath)
         {
-            const auto sceneStart = std::chrono::steady_clock::now();
-            document = ForgeSim::Sandbox::LoadSceneDocument(
-                *commandLine.scenePath,
-                projectRoot);
+            try
+            {
+                const auto sceneStart = std::chrono::steady_clock::now();
+                document = ForgeSim::Sandbox::LoadSceneDocument(
+                    *commandLine.scenePath,
+                    projectRoot);
 
-            const auto sceneMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - sceneStart).count();
-            if (commandLine.loadingDiagnostics)
-                ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
-                " ms (" + commandLine.scenePath->string() + ")");
+                const auto sceneMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - sceneStart).count();
+                if (commandLine.loadingDiagnostics)
+                    ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
+                    " ms (" + commandLine.scenePath->string() + ")");
 
-            modelFilename = ResolveSharedModel(
-                *document,
-                projectRoot);
+                modelFilename = ResolveSharedModel(
+                    *document,
+                    projectRoot);
+            }
+            catch (const std::exception& exception)
+            {
+                ForgeSim::Core::LogError(exception.what());
+                ForgeSim::Sandbox::SandboxApplication::ShowStartupError(windowSpec, exception.what());
+                return EXIT_FAILURE;
+            }
         }
 
         ForgeSim::Sandbox::SandboxApplication app{
             ForgeSim::Sandbox::SandboxApplicationSpecification{
-                .windowSpec = {
-                    .width = 1280,
-                    .height = 720,
-                    .title = "ForgeSim Sandbox",
-                    .verticalSync = true
-                },
+                .windowSpec = windowSpec,
                 .rendererSpec = {
                     .sceneFilename = modelFilename,
                     .texturePolicy = commandLine.allowTextureFallbacks

@@ -25,6 +25,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -45,8 +46,21 @@ namespace ForgeSim::Sandbox
 {
     namespace
     {
+        void PresentLoadingFrame(Platform::GlfwWindow& window, SandboxDebugUI& ui,
+            const Assets::GltfLoadProgress& progress)
+        {
+            window.PollEvents();
+            const auto extent = window.GetFramebufferExtent();
+            if (extent.width > 0 && extent.height > 0)
+            {
+                ui.DrawLoadingFrame(progress, extent.width, extent.height);
+                window.SwapBuffers();
+            }
+        }
+
         SandboxRendererSpecification InitialRendererSpecification(
-            const SandboxApplicationSpecification& specification)
+            const SandboxApplicationSpecification& specification,
+            Platform::GlfwWindow& window, SandboxDebugUI& ui)
         {
             auto renderer = specification.rendererSpec;
             if (specification.initialScene)
@@ -56,15 +70,70 @@ namespace ForgeSim::Sandbox
                     specification.projectRoot.value_or(BundledAssetDirectory().parent_path()),
                     BundledAssetDirectory() / "environments");
             }
+            renderer.drawStartupProgress = [&window, &ui](const Assets::GltfLoadProgress& progress)
+            {
+                PresentLoadingFrame(window, ui, progress);
+            };
+            window.Show();
+            renderer.drawStartupProgress({"Starting ForgeSim", Assets::GltfProgressPhase::Started,
+                0, std::nullopt, std::chrono::milliseconds{0}});
             return renderer;
         }
+
+        void PresentStartupError(Platform::GlfwWindow& window, SandboxDebugUI& ui,
+            std::string_view message)
+        {
+            window.Show();
+            const Assets::GltfLoadProgress failed{"Startup failed", Assets::GltfProgressPhase::Started,
+                0, std::nullopt, std::chrono::milliseconds{0}};
+            while (!window.ShouldClose())
+            {
+                window.PollEvents();
+                if (window.ShouldClose())
+                    break;
+                const auto extent = window.GetFramebufferExtent();
+                if (extent.width <= 0 || extent.height <= 0)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds{16});
+                    continue;
+                }
+                const bool dismissed = ui.DrawLoadingFrame(failed, extent.width, extent.height,
+                    message);
+                window.SwapBuffers();
+                if (dismissed)
+                    break;
+            }
+        }
+
+        SandboxRenderer CreateInitialRenderer(
+            const SandboxApplicationSpecification& specification,
+            Platform::GlfwWindow& window, SandboxDebugUI& ui)
+        {
+            try
+            {
+                return SandboxRenderer{InitialRendererSpecification(specification, window, ui)};
+            }
+            catch (const std::exception& exception)
+            {
+                PresentStartupError(window, ui, exception.what());
+                throw;
+            }
+        }
+    }
+
+    void SandboxApplication::ShowStartupError(
+        const Platform::WindowSpecification& specification, std::string_view message)
+    {
+        Platform::GlfwWindow window{specification};
+        SandboxDebugUI ui{window};
+        PresentStartupError(window, ui, message);
     }
 
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_Renderer(InitialRendererSpecification(spec))
 		, m_DebugUI(m_Window)
+		, m_Renderer(CreateInitialRenderer(spec, m_Window, m_DebugUI))
 		, m_LoadedScene(spec.initialScene.has_value())
 	{
 		const std::filesystem::path projectRoot =
@@ -830,6 +899,7 @@ namespace ForgeSim::Sandbox
 						rightMouseDown
 				});
 
+			bool openAfterFrame = false;
 			if (fileRequest.action != SceneFileAction::None)
 			{
 				try
@@ -1025,48 +1095,7 @@ namespace ForgeSim::Sandbox
 						}
 						else if (pendingAction == PendingSceneAction::Open)
 						{
-							try
-							{
-								// Read after Save and Continue, so opening the same
-								// file uses the version that was just saved.
-								EditorSession replacement =
-									m_EditorSession->PrepareOpen(pendingOpenPath);
-
-								const auto modelPath =
-									replacement.SharedModelPath();
-
-                                m_Renderer.LoadSceneResources(modelPath,
-                                    ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
-                                        replacement.ProjectRoot(), BundledAssetDirectory() / "environments"));
-
-								// Empty scenes render no objects and can retain
-								// the renderer's existing unused model resources.
-								*m_EditorSession = std::move(replacement);
-                                m_DebugUI.ResetSceneControls();
-                                cameraRestoreRequest.reset();
-
-                                lightDebugBounds = scene.Objects().empty()
-                                    ? emptySceneBounds
-                                    : CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
-
-								selection.Clear();
-								transformEditor.ClearHistory();
-								inspectorPanel.Reset();
-								lightPickTargets.clear();
-								cameraFramingRequested = true;
-
-								pendingAction = PendingSceneAction::None;
-								pendingOpenPath.clear();
-								sceneFileMessage = "Scene opened.";
-							}
-							catch (...)
-							{
-								// End the pending operation. The outer handler
-								// displays the loading error.
-								pendingAction = PendingSceneAction::None;
-								pendingOpenPath.clear();
-								throw;
-							}
+							openAfterFrame = true;
 						}
 					}
 				}
@@ -1089,7 +1118,59 @@ namespace ForgeSim::Sandbox
 				firstFramePresented = true;
 				const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::steady_clock::now() - *startupStart).count();
-				Core::LogInfo("Startup through first buffer swap: " + std::to_string(elapsed) + " ms");
+				Core::LogInfo("Startup through first editor buffer swap: " + std::to_string(elapsed) + " ms");
+			}
+
+			// The editor frame must end before beginning a loading frame.
+			if (openAfterFrame)
+			{
+				try
+				{
+					const auto drawProgress = [this](const Assets::GltfLoadProgress& progress)
+					{
+						PresentLoadingFrame(m_Window, m_DebugUI, progress);
+					};
+					drawProgress({"Reading scene document", Assets::GltfProgressPhase::Started,
+						0, std::nullopt, std::chrono::milliseconds{0}});
+					// Read after Save and Continue, so opening the same
+					// file uses the version that was just saved.
+					EditorSession replacement =
+						m_EditorSession->PrepareOpen(pendingOpenPath);
+
+					const auto modelPath =
+						replacement.SharedModelPath();
+
+					m_Renderer.LoadSceneResources(modelPath,
+						ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
+							replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), drawProgress);
+
+					// Empty scenes render no objects and can retain
+					// the renderer's existing unused model resources.
+					*m_EditorSession = std::move(replacement);
+					m_DebugUI.ResetSceneControls();
+					cameraRestoreRequest.reset();
+
+					lightDebugBounds = scene.Objects().empty()
+						? emptySceneBounds
+						: CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+
+					selection.Clear();
+					transformEditor.ClearHistory();
+					inspectorPanel.Reset();
+					lightPickTargets.clear();
+					cameraFramingRequested = true;
+
+					pendingAction = PendingSceneAction::None;
+					pendingOpenPath.clear();
+					sceneFileMessage = "Scene opened.";
+				}
+				catch (const std::exception& exception)
+				{
+					pendingAction = PendingSceneAction::None;
+					pendingOpenPath.clear();
+					sceneFileMessage = exception.what();
+					Core::LogError(sceneFileMessage);
+				}
 			}
 		}
 	}

@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <span>
 #include <vector>
@@ -91,6 +92,13 @@ namespace ForgeSim::Sandbox
 			Assets::GltfTexturePolicy::Strict;
 		bool loadingDiagnostics = false;
 		bool parallelImageDecode = true;
+
+		// Synchronous notifications on the thread that requested the load.
+		// The observer must not reenter the renderer.
+		std::function<void(const Assets::GltfLoadProgress&)> onLoadProgress;
+
+		// Optional startup-only frame pump, called on the window thread.
+		std::function<void(const Assets::GltfLoadProgress&)> drawStartupProgress;
 	};
 
 	class SandboxRenderer final
@@ -128,11 +136,13 @@ namespace ForgeSim::Sandbox
         // An absent model retains unused existing model resources for empty scenes.
         void LoadSceneResources(
             const std::optional<std::filesystem::path>& modelPath,
-            const std::optional<std::filesystem::path>& environmentPath);
+            const std::optional<std::filesystem::path>& environmentPath,
+            const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
 
 		// Replace the shared model only after all replacement resources are ready.
 		void LoadObjectModel(
-			const std::filesystem::path& path);
+			const std::filesystem::path& path,
+			const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
 
 		// Returns zero until a frame has been rendered to the color target.
 		[[nodiscard]]
@@ -237,7 +247,8 @@ namespace ForgeSim::Sandbox
 			std::vector<GpuPrimitiveResource>& primitives,
 			std::vector<GpuTextureResource>& textures,
 			std::vector<Renderer::OpenGL::Sampler>& samplers,
-			std::vector<GpuMaterialResource>& materials);
+			std::vector<GpuMaterialResource>& materials,
+			const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
 
 		std::vector<RenderSubmission> m_RenderSubmissions;
 
@@ -250,6 +261,7 @@ namespace ForgeSim::Sandbox
 		const Assets::GltfTexturePolicy m_TexturePolicy;
 		const bool m_LoadingDiagnostics;
 		const bool m_ParallelImageDecode;
+		const std::function<void(const Assets::GltfLoadProgress&)> m_OnLoadProgress;
 		std::filesystem::path m_ObjectModelPath;
         std::optional<std::filesystem::path> m_EnvironmentPath;
 		Assets::SceneAsset m_ObjectSceneAsset;

@@ -12,6 +12,8 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <future>
+#include <mutex>
 #include <limits>
 #include <span>
 #include <sstream>
@@ -53,24 +55,36 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] Assets::SceneAsset LoadSceneWithTexturePolicy(
 			const std::filesystem::path& path,
 			Assets::GltfTexturePolicy policy,
-			bool loadingDiagnostics, bool parallelImageDecode)
+			bool loadingDiagnostics, bool parallelImageDecode,
+			const std::function<void(const Assets::GltfLoadProgress&)>& onLoadProgress,
+			const std::function<void(const Assets::GltfLoadProgress&)>& drawStartupProgress = {})
 		{
 			if (loadingDiagnostics)
 				Core::LogInfo("Loading glTF: " + path.string());
 			const auto start = std::chrono::steady_clock::now();
 			std::string_view activeStage = "Initialize import";
+			std::mutex progressMutex;
+			Assets::GltfLoadProgress latest{"Loading model", Assets::GltfProgressPhase::Started,
+				0, std::nullopt, std::chrono::milliseconds{0}};
 			const Assets::GltfImportOptions options{
 				.texturePolicy = policy,
 				.onWarning = [](std::string_view message)
 				{
 					Core::LogWarning(message);
 				},
-				.onProgress = [&activeStage, loadingDiagnostics](const Assets::GltfLoadProgress& progress)
+				.onProgress = [&](const Assets::GltfLoadProgress& progress)
 				{
 					if (progress.phase == Assets::GltfProgressPhase::Started)
 						activeStage = progress.stage;
 					else if (progress.phase == Assets::GltfProgressPhase::Completed)
 						activeStage = "Between import stages or finalizing scene";
+					if (drawStartupProgress)
+					{
+						const std::scoped_lock lock{progressMutex};
+						latest = progress;
+					}
+					else if (onLoadProgress)
+						onLoadProgress(progress);
 					if (!loadingDiagnostics)
 						return;
 
@@ -88,7 +102,7 @@ namespace ForgeSim::Sandbox
 				},
 				.parallelImageDecode = parallelImageDecode
 			};
-			auto scene = [&]() -> Assets::SceneAsset
+			const auto import = [&]() -> Assets::SceneAsset
 			{
 				try
 				{
@@ -99,6 +113,23 @@ namespace ForgeSim::Sandbox
 					throw std::runtime_error("glTF load failed [" + std::string{activeStage} +
 						"]: " + exception.what());
 				}
+			};
+			auto scene = [&]() -> Assets::SceneAsset
+			{
+				if (!drawStartupProgress)
+					return import();
+
+				auto job = std::async(std::launch::async, import);
+				while (job.wait_for(std::chrono::milliseconds{16}) != std::future_status::ready)
+				{
+					const auto progress = [&]
+					{
+						const std::scoped_lock lock{progressMutex};
+						return latest;
+					}();
+					drawStartupProgress(progress);
+				}
+				return job.get();
 			}();
 			const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::steady_clock::now() - start).count();
@@ -822,10 +853,12 @@ namespace ForgeSim::Sandbox
         , m_TexturePolicy(specification.texturePolicy)
         , m_LoadingDiagnostics(specification.loadingDiagnostics)
         , m_ParallelImageDecode(specification.parallelImageDecode)
+        , m_OnLoadProgress(specification.onLoadProgress)
         , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
-			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode))
+			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy, m_LoadingDiagnostics,
+				m_ParallelImageDecode, m_OnLoadProgress, specification.drawStartupProgress))
 		, m_ObjectLocalBounds(
 			CalculateSceneBounds(
 				m_ObjectSceneAsset))
@@ -849,9 +882,13 @@ namespace ForgeSim::Sandbox
 			fallbackNormalTexturePixels,
 			Renderer::OpenGL::TextureColorSpace::Linear)
 		, m_DefaultSampler()
-		, m_EnvironmentEquirectangularTexture(
-			LoadEnvironmentTexture(
-				specification.environmentFilename))
+		, m_EnvironmentEquirectangularTexture([&specification]
+		{
+			if (specification.drawStartupProgress)
+				specification.drawStartupProgress({"Preparing environment lighting",
+					Assets::GltfProgressPhase::Started, 0, std::nullopt, std::chrono::milliseconds{0}});
+			return LoadEnvironmentTexture(specification.environmentFilename);
+		}())
 		, m_EnvironmentMapProcessor(
 			LoadShaderSource("EnvironmentCapture.vert"),
 			LoadShaderSource("EquirectangularToCubemap.frag"),
@@ -912,18 +949,25 @@ namespace ForgeSim::Sandbox
             LoadTextFile(m_FxaaShaderMonitor.FragmentShaderPath()))
 	{
 
+		if (m_OnLoadProgress)
+			m_OnLoadProgress({"Prepare GPU resources", Assets::GltfProgressPhase::Started,
+				0, std::nullopt, std::chrono::milliseconds{0}});
 		const auto uploadStart = std::chrono::steady_clock::now();
 		UploadObjectModelResources(
 			m_ObjectSceneAsset,
 			m_GpuPrimitiveResources,
 			m_GpuTextures,
 			m_GpuSamplers,
-			m_GpuMaterialResources);
+			m_GpuMaterialResources,
+			specification.drawStartupProgress);
 		const auto uploadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-			std::chrono::steady_clock::now() - uploadStart).count();
+			std::chrono::steady_clock::now() - uploadStart);
+		if (m_OnLoadProgress)
+			m_OnLoadProgress({"Prepare GPU resources", Assets::GltfProgressPhase::Completed,
+				0, std::nullopt, uploadMs});
 		if (m_LoadingDiagnostics)
 			Core::LogInfo("GPU resource preparation (CPU wall time): " +
-				std::to_string(uploadMs) + " ms (" + m_ObjectModelPath.string() + ")");
+				std::to_string(uploadMs.count()) + " ms (" + m_ObjectModelPath.string() + ")");
 
         if (specification.environmentFilename)
         {
@@ -1086,7 +1130,8 @@ namespace ForgeSim::Sandbox
 		std::vector<GpuPrimitiveResource>& primitives,
 		std::vector<GpuTextureResource>& textures,
 		std::vector<Renderer::OpenGL::Sampler>& samplers,
-		std::vector<GpuMaterialResource>& materials)
+		std::vector<GpuMaterialResource>& materials,
+		const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
 	{
 				// Upload imported mesh primitives once.
 		std::size_t primitiveCount = 0;
@@ -1096,6 +1141,35 @@ namespace ForgeSim::Sandbox
 		{
 			primitiveCount += mesh.primitives.size();
 		}
+
+		const auto total = primitiveCount + sceneAsset.textureResources.samplers.size() +
+			sceneAsset.materials.size();
+		using Clock = std::chrono::steady_clock;
+		const auto start = Clock::now();
+		auto lastDraw = start;
+		std::size_t completed = 0;
+
+		if (drawProgress)
+			drawProgress({"Preparing model GPU resources", Assets::GltfProgressPhase::Started,
+				0, total, std::chrono::milliseconds{0}});
+
+		const auto reportCompletedItem = [&]
+		{
+			if (!drawProgress)
+				return;
+
+			++completed;
+			const auto now = Clock::now();
+			const bool finished = completed == total;
+			if (finished || now - lastDraw >= std::chrono::milliseconds{50})
+			{
+				drawProgress({"Preparing model GPU resources",
+					finished ? Assets::GltfProgressPhase::Completed : Assets::GltfProgressPhase::Advanced,
+					completed, total,
+					std::chrono::duration_cast<std::chrono::milliseconds>(now - start)});
+				lastDraw = Clock::now();
+			}
+		};
 
 		primitives.reserve(primitiveCount);
 
@@ -1119,6 +1193,7 @@ namespace ForgeSim::Sandbox
 						.materialIndex =
 							primitive.materialIndex
 					});
+				reportCompletedItem();
 			}
 		}
 
@@ -1143,6 +1218,7 @@ namespace ForgeSim::Sandbox
 		{
 			samplers.emplace_back(
 				CreateSamplerSpecification(sampler));
+			reportCompletedItem();
 		}
 
 		const auto resolveGpuTexture =
@@ -1390,6 +1466,7 @@ namespace ForgeSim::Sandbox
 
 			materials.push_back(
 				gpuMaterial);
+			reportCompletedItem();
 		}
 	}
 
@@ -2359,7 +2436,8 @@ namespace ForgeSim::Sandbox
 	}
 
 	void SandboxRenderer::LoadObjectModel(
-		const std::filesystem::path& path)
+		const std::filesystem::path& path,
+		const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
 	{
 		if (path.empty() || path.filename().empty())
 		{
@@ -2372,7 +2450,7 @@ namespace ForgeSim::Sandbox
 				std::filesystem::absolute(path));
 
 		Assets::SceneAsset replacementScene =
-			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode);
+			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode, m_OnLoadProgress, drawProgress);
 
 		const Renderer::AxisAlignedBoundingBox replacementBounds =
 			CalculateSceneBounds(replacementScene);
@@ -2382,18 +2460,24 @@ namespace ForgeSim::Sandbox
 		std::vector<Renderer::OpenGL::Sampler> replacementSamplers;
 		std::vector<GpuMaterialResource> replacementMaterials;
 
+		if (m_OnLoadProgress)
+			m_OnLoadProgress({"Prepare GPU resources", Assets::GltfProgressPhase::Started,
+				0, std::nullopt, std::chrono::milliseconds{0}});
 		const auto uploadStart = std::chrono::steady_clock::now();
 		UploadObjectModelResources(
 			replacementScene,
 			replacementPrimitives,
 			replacementTextures,
 			replacementSamplers,
-			replacementMaterials);
+			replacementMaterials, drawProgress);
 		const auto uploadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-			std::chrono::steady_clock::now() - uploadStart).count();
+			std::chrono::steady_clock::now() - uploadStart);
+		if (m_OnLoadProgress)
+			m_OnLoadProgress({"Prepare GPU resources", Assets::GltfProgressPhase::Completed,
+				0, std::nullopt, uploadMs});
 		if (m_LoadingDiagnostics)
 			Core::LogInfo("GPU resource preparation (CPU wall time): " +
-				std::to_string(uploadMs) + " ms (" + replacementPath.string() + ")");
+				std::to_string(uploadMs.count()) + " ms (" + replacementPath.string() + ")");
 
 		// Everything that can fail during import/upload has completed.
 		static_assert(
@@ -2418,7 +2502,8 @@ namespace ForgeSim::Sandbox
 
     void SandboxRenderer::LoadSceneResources(
         const std::optional<std::filesystem::path>& modelPath,
-        const std::optional<std::filesystem::path>& environmentPath)
+        const std::optional<std::filesystem::path>& environmentPath,
+        const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
     {
         auto replacementPath = environmentPath;
         if (replacementPath)
@@ -2426,19 +2511,22 @@ namespace ForgeSim::Sandbox
 
         if (replacementPath == m_EnvironmentPath)
         {
-            if (modelPath) LoadObjectModel(*modelPath);
+            if (modelPath) LoadObjectModel(*modelPath, drawProgress);
             return;
         }
 
         // All IBL textures are built in temporaries. The BRDF LUT is independent
         // of the environment and can be reused.
+        if (drawProgress)
+            drawProgress({"Preparing environment lighting", Assets::GltfProgressPhase::Started,
+                0, std::nullopt, std::chrono::milliseconds{0}});
         auto texture = LoadEnvironmentTexture(replacementPath);
         auto cubemap = m_EnvironmentMapProcessor.ConvertEquirectangularToCubemap(texture, 512);
         auto diffuse = m_EnvironmentMapProcessor.CreateDiffuseIrradianceMap(cubemap, 32);
         auto specular = m_EnvironmentMapProcessor.CreatePrefilteredSpecularMap(cubemap, 128, 5);
 
         // LoadObjectModel itself commits only after successful import/upload.
-        if (modelPath) LoadObjectModel(*modelPath);
+        if (modelPath) LoadObjectModel(*modelPath, drawProgress);
         static_assert(std::is_nothrow_move_assignable_v<decltype(texture)>);
         static_assert(std::is_nothrow_move_assignable_v<decltype(cubemap)>);
         m_EnvironmentEquirectangularTexture = std::move(texture);

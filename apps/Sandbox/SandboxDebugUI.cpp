@@ -1,5 +1,6 @@
 #include "SandboxDebugUI.hpp"
 #include "SandboxScene.hpp"
+#include "SandboxPaths.hpp"
 #include "SceneCameraState.hpp"
 #include "SandboxObject.hpp"
 #include "SceneLightEditing.hpp"
@@ -14,11 +15,13 @@
 #include <stdexcept>
 #include <string>
 
+#include <glad/gl.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <glm/trigonometric.hpp>
 
+#include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Build/Version.hpp>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Core/RuntimeDiagnostics.hpp>
@@ -204,6 +207,93 @@ namespace ForgeSim::Sandbox
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
+	}
+
+	bool SandboxDebugUI::DrawLoadingFrame(
+		const Assets::GltfLoadProgress& progress, int width, int height,
+		std::optional<std::string_view> error)
+	{
+		if (!m_LoadingIconAttempted)
+		{
+			m_LoadingIconAttempted = true;
+			try
+			{
+				const auto image = Assets::LoadImage(
+					BundledAssetDirectory() / "textures" / "ForgeSimIcon.png");
+				// Match the display-encoded colors used by the ImGui UI.
+				m_LoadingIcon.emplace(image.width, image.height, image.pixels,
+					Renderer::OpenGL::TextureColorSpace::Linear);
+			}
+			catch (const std::exception& exception)
+			{
+				Core::LogWarning("Could not load the ForgeSim loading icon: " +
+					std::string{exception.what()});
+			}
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, width, height);
+		glClearColor(0.04f, 0.05f, 0.07f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		const auto* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2{0.5f, 0.5f});
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::Begin("##StartupLoading", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
+			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+			ImGuiWindowFlags_NoDocking | (error ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs));
+		// Use ImGui's logical size; framebuffer pixels may include DPI scaling.
+		const float layoutScale = std::min({
+			viewport->Size.x / 1280.0f,
+			viewport->Size.y / 720.0f,
+			2.0f
+		});
+		const float barWidth = 320.0f * layoutScale;
+		const float barHeight = ImGui::GetFrameHeight() * layoutScale;
+		if (m_LoadingIcon)
+		{
+			const float iconSize = barWidth * 0.5f;
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (barWidth - iconSize) * 0.5f);
+			ImGui::Image(ImTextureRef{static_cast<ImTextureID>(m_LoadingIcon->Handle())},
+				ImVec2{iconSize, iconSize});
+			ImGui::Spacing();
+		}
+		else
+		{
+			ImGui::TextUnformatted("ForgeSim");
+		}
+		bool dismissed = false;
+		if (error)
+		{
+			ImGui::TextUnformatted("Could not start ForgeSim");
+			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + barWidth);
+			ImGui::TextUnformatted(error->data(), error->data() + error->size());
+			ImGui::PopTextWrapPos();
+			ImGui::Spacing();
+			dismissed = ImGui::Button("Close");
+		}
+		else
+		{
+			const float fraction = progress.total && *progress.total > 0
+				? static_cast<float>(progress.completed) / static_cast<float>(*progress.total)
+				: -static_cast<float>(ImGui::GetTime());
+			ImGui::ProgressBar(fraction, ImVec2{barWidth, barHeight}, "");
+			std::string status{progress.stage};
+			if (progress.total && *progress.total > 0)
+				status += " (" + std::to_string(progress.completed) + "/" +
+					std::to_string(*progress.total) + ")";
+			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + barWidth);
+			ImGui::TextUnformatted(status.c_str());
+			ImGui::PopTextWrapPos();
+		}
+		ImGui::End();
+		ImGui::PopStyleVar();
+		EndFrame();
+		return dismissed;
 	}
 
 	void SandboxDebugUI::BeginFrame()

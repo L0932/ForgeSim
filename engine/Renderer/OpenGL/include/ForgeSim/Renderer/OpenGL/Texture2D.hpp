@@ -54,6 +54,8 @@ namespace ForgeSim::Renderer::OpenGL
 
 		void AttachToBoundFramebuffer() const noexcept;
 
+		[[nodiscard]] unsigned int Handle() const noexcept { return m_Handle; }
+
 	private:
 		unsigned int m_Handle = 0;
 	};

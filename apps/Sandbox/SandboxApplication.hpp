@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string_view>
 
 #include <ForgeSim/Assets/MeshData.hpp>
 #include <ForgeSim/Platform/GlfwWindow.hpp>
@@ -45,6 +46,9 @@ namespace ForgeSim::Sandbox
 
 		void Run(std::optional<std::chrono::steady_clock::time_point> startupStart); // owns the outer interactive loop
 
+		static void ShowStartupError(const Platform::WindowSpecification& specification,
+			std::string_view message);
+
 		void SaveScene(const std::filesystem::path& path);
 
 		[[nodiscard]]
@@ -57,8 +61,8 @@ namespace ForgeSim::Sandbox
 
 	private:
 		Platform::GlfwWindow m_Window;
-		SandboxRenderer m_Renderer;
 		SandboxDebugUI m_DebugUI;
+		SandboxRenderer m_Renderer;
 		std::unique_ptr<EditorSession> m_EditorSession;
 
 		bool m_LoadedScene = false;
