@@ -25,6 +25,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -78,13 +79,61 @@ namespace ForgeSim::Sandbox
                 0, std::nullopt, std::chrono::milliseconds{0}});
             return renderer;
         }
+
+        void PresentStartupError(Platform::GlfwWindow& window, SandboxDebugUI& ui,
+            std::string_view message)
+        {
+            window.Show();
+            const Assets::GltfLoadProgress failed{"Startup failed", Assets::GltfProgressPhase::Started,
+                0, std::nullopt, std::chrono::milliseconds{0}};
+            while (!window.ShouldClose())
+            {
+                window.PollEvents();
+                if (window.ShouldClose())
+                    break;
+                const auto extent = window.GetFramebufferExtent();
+                if (extent.width <= 0 || extent.height <= 0)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds{16});
+                    continue;
+                }
+                const bool dismissed = ui.DrawLoadingFrame(failed, extent.width, extent.height,
+                    message);
+                window.SwapBuffers();
+                if (dismissed)
+                    break;
+            }
+        }
+
+        SandboxRenderer CreateInitialRenderer(
+            const SandboxApplicationSpecification& specification,
+            Platform::GlfwWindow& window, SandboxDebugUI& ui)
+        {
+            try
+            {
+                return SandboxRenderer{InitialRendererSpecification(specification, window, ui)};
+            }
+            catch (const std::exception& exception)
+            {
+                PresentStartupError(window, ui, exception.what());
+                throw;
+            }
+        }
+    }
+
+    void SandboxApplication::ShowStartupError(
+        const Platform::WindowSpecification& specification, std::string_view message)
+    {
+        Platform::GlfwWindow window{specification};
+        SandboxDebugUI ui{window};
+        PresentStartupError(window, ui, message);
     }
 
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
 		, m_DebugUI(m_Window)
-		, m_Renderer(InitialRendererSpecification(spec, m_Window, m_DebugUI))
+		, m_Renderer(CreateInitialRenderer(spec, m_Window, m_DebugUI))
 		, m_LoadedScene(spec.initialScene.has_value())
 	{
 		const std::filesystem::path projectRoot =

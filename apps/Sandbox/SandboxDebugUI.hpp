@@ -13,6 +13,7 @@
 #include <array>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <optional>
 #include <span>
 
@@ -81,7 +82,8 @@ namespace ForgeSim::Sandbox
 		SandboxDebugUI& operator=(
 			SandboxDebugUI&&) = delete;
 
-		void DrawLoadingFrame(const Assets::GltfLoadProgress& progress, int width, int height);
+		bool DrawLoadingFrame(const Assets::GltfLoadProgress& progress, int width, int height,
+			std::optional<std::string_view> error = std::nullopt);
 		void BeginFrame();
         void ResetSceneControls();
 		void Draw(const SandboxDebugUIContext& context);

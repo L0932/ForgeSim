@@ -209,8 +209,9 @@ namespace ForgeSim::Sandbox
 		ImGui::DestroyContext();
 	}
 
-	void SandboxDebugUI::DrawLoadingFrame(
-		const Assets::GltfLoadProgress& progress, int width, int height)
+	bool SandboxDebugUI::DrawLoadingFrame(
+		const Assets::GltfLoadProgress& progress, int width, int height,
+		std::optional<std::string_view> error)
 	{
 		if (!m_LoadingIconAttempted)
 		{
@@ -230,6 +231,7 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, width, height);
 		glClearColor(0.04f, 0.05f, 0.07f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -243,7 +245,7 @@ namespace ForgeSim::Sandbox
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 		ImGui::Begin("##StartupLoading", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
 			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-			ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoDocking);
+			ImGuiWindowFlags_NoDocking | (error ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs));
 		// Use ImGui's logical size; framebuffer pixels may include DPI scaling.
 		const float layoutScale = std::min({
 			viewport->Size.x / 1280.0f,
@@ -264,20 +266,34 @@ namespace ForgeSim::Sandbox
 		{
 			ImGui::TextUnformatted("ForgeSim");
 		}
-		const float fraction = progress.total && *progress.total > 0
-			? static_cast<float>(progress.completed) / static_cast<float>(*progress.total)
-			: -static_cast<float>(ImGui::GetTime());
-		ImGui::ProgressBar(fraction, ImVec2{barWidth, barHeight}, "");
-		std::string status{progress.stage};
-		if (progress.total && *progress.total > 0)
-			status += " (" + std::to_string(progress.completed) + "/" +
-				std::to_string(*progress.total) + ")";
-		ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + barWidth);
-		ImGui::TextUnformatted(status.c_str());
-		ImGui::PopTextWrapPos();
+		bool dismissed = false;
+		if (error)
+		{
+			ImGui::TextUnformatted("Could not start ForgeSim");
+			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + barWidth);
+			ImGui::TextUnformatted(error->data(), error->data() + error->size());
+			ImGui::PopTextWrapPos();
+			ImGui::Spacing();
+			dismissed = ImGui::Button("Close");
+		}
+		else
+		{
+			const float fraction = progress.total && *progress.total > 0
+				? static_cast<float>(progress.completed) / static_cast<float>(*progress.total)
+				: -static_cast<float>(ImGui::GetTime());
+			ImGui::ProgressBar(fraction, ImVec2{barWidth, barHeight}, "");
+			std::string status{progress.stage};
+			if (progress.total && *progress.total > 0)
+				status += " (" + std::to_string(progress.completed) + "/" +
+					std::to_string(*progress.total) + ")";
+			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + barWidth);
+			ImGui::TextUnformatted(status.c_str());
+			ImGui::PopTextWrapPos();
+		}
 		ImGui::End();
 		ImGui::PopStyleVar();
 		EndFrame();
+		return dismissed;
 	}
 
 	void SandboxDebugUI::BeginFrame()
