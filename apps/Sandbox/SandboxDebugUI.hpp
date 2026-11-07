@@ -18,6 +18,7 @@
 
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
+#include <ForgeSim/Assets/GltfLoader.hpp>
 #include <ForgeSim/Renderer/FxaaSettings.hpp>
 
 namespace ForgeSim::Platform
@@ -79,6 +80,7 @@ namespace ForgeSim::Sandbox
 		SandboxDebugUI& operator=(
 			SandboxDebugUI&&) = delete;
 
+		void DrawLoadingFrame(const Assets::GltfLoadProgress& progress, int width, int height);
 		void BeginFrame();
         void ResetSceneControls();
 		void Draw(const SandboxDebugUIContext& context);

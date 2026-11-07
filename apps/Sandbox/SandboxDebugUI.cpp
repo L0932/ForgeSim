@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <glad/gl.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -204,6 +205,37 @@ namespace ForgeSim::Sandbox
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
+	}
+
+	void SandboxDebugUI::DrawLoadingFrame(
+		const Assets::GltfLoadProgress& progress, int width, int height)
+	{
+		glViewport(0, 0, width, height);
+		glClearColor(0.04f, 0.05f, 0.07f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		const auto* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2{0.5f, 0.5f});
+		ImGui::SetNextWindowBgAlpha(0.0f);
+		ImGui::Begin("##StartupLoading", nullptr, ImGuiWindowFlags_NoDecoration |
+			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+			ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoDocking);
+		ImGui::TextUnformatted("ForgeSim");
+		const float fraction = progress.total && *progress.total > 0
+			? static_cast<float>(progress.completed) / static_cast<float>(*progress.total)
+			: -static_cast<float>(ImGui::GetTime());
+		ImGui::ProgressBar(fraction, ImVec2{320.0f, 0.0f}, "");
+		std::string status{progress.stage};
+		if (progress.total && *progress.total > 0)
+			status += " (" + std::to_string(progress.completed) + "/" +
+				std::to_string(*progress.total) + ")";
+		ImGui::TextUnformatted(status.c_str());
+		ImGui::End();
+		EndFrame();
 	}
 
 	void SandboxDebugUI::BeginFrame()

@@ -57,8 +57,8 @@ namespace ForgeSim::Sandbox
 
 	private:
 		Platform::GlfwWindow m_Window;
-		SandboxRenderer m_Renderer;
 		SandboxDebugUI m_DebugUI;
+		SandboxRenderer m_Renderer;
 		std::unique_ptr<EditorSession> m_EditorSession;
 
 		bool m_LoadedScene = false;

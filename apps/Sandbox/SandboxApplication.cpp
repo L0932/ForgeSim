@@ -46,7 +46,8 @@ namespace ForgeSim::Sandbox
     namespace
     {
         SandboxRendererSpecification InitialRendererSpecification(
-            const SandboxApplicationSpecification& specification)
+            const SandboxApplicationSpecification& specification,
+            Platform::GlfwWindow& window, SandboxDebugUI& ui)
         {
             auto renderer = specification.rendererSpec;
             if (specification.initialScene)
@@ -56,6 +57,19 @@ namespace ForgeSim::Sandbox
                     specification.projectRoot.value_or(BundledAssetDirectory().parent_path()),
                     BundledAssetDirectory() / "environments");
             }
+            renderer.drawStartupProgress = [&window, &ui](const Assets::GltfLoadProgress& progress)
+            {
+                window.PollEvents();
+                const auto extent = window.GetFramebufferExtent();
+                if (extent.width > 0 && extent.height > 0)
+                {
+                    ui.DrawLoadingFrame(progress, extent.width, extent.height);
+                    window.SwapBuffers();
+                }
+            };
+            window.Show();
+            renderer.drawStartupProgress({"Starting ForgeSim", Assets::GltfProgressPhase::Started,
+                0, std::nullopt, std::chrono::milliseconds{0}});
             return renderer;
         }
     }
@@ -63,8 +77,8 @@ namespace ForgeSim::Sandbox
 	SandboxApplication::SandboxApplication(
 		const SandboxApplicationSpecification& spec)
 		: m_Window(spec.windowSpec)
-		, m_Renderer(InitialRendererSpecification(spec))
 		, m_DebugUI(m_Window)
+		, m_Renderer(InitialRendererSpecification(spec, m_Window, m_DebugUI))
 		, m_LoadedScene(spec.initialScene.has_value())
 	{
 		const std::filesystem::path projectRoot =
@@ -1089,7 +1103,7 @@ namespace ForgeSim::Sandbox
 				firstFramePresented = true;
 				const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::steady_clock::now() - *startupStart).count();
-				Core::LogInfo("Startup through first buffer swap: " + std::to_string(elapsed) + " ms");
+				Core::LogInfo("Startup through first editor buffer swap: " + std::to_string(elapsed) + " ms");
 			}
 		}
 	}
