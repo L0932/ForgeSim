@@ -136,11 +136,13 @@ namespace ForgeSim::Sandbox
         // An absent model retains unused existing model resources for empty scenes.
         void LoadSceneResources(
             const std::optional<std::filesystem::path>& modelPath,
-            const std::optional<std::filesystem::path>& environmentPath);
+            const std::optional<std::filesystem::path>& environmentPath,
+            const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
 
 		// Replace the shared model only after all replacement resources are ready.
 		void LoadObjectModel(
-			const std::filesystem::path& path);
+			const std::filesystem::path& path,
+			const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
 
 		// Returns zero until a frame has been rendered to the color target.
 		[[nodiscard]]

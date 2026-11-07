@@ -2436,7 +2436,8 @@ namespace ForgeSim::Sandbox
 	}
 
 	void SandboxRenderer::LoadObjectModel(
-		const std::filesystem::path& path)
+		const std::filesystem::path& path,
+		const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
 	{
 		if (path.empty() || path.filename().empty())
 		{
@@ -2449,7 +2450,7 @@ namespace ForgeSim::Sandbox
 				std::filesystem::absolute(path));
 
 		Assets::SceneAsset replacementScene =
-			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode, m_OnLoadProgress);
+			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode, m_OnLoadProgress, drawProgress);
 
 		const Renderer::AxisAlignedBoundingBox replacementBounds =
 			CalculateSceneBounds(replacementScene);
@@ -2468,7 +2469,7 @@ namespace ForgeSim::Sandbox
 			replacementPrimitives,
 			replacementTextures,
 			replacementSamplers,
-			replacementMaterials);
+			replacementMaterials, drawProgress);
 		const auto uploadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now() - uploadStart);
 		if (m_OnLoadProgress)
@@ -2501,7 +2502,8 @@ namespace ForgeSim::Sandbox
 
     void SandboxRenderer::LoadSceneResources(
         const std::optional<std::filesystem::path>& modelPath,
-        const std::optional<std::filesystem::path>& environmentPath)
+        const std::optional<std::filesystem::path>& environmentPath,
+        const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
     {
         auto replacementPath = environmentPath;
         if (replacementPath)
@@ -2509,19 +2511,22 @@ namespace ForgeSim::Sandbox
 
         if (replacementPath == m_EnvironmentPath)
         {
-            if (modelPath) LoadObjectModel(*modelPath);
+            if (modelPath) LoadObjectModel(*modelPath, drawProgress);
             return;
         }
 
         // All IBL textures are built in temporaries. The BRDF LUT is independent
         // of the environment and can be reused.
+        if (drawProgress)
+            drawProgress({"Preparing environment lighting", Assets::GltfProgressPhase::Started,
+                0, std::nullopt, std::chrono::milliseconds{0}});
         auto texture = LoadEnvironmentTexture(replacementPath);
         auto cubemap = m_EnvironmentMapProcessor.ConvertEquirectangularToCubemap(texture, 512);
         auto diffuse = m_EnvironmentMapProcessor.CreateDiffuseIrradianceMap(cubemap, 32);
         auto specular = m_EnvironmentMapProcessor.CreatePrefilteredSpecularMap(cubemap, 128, 5);
 
         // LoadObjectModel itself commits only after successful import/upload.
-        if (modelPath) LoadObjectModel(*modelPath);
+        if (modelPath) LoadObjectModel(*modelPath, drawProgress);
         static_assert(std::is_nothrow_move_assignable_v<decltype(texture)>);
         static_assert(std::is_nothrow_move_assignable_v<decltype(cubemap)>);
         m_EnvironmentEquirectangularTexture = std::move(texture);

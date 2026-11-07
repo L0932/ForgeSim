@@ -45,6 +45,18 @@ namespace ForgeSim::Sandbox
 {
     namespace
     {
+        void PresentLoadingFrame(Platform::GlfwWindow& window, SandboxDebugUI& ui,
+            const Assets::GltfLoadProgress& progress)
+        {
+            window.PollEvents();
+            const auto extent = window.GetFramebufferExtent();
+            if (extent.width > 0 && extent.height > 0)
+            {
+                ui.DrawLoadingFrame(progress, extent.width, extent.height);
+                window.SwapBuffers();
+            }
+        }
+
         SandboxRendererSpecification InitialRendererSpecification(
             const SandboxApplicationSpecification& specification,
             Platform::GlfwWindow& window, SandboxDebugUI& ui)
@@ -59,13 +71,7 @@ namespace ForgeSim::Sandbox
             }
             renderer.drawStartupProgress = [&window, &ui](const Assets::GltfLoadProgress& progress)
             {
-                window.PollEvents();
-                const auto extent = window.GetFramebufferExtent();
-                if (extent.width > 0 && extent.height > 0)
-                {
-                    ui.DrawLoadingFrame(progress, extent.width, extent.height);
-                    window.SwapBuffers();
-                }
+                PresentLoadingFrame(window, ui, progress);
             };
             window.Show();
             renderer.drawStartupProgress({"Starting ForgeSim", Assets::GltfProgressPhase::Started,
@@ -844,6 +850,7 @@ namespace ForgeSim::Sandbox
 						rightMouseDown
 				});
 
+			bool openAfterFrame = false;
 			if (fileRequest.action != SceneFileAction::None)
 			{
 				try
@@ -1039,48 +1046,7 @@ namespace ForgeSim::Sandbox
 						}
 						else if (pendingAction == PendingSceneAction::Open)
 						{
-							try
-							{
-								// Read after Save and Continue, so opening the same
-								// file uses the version that was just saved.
-								EditorSession replacement =
-									m_EditorSession->PrepareOpen(pendingOpenPath);
-
-								const auto modelPath =
-									replacement.SharedModelPath();
-
-                                m_Renderer.LoadSceneResources(modelPath,
-                                    ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
-                                        replacement.ProjectRoot(), BundledAssetDirectory() / "environments"));
-
-								// Empty scenes render no objects and can retain
-								// the renderer's existing unused model resources.
-								*m_EditorSession = std::move(replacement);
-                                m_DebugUI.ResetSceneControls();
-                                cameraRestoreRequest.reset();
-
-                                lightDebugBounds = scene.Objects().empty()
-                                    ? emptySceneBounds
-                                    : CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
-
-								selection.Clear();
-								transformEditor.ClearHistory();
-								inspectorPanel.Reset();
-								lightPickTargets.clear();
-								cameraFramingRequested = true;
-
-								pendingAction = PendingSceneAction::None;
-								pendingOpenPath.clear();
-								sceneFileMessage = "Scene opened.";
-							}
-							catch (...)
-							{
-								// End the pending operation. The outer handler
-								// displays the loading error.
-								pendingAction = PendingSceneAction::None;
-								pendingOpenPath.clear();
-								throw;
-							}
+							openAfterFrame = true;
 						}
 					}
 				}
@@ -1104,6 +1070,58 @@ namespace ForgeSim::Sandbox
 				const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::steady_clock::now() - *startupStart).count();
 				Core::LogInfo("Startup through first editor buffer swap: " + std::to_string(elapsed) + " ms");
+			}
+
+			// The editor frame must end before beginning a loading frame.
+			if (openAfterFrame)
+			{
+				try
+				{
+					const auto drawProgress = [this](const Assets::GltfLoadProgress& progress)
+					{
+						PresentLoadingFrame(m_Window, m_DebugUI, progress);
+					};
+					drawProgress({"Reading scene document", Assets::GltfProgressPhase::Started,
+						0, std::nullopt, std::chrono::milliseconds{0}});
+					// Read after Save and Continue, so opening the same
+					// file uses the version that was just saved.
+					EditorSession replacement =
+						m_EditorSession->PrepareOpen(pendingOpenPath);
+
+					const auto modelPath =
+						replacement.SharedModelPath();
+
+					m_Renderer.LoadSceneResources(modelPath,
+						ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
+							replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), drawProgress);
+
+					// Empty scenes render no objects and can retain
+					// the renderer's existing unused model resources.
+					*m_EditorSession = std::move(replacement);
+					m_DebugUI.ResetSceneControls();
+					cameraRestoreRequest.reset();
+
+					lightDebugBounds = scene.Objects().empty()
+						? emptySceneBounds
+						: CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+
+					selection.Clear();
+					transformEditor.ClearHistory();
+					inspectorPanel.Reset();
+					lightPickTargets.clear();
+					cameraFramingRequested = true;
+
+					pendingAction = PendingSceneAction::None;
+					pendingOpenPath.clear();
+					sceneFileMessage = "Scene opened.";
+				}
+				catch (const std::exception& exception)
+				{
+					pendingAction = PendingSceneAction::None;
+					pendingOpenPath.clear();
+					sceneFileMessage = exception.what();
+					Core::LogError(sceneFileMessage);
+				}
 			}
 		}
 	}

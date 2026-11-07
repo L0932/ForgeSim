@@ -20,6 +20,7 @@
 #include <glm/vec3.hpp>
 #include <ForgeSim/Assets/GltfLoader.hpp>
 #include <ForgeSim/Renderer/FxaaSettings.hpp>
+#include <ForgeSim/Renderer/OpenGL/Texture2D.hpp>
 
 namespace ForgeSim::Platform
 {
@@ -115,6 +116,8 @@ namespace ForgeSim::Sandbox
 
 
 	private:
+		std::optional<Renderer::OpenGL::Texture2D> m_LoadingIcon;
+		bool m_LoadingIconAttempted = false;
         std::array<char, 129> m_BookmarkName{};
         std::string m_SelectedBookmark;
         std::array<char, 4096> m_EnvironmentAsset{};
