@@ -1,3 +1,5 @@
+find_package(Threads REQUIRED)
+
 add_library(ForgeSimAssets STATIC)
 
 add_library(
@@ -29,6 +31,7 @@ target_sources(
 target_link_libraries(
 	ForgeSimAssets
 	PRIVATE
+		Threads::Threads
 		ForgeSimStb
 		ForgeSim::Cgltf
 		nlohmann_json::nlohmann_json

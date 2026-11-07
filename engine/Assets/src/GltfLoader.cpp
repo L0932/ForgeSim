@@ -1,6 +1,9 @@
 #include <ForgeSim/Assets/GltfLoader.hpp>
 
+#include <algorithm>
 #include <array>
+#include <future>
+#include <thread>
 #include <cstddef>
 #include <cmath>
 #include <cstdint>
@@ -137,19 +140,72 @@ namespace ForgeSim::Assets
 				std::string(CgltfResultDescription(result)));
 		}
 
+		class LoadStage
+		{
+		public:
+			LoadStage(const GltfImportOptions* options, std::string_view name,
+				std::optional<std::size_t> total = std::nullopt)
+				: m_Options(options), m_Name(name), m_Total(total)
+			{
+				if (Enabled())
+				{
+					m_Start = m_LastReport = Clock::now();
+					Report(GltfProgressPhase::Started, 0, m_Start);
+				}
+			}
+
+			void Advance(std::size_t completed)
+			{
+				if (!Enabled() || completed == m_Total)
+					return;
+
+				const auto now = Clock::now();
+				if (now - m_LastReport >= std::chrono::milliseconds{500})
+				{
+					m_LastReport = now;
+					Report(GltfProgressPhase::Advanced, completed, now);
+				}
+			}
+
+			void Finish() const
+			{
+				if (Enabled())
+					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now());
+			}
+
+		private:
+			using Clock = std::chrono::steady_clock;
+
+			bool Enabled() const { return m_Options && m_Options->onProgress; }
+
+			void Report(GltfProgressPhase phase, std::size_t completed, Clock::time_point now) const
+			{
+				m_Options->onProgress({m_Name, phase, completed, m_Total,
+					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start)});
+			}
+
+			const GltfImportOptions* m_Options;
+			std::string_view m_Name;
+			std::optional<std::size_t> m_Total;
+			Clock::time_point m_Start{};
+			Clock::time_point m_LastReport{};
+		};
+
 		using GltfDataPointer =
 			std::unique_ptr<
 			cgltf_data,
 			decltype(&cgltf_free)>;
 
 		[[nodiscard]] GltfDataPointer LoadGltfDocument(
-			const std::filesystem::path& path)
+			const std::filesystem::path& path,
+			const GltfImportOptions* progress = nullptr)
 		{
 			cgltf_options options{};
 			cgltf_data* rawData = nullptr;
 
 			const std::string pathString = path.string();
 
+			LoadStage parse{progress, "Read and parse document"};
 			const cgltf_result parseResult =
 				cgltf_parse_file(
 					&options,
@@ -182,6 +238,8 @@ namespace ForgeSim::Assets
 				}
 			}
 
+			parse.Finish();
+			LoadStage buffers{progress, "Load buffers"};
 			const cgltf_result bufferResult =
 				cgltf_load_buffers(
 					&options,
@@ -196,6 +254,8 @@ namespace ForgeSim::Assets
 					bufferResult);
 			}
 
+			buffers.Finish();
+			LoadStage validation{progress, "Validate document"};
 			const cgltf_result validationResult =
 				cgltf_validate(data.get());
 
@@ -221,6 +281,7 @@ namespace ForgeSim::Assets
 					path.string());
 			}
 
+			validation.Finish();
 			return data;
 		}
 
@@ -1279,7 +1340,7 @@ namespace ForgeSim::Assets
 		const GltfImportOptions& options)
 	{
 		const GltfDataPointer data =
-			LoadGltfDocument(path);
+			LoadGltfDocument(path, &options);
 
 		SceneAsset sceneAsset;
 
@@ -1316,17 +1377,38 @@ namespace ForgeSim::Assets
 		sceneAsset.textureResources.images.reserve(
 			data->images_count);
 
-		for (cgltf_size imageIndex = 0;
-			imageIndex < data->images_count;
-			++imageIndex)
+		LoadStage images{&options, "Load and decode images", data->images_count};
+		const auto decodeImage = [&](cgltf_size index)
 		{
-			sceneAsset.textureResources.images.push_back(
-				LoadGltfImage(
-					data->images[imageIndex],
-					path,
-					static_cast<std::size_t>(
-						imageIndex)));
+			return LoadGltfImage(data->images[index], path, index);
+		};
+		const auto appendImage = [&](ImageData image)
+		{
+			sceneAsset.textureResources.images.push_back(std::move(image));
+			images.Advance(sceneAsset.textureResources.images.size());
+		};
+		const cgltf_size batchSize = options.parallelImageDecode
+			? std::clamp(std::thread::hardware_concurrency(), 1u, 4u) : 1u;
+		for (cgltf_size first = 0; first < data->images_count;)
+		{
+			const cgltf_size count = std::min(batchSize, data->images_count - first);
+			if (count == 1)
+			{
+				appendImage(decodeImage(first));
+			}
+			else
+			{
+				// Join in source order to preserve image indices and error order.
+				// Futures also join on unwind before the glTF document is freed.
+				std::array<std::future<ImageData>, 4> jobs;
+				for (cgltf_size offset = 0; offset < count; ++offset)
+					jobs[offset] = std::async(std::launch::async, decodeImage, first + offset);
+				for (cgltf_size offset = 0; offset < count; ++offset)
+					appendImage(jobs[offset].get());
+			}
+			first += count;
 		}
+		images.Finish();
 
 		sceneAsset.textureResources.samplers.reserve(
 			data->samplers_count);
@@ -1386,6 +1468,7 @@ namespace ForgeSim::Assets
 		sceneAsset.meshes.reserve(
 			data->meshes_count);
 
+		LoadStage meshes{&options, "Process meshes", data->meshes_count};
 		for (cgltf_size meshIndex = 0;
 			meshIndex < data->meshes_count;
 			++meshIndex)
@@ -1468,7 +1551,9 @@ namespace ForgeSim::Assets
 
 			sceneAsset.meshes.push_back(
 				std::move(destinationMesh));
+			meshes.Advance(meshIndex + 1);
 		}
+		meshes.Finish();
 
 		sceneAsset.nodes.reserve(
 			data->nodes_count);

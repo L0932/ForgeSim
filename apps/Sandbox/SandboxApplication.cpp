@@ -125,7 +125,7 @@ namespace ForgeSim::Sandbox
 			"Scene project root: " + projectRoot.string());
 	}
 
-	void SandboxApplication::Run()
+	void SandboxApplication::Run(std::optional<std::chrono::steady_clock::time_point> startupStart)
 	{
 		if (m_RunAttempted)
 		{
@@ -134,6 +134,7 @@ namespace ForgeSim::Sandbox
 		}
 
 		m_RunAttempted = true;
+		bool firstFramePresented = false;
 		
 		SandboxScene& scene = m_EditorSession->Scene();
 
@@ -1083,6 +1084,13 @@ namespace ForgeSim::Sandbox
 			m_DebugUI.EndFrame();
 
 			m_Window.SwapBuffers();
+			if (startupStart && !firstFramePresented && framebufferExtent.width > 0 && framebufferExtent.height > 0)
+			{
+				firstFramePresented = true;
+				const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now() - *startupStart).count();
+				Core::LogInfo("Startup through first buffer swap: " + std::to_string(elapsed) + " ms");
+			}
 		}
 	}
 

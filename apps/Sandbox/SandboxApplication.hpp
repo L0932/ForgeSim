@@ -7,6 +7,7 @@
 #include "SceneBounds.hpp"
 #include "SceneDocument.hpp"
 
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -42,7 +43,7 @@ namespace ForgeSim::Sandbox
 		SandboxApplication(SandboxApplication&&) = delete;
 		SandboxApplication& operator=(SandboxApplication&&) = delete;
 
-		void Run(); // owns the outer interactive loop
+		void Run(std::optional<std::chrono::steady_clock::time_point> startupStart); // owns the outer interactive loop
 
 		void SaveScene(const std::filesystem::path& path);
 
