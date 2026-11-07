@@ -2,6 +2,7 @@
 #include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
 
+#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -196,6 +197,7 @@ namespace
 
 int main(int argumentCount, char* arguments[])
 {
+    const auto startupStart = std::chrono::steady_clock::now();
     try
     {
         const CommandLine commandLine =
@@ -245,9 +247,15 @@ int main(int argumentCount, char* arguments[])
 
         if (commandLine.scenePath)
         {
+            const auto sceneStart = std::chrono::steady_clock::now();
             document = ForgeSim::Sandbox::LoadSceneDocument(
                 *commandLine.scenePath,
                 projectRoot);
+
+            const auto sceneMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - sceneStart).count();
+            ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
+                " ms (" + commandLine.scenePath->string() + ")");
 
             modelFilename = ResolveSharedModel(
                 *document,
@@ -274,7 +282,7 @@ int main(int argumentCount, char* arguments[])
             }
         };
 
-        app.Run();
+        app.Run(startupStart);
 
         if (commandLine.saveScenePath && app.ShouldSaveOnExit())
         {

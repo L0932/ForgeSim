@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string_view>
+#include <vector>
 
 void RunGltfTextureFallbackTests();
 
@@ -19,6 +20,56 @@ int main()
 		const std::filesystem::path assetDirectory{
 			FORGESIM_TEST_ASSET_DIRECTORY
 		};
+
+		{
+			using namespace ForgeSim::Assets;
+			using Phase = GltfProgressPhase;
+			std::vector<GltfLoadProgress> events;
+			GltfImportOptions options;
+			options.onProgress = [&events](const GltfLoadProgress& event)
+			{
+				events.push_back(event);
+			};
+
+			const auto scene = LoadGltfScene(
+				assetDirectory / "TriangleWithNormalMapWithoutTangents.gltf", options);
+
+			const auto checkStage = [&events](std::string_view name, std::size_t count)
+			{
+				std::optional<Phase> last;
+				std::size_t completed = 0;
+				for (const auto& event : events)
+				{
+					if (event.stage != name)
+						continue;
+					if (event.total != count || event.completed > count ||
+						event.completed < completed ||
+						(!last && (event.phase != Phase::Started || event.completed != 0)) ||
+						(last && (event.phase == Phase::Started || *last == Phase::Completed)))
+						throw std::runtime_error("Invalid glTF stage progress.");
+					last = event.phase;
+					completed = event.completed;
+				}
+				if (last != Phase::Completed || completed != count)
+					throw std::runtime_error("Missing glTF stage completion.");
+			};
+			checkStage("Load and decode images", scene.textureResources.images.size());
+			checkStage("Process meshes", scene.meshes.size());
+
+			events.clear();
+			bool failed = false;
+			try
+			{
+				static_cast<void>(LoadGltfScene(assetDirectory / "MissingProgressFixture.gltf", options));
+			}
+			catch (const std::runtime_error&)
+			{
+				failed = true;
+			}
+			if (!failed || events.size() != 1 || events.front().phase != Phase::Started ||
+				events.front().stage != "Read and parse document")
+				throw std::runtime_error("Failed glTF read reported unexpected progress.");
+		}
 
         // Overrides are per node, even when every instance shares one mesh and material.
         {

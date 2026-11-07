@@ -1,6 +1,9 @@
 #pragma once
 
+#include <chrono>
+#include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <functional>
 #include <string_view>
 
@@ -15,6 +18,17 @@ namespace ForgeSim::Assets
 		SkipUnusableTextures
 	};
 
+	enum class GltfProgressPhase { Started, Advanced, Completed };
+
+	struct GltfLoadProgress
+	{
+		std::string_view stage;
+		GltfProgressPhase phase;
+		std::size_t completed;
+		std::optional<std::size_t> total;
+		std::chrono::milliseconds elapsed;
+	};
+
 	struct GltfImportOptions
 	{
 		GltfTexturePolicy texturePolicy = GltfTexturePolicy::Strict;
@@ -22,6 +36,9 @@ namespace ForgeSim::Assets
 		// Called synchronously for each skipped primitive texture usage.
 		// The message is valid only for the duration of the callback.
 		std::function<void(std::string_view)> onWarning;
+
+		// Optional synchronous observer. A stage starts before any of its work.
+		std::function<void(const GltfLoadProgress&)> onProgress;
 	};
 
 	// Strict preserves the existing import behavior. The opt-in fallback
