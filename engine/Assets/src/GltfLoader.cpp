@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <fstream>
+#include <random>
 #include <future>
 #include <thread>
 #include <cstddef>
@@ -167,10 +170,10 @@ namespace ForgeSim::Assets
 				}
 			}
 
-			void Finish() const
+			void Finish(std::optional<std::size_t> cacheHits = std::nullopt) const
 			{
 				if (Enabled())
-					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now());
+					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheHits);
 			}
 
 		private:
@@ -178,10 +181,11 @@ namespace ForgeSim::Assets
 
 			bool Enabled() const { return m_Options && m_Options->onProgress; }
 
-			void Report(GltfProgressPhase phase, std::size_t completed, Clock::time_point now) const
+			void Report(GltfProgressPhase phase, std::size_t completed, Clock::time_point now,
+				std::optional<std::size_t> cacheHits = std::nullopt) const
 			{
 				m_Options->onProgress({m_Name, phase, completed, m_Total,
-					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start)});
+					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheHits});
 			}
 
 			const GltfImportOptions* m_Options;
@@ -1297,6 +1301,74 @@ namespace ForgeSim::Assets
 				"glTF image has neither a URI nor a buffer view: " +
 				sourceName);
 		}
+
+		// Version this directory when the decoder or on-disk representation changes.
+		// Keys depend on the encoded bytes, so re-exporting geometry alone can reuse images.
+		constexpr std::uint64_t MaxCachedImageBytes = 256ull * 1024 * 1024;
+
+		std::uint64_t HashImageBytes(std::span<const std::uint8_t> bytes)
+		{
+			std::uint64_t hash = 14695981039346656037ull;
+			for (const auto byte : bytes)
+				hash = (hash ^ byte) * 1099511628211ull;
+			return hash;
+		}
+
+		using ImageCacheHeader = std::array<std::uint64_t, 4>;
+
+		std::optional<ImageData> ReadCachedImage(const std::filesystem::path& path)
+		{
+			std::ifstream input(path, std::ios::binary | std::ios::ate);
+			if (!input)
+				return std::nullopt;
+			const auto fileSize = input.tellg();
+			input.seekg(0);
+			ImageCacheHeader header{};
+			if (!input.read(reinterpret_cast<char*>(header.data()), sizeof(header)))
+				return std::nullopt;
+			const auto [width, height, channels, checksum] = header;
+			if (width == 0 || height == 0 || channels != 4 ||
+				width > MaxCachedImageBytes || height > MaxCachedImageBytes)
+				return std::nullopt;
+			const auto size = width * height * channels;
+			if (size > MaxCachedImageBytes ||
+				fileSize != static_cast<std::streamoff>(sizeof(header) + size))
+				return std::nullopt;
+
+			ImageData image;
+			image.width = static_cast<std::uint32_t>(width);
+			image.height = static_cast<std::uint32_t>(height);
+			image.channelCount = static_cast<std::uint32_t>(channels);
+			image.pixels.resize(static_cast<std::size_t>(size));
+			if (!input.read(reinterpret_cast<char*>(image.pixels.data()),
+					static_cast<std::streamsize>(size)) || (HashImageBytes(image.pixels) ^ (width << 32) ^ height) != checksum)
+				return std::nullopt;
+			return image;
+		}
+
+		void WriteCachedImage(const std::filesystem::path& path, const ImageData& image)
+		{
+			if (image.pixels.size() > MaxCachedImageBytes)
+				return;
+			std::random_device random;
+			auto temporary = path;
+			temporary += "." + std::to_string(random()) + "." + std::to_string(random()) + ".tmp";
+			const ImageCacheHeader header{
+				image.width, image.height, image.channelCount,
+				HashImageBytes(image.pixels) ^ (std::uint64_t{image.width} << 32) ^ image.height
+			};
+			std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+			if (!output)
+				return;
+			output.write(reinterpret_cast<const char*>(header.data()), sizeof(header));
+			output.write(reinterpret_cast<const char*>(image.pixels.data()),
+				static_cast<std::streamsize>(image.pixels.size()));
+			output.close();
+			std::error_code error;
+			if (output)
+				std::filesystem::rename(temporary, path, error);
+			std::filesystem::remove(temporary, error);
+		}
 	} // EOF anonymous namespace
 
 	MeshData LoadGltfMesh(const std::filesystem::path& path)
@@ -1378,9 +1450,53 @@ namespace ForgeSim::Assets
 			data->images_count);
 
 		LoadStage images{&options, "Load and decode images", data->images_count};
+		std::filesystem::path cacheDirectory;
+		if (!options.imageCacheDirectory.empty() && data->file_type == cgltf_file_type_glb)
+		{
+			cacheDirectory = options.imageCacheDirectory / "decoded-images-v1";
+			std::error_code error;
+			std::filesystem::create_directories(cacheDirectory, error);
+			if (error)
+				cacheDirectory.clear();
+		}
+		std::atomic_size_t cacheHits{0};
 		const auto decodeImage = [&](cgltf_size index)
 		{
-			return LoadGltfImage(data->images[index], path, index);
+			const auto& source = data->images[index];
+			const auto* view = source.buffer_view;
+			if (cacheDirectory.empty() || source.uri || !view || !view->buffer ||
+				view->buffer != data->buffers || view->buffer->uri || view->size == 0)
+				return LoadGltfImage(source, path, index);
+			const auto* encoded = cgltf_buffer_view_data(view);
+			if (!encoded)
+				return LoadGltfImage(source, path, index);
+			const auto key = HashImageBytes({encoded, view->size});
+			std::filesystem::path entry;
+			try
+			{
+				entry = cacheDirectory / (std::to_string(key) + "-" + std::to_string(view->size));
+				if (auto cached = ReadCachedImage(entry))
+				{
+					cacheHits.fetch_add(1, std::memory_order_relaxed);
+					return std::move(*cached);
+				}
+			}
+			catch (const std::exception&)
+			{
+				// Cache I/O must not prevent a normal import.
+			}
+
+			auto image = LoadGltfImage(source, path, index);
+			try
+			{
+				if (!entry.empty())
+					WriteCachedImage(entry, image);
+			}
+			catch (const std::exception&)
+			{
+				// The decoded image is still usable if the cache cannot be written.
+			}
+			return image;
 		};
 		const auto appendImage = [&](ImageData image)
 		{
@@ -1408,7 +1524,8 @@ namespace ForgeSim::Assets
 			}
 			first += count;
 		}
-		images.Finish();
+		images.Finish(cacheDirectory.empty() ? std::nullopt :
+			std::optional<std::size_t>{cacheHits.load(std::memory_order_relaxed)});
 
 		sceneAsset.textureResources.samplers.reserve(
 			data->samplers_count);

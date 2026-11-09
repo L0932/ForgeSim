@@ -55,7 +55,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] Assets::SceneAsset LoadSceneWithTexturePolicy(
 			const std::filesystem::path& path,
 			Assets::GltfTexturePolicy policy,
-			bool loadingDiagnostics, bool parallelImageDecode,
+			bool loadingDiagnostics, bool parallelImageDecode, bool cacheDecodedImages,
 			const std::function<void(const Assets::GltfLoadProgress&)>& onLoadProgress,
 			const std::function<void(const Assets::GltfLoadProgress&)>& drawStartupProgress = {})
 		{
@@ -66,6 +66,19 @@ namespace ForgeSim::Sandbox
 			std::mutex progressMutex;
 			Assets::GltfLoadProgress latest{"Loading model", Assets::GltfProgressPhase::Started,
 				0, std::nullopt, std::chrono::milliseconds{0}};
+			std::filesystem::path imageCacheDirectory;
+			if (cacheDecodedImages)
+			{
+				try
+				{
+					imageCacheDirectory = EditorSettingsDirectory().parent_path() / "Cache";
+				}
+				catch (const std::exception&)
+				{
+					if (loadingDiagnostics)
+						Core::LogInfo("Decoded image cache unavailable; importing without it.");
+				}
+			}
 			const Assets::GltfImportOptions options{
 				.texturePolicy = policy,
 				.onWarning = [](std::string_view message)
@@ -98,9 +111,12 @@ namespace ForgeSim::Sandbox
 					else
 						message += ": " + std::to_string(progress.elapsed.count()) + " ms";
 
+					if (progress.imageCacheHits)
+						message += " (cache hits: " + std::to_string(*progress.imageCacheHits) + ")";
 					Core::LogInfo(message);
 				},
-				.parallelImageDecode = parallelImageDecode
+				.parallelImageDecode = parallelImageDecode,
+				.imageCacheDirectory = std::move(imageCacheDirectory)
 			};
 			const auto import = [&]() -> Assets::SceneAsset
 			{
@@ -853,12 +869,13 @@ namespace ForgeSim::Sandbox
         , m_TexturePolicy(specification.texturePolicy)
         , m_LoadingDiagnostics(specification.loadingDiagnostics)
         , m_ParallelImageDecode(specification.parallelImageDecode)
+        , m_CacheDecodedImages(specification.cacheDecodedImages)
         , m_OnLoadProgress(specification.onLoadProgress)
         , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
 			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy, m_LoadingDiagnostics,
-				m_ParallelImageDecode, m_OnLoadProgress, specification.drawStartupProgress))
+				m_ParallelImageDecode, m_CacheDecodedImages, m_OnLoadProgress, specification.drawStartupProgress))
 		, m_ObjectLocalBounds(
 			CalculateSceneBounds(
 				m_ObjectSceneAsset))
@@ -2450,7 +2467,7 @@ namespace ForgeSim::Sandbox
 				std::filesystem::absolute(path));
 
 		Assets::SceneAsset replacementScene =
-			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode, m_OnLoadProgress, drawProgress);
+			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages, m_OnLoadProgress, drawProgress);
 
 		const Renderer::AxisAlignedBoundingBox replacementBounds =
 			CalculateSceneBounds(replacementScene);
