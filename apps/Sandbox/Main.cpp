@@ -30,6 +30,7 @@ namespace
         bool allowTextureFallbacks = false;
         bool loadingDiagnostics = false;
         bool parallelImageDecode = true;
+        bool cacheDecodedImages = false;
         bool imageDecodeModeSpecified = false;
 
         std::optional<fs::path> scenePath;
@@ -50,6 +51,12 @@ namespace
             if (argument == "--help" || argument == "-h")
             {
                 result.help = true;
+                continue;
+            }
+
+            if (argument == "--cache-decoded-images")
+            {
+                result.cacheDecodedImages = true;
                 continue;
             }
 
@@ -166,6 +173,7 @@ namespace
             "  --allow-texture-fallbacks\n"
             "                      Skip textures with missing or unusable UV sets.\n"
             "                      Applies to all model loads in this session.\n"
+            "  --cache-decoded-images  Cache decoded GLB images between runs.\n"
             "  --loading-diagnostics   Log scene loading progress and timings.\n"
             "  --parallel-image-decode Decode glTF images concurrently (default).\n"
             "  --serial-image-decode   Decode glTF images one at a time.\n"
@@ -311,7 +319,8 @@ int main(int argumentCount, char* arguments[])
                         ? ForgeSim::Assets::GltfTexturePolicy::SkipUnusableTextures
                         : ForgeSim::Assets::GltfTexturePolicy::Strict,
                     .loadingDiagnostics = commandLine.loadingDiagnostics,
-                    .parallelImageDecode = commandLine.parallelImageDecode
+                    .parallelImageDecode = commandLine.parallelImageDecode,
+                    .cacheDecodedImages = commandLine.cacheDecodedImages
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,

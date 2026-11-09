@@ -27,6 +27,7 @@ namespace ForgeSim::Assets
 		std::size_t completed;
 		std::optional<std::size_t> total;
 		std::chrono::milliseconds elapsed;
+		std::optional<std::size_t> imageCacheHits = std::nullopt;
 	};
 
 	struct GltfImportOptions
@@ -42,6 +43,9 @@ namespace ForgeSim::Assets
 
 		// Decode independent images concurrently while the scene load remains synchronous.
 		bool parallelImageDecode = false;
+
+		// Optional persistent cache for decoded images embedded in GLBs.
+		std::filesystem::path imageCacheDirectory;
 	};
 
 	// Strict preserves the existing import behavior. The opt-in fallback

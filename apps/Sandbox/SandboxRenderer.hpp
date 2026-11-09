@@ -92,6 +92,7 @@ namespace ForgeSim::Sandbox
 			Assets::GltfTexturePolicy::Strict;
 		bool loadingDiagnostics = false;
 		bool parallelImageDecode = true;
+		bool cacheDecodedImages = false;
 
 		// Synchronous notifications on the thread that requested the load.
 		// The observer must not reenter the renderer.
@@ -261,6 +262,7 @@ namespace ForgeSim::Sandbox
 		const Assets::GltfTexturePolicy m_TexturePolicy;
 		const bool m_LoadingDiagnostics;
 		const bool m_ParallelImageDecode;
+		const bool m_CacheDecodedImages;
 		const std::function<void(const Assets::GltfLoadProgress&)> m_OnLoadProgress;
 		std::filesystem::path m_ObjectModelPath;
         std::optional<std::filesystem::path> m_EnvironmentPath;
