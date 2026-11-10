@@ -93,6 +93,7 @@ namespace ForgeSim::Sandbox
 		bool loadingDiagnostics = false;
 		bool parallelImageDecode = true;
 		bool cacheDecodedImages = false;
+		std::uint64_t imageCacheBudgetBytes = Assets::DefaultImageCacheBudgetMiB * Assets::ImageCacheMiB;
 
 		// Synchronous notifications on the thread that requested the load.
 		// The observer must not reenter the renderer.
@@ -263,6 +264,7 @@ namespace ForgeSim::Sandbox
 		const bool m_LoadingDiagnostics;
 		const bool m_ParallelImageDecode;
 		const bool m_CacheDecodedImages;
+		const std::uint64_t m_ImageCacheBudgetBytes;
 		const std::function<void(const Assets::GltfLoadProgress&)> m_OnLoadProgress;
 		std::filesystem::path m_ObjectModelPath;
         std::optional<std::filesystem::path> m_EnvironmentPath;

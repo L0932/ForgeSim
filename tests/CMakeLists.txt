@@ -295,6 +295,7 @@ target_sources(
     ForgeSimGltfLoaderTests
     PRIVATE
         GltfLoaderTest.cpp
+        GltfImageCacheTest.cpp
         GltfTextureFallbackTest.cpp
 )
 

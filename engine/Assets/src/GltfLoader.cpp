@@ -2,9 +2,7 @@
 
 #include <algorithm>
 #include <array>
-#include <atomic>
 #include <fstream>
-#include <random>
 #include <future>
 #include <thread>
 #include <cstddef>
@@ -15,6 +13,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -28,6 +27,8 @@
 
 #include <ForgeSim/Assets/ImageLoader.hpp>
 #include <ForgeSim/Assets/MeshProcessing.hpp>
+
+#include "DecodedImageCacheBudget.hpp"
 
 namespace ForgeSim::Assets
 {
@@ -170,10 +171,10 @@ namespace ForgeSim::Assets
 				}
 			}
 
-			void Finish(std::optional<std::size_t> cacheHits = std::nullopt) const
+			void Finish(std::optional<GltfImageCacheStats> cacheStats = std::nullopt) const
 			{
 				if (Enabled())
-					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheHits);
+					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheStats);
 			}
 
 		private:
@@ -182,10 +183,10 @@ namespace ForgeSim::Assets
 			bool Enabled() const { return m_Options && m_Options->onProgress; }
 
 			void Report(GltfProgressPhase phase, std::size_t completed, Clock::time_point now,
-				std::optional<std::size_t> cacheHits = std::nullopt) const
+				std::optional<GltfImageCacheStats> cacheStats = std::nullopt) const
 			{
 				m_Options->onProgress({m_Name, phase, completed, m_Total,
-					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheHits});
+					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheStats});
 			}
 
 			const GltfImportOptions* m_Options;
@@ -1346,29 +1347,140 @@ namespace ForgeSim::Assets
 			return image;
 		}
 
-		void WriteCachedImage(const std::filesystem::path& path, const ImageData& image)
+		class DecodedImageCache
 		{
-			if (image.pixels.size() > MaxCachedImageBytes)
-				return;
-			std::random_device random;
-			auto temporary = path;
-			temporary += "." + std::to_string(random()) + "." + std::to_string(random()) + ".tmp";
-			const ImageCacheHeader header{
-				image.width, image.height, image.channelCount,
-				HashImageBytes(image.pixels) ^ (std::uint64_t{image.width} << 32) ^ image.height
-			};
-			std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-			if (!output)
-				return;
-			output.write(reinterpret_cast<const char*>(header.data()), sizeof(header));
-			output.write(reinterpret_cast<const char*>(image.pixels.data()),
-				static_cast<std::streamsize>(image.pixels.size()));
-			output.close();
-			std::error_code error;
-			if (output)
-				std::filesystem::rename(temporary, path, error);
-			std::filesystem::remove(temporary, error);
-		}
+		public:
+			DecodedImageCache(const std::filesystem::path& root, std::uint64_t limit)
+				: m_Budget(limit)
+			{
+				m_Stats.budgetBytes = limit;
+				try
+				{
+					m_Directory = root / "decoded-images-v1";
+					std::filesystem::create_directories(m_Directory);
+					m_Lease.emplace(m_Directory / ".budget.lock");
+					if (m_Lease->Acquired() && m_Budget.Scan(m_Directory))
+					{
+						m_Stats.bytesBefore = m_Budget.Size();
+						m_Stats.available = m_Budget.MakeRoom();
+					}
+				}
+				catch (const std::exception&)
+				{
+					// Cache initialization must not prevent a normal import.
+				}
+			}
+
+			bool Available() const noexcept { return m_Stats.available; }
+
+			std::filesystem::path PathFor(std::span<const std::uint8_t> encoded) const
+			{
+				return m_Directory / (std::to_string(HashImageBytes(encoded)) +
+					"-" + std::to_string(encoded.size()));
+			}
+
+			std::optional<ImageData> Read(const std::filesystem::path& path)
+			{
+				{
+					const std::scoped_lock lock{m_Mutex};
+					if (!m_Budget.Contains(path))
+					{
+						++m_Stats.misses;
+						return std::nullopt;
+					}
+				}
+
+				// Eviction can race this read. A missing or incomplete read falls
+				// back to decode; published entries are always complete.
+				std::optional<ImageData> image;
+				try
+				{
+					image = ReadCachedImage(path);
+				}
+				catch (const std::exception&)
+				{
+				}
+				const std::scoped_lock lock{m_Mutex};
+				if (image)
+				{
+					m_Budget.Touch(path);
+					++m_Stats.hits;
+				}
+				else
+					++m_Stats.misses;
+				return image;
+			}
+
+			void Store(const std::filesystem::path& path, const ImageData& image)
+			{
+				const auto bytes = sizeof(ImageCacheHeader) + image.pixels.size();
+				const std::scoped_lock lock{m_Mutex};
+				if (image.pixels.size() > MaxCachedImageBytes || bytes > m_Stats.budgetBytes)
+				{
+					++m_Stats.skippedWrites;
+					return;
+				}
+
+				bool committed = false;
+				bool ownsTemporary = false;
+				std::filesystem::path temporary;
+				try
+				{
+					temporary = path;
+					temporary += ".pending";
+					// The directory lease and mutex give this staging name one owner.
+					const auto staging = std::filesystem::symlink_status(temporary);
+					if (std::filesystem::exists(staging) ||
+						(!m_Budget.Contains(path) &&
+							std::filesystem::exists(std::filesystem::symlink_status(path))))
+					{
+						++m_Stats.skippedWrites;
+						return;
+					}
+					ownsTemporary = true;
+					const ImageCacheHeader header{
+						image.width, image.height, image.channelCount,
+						HashImageBytes(image.pixels) ^ (std::uint64_t{image.width} << 32) ^ image.height
+					};
+					std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+					if (output)
+					{
+						output.write(reinterpret_cast<const char*>(header.data()), sizeof(header));
+						output.write(reinterpret_cast<const char*>(image.pixels.data()),
+							static_cast<std::streamsize>(image.pixels.size()));
+						output.close();
+						committed = output && m_Budget.MakeRoom(path, bytes) &&
+							m_Budget.Commit(temporary, path, bytes);
+					}
+				}
+				catch (const std::exception&)
+				{
+					// The decoded image remains usable.
+				}
+				if (!committed)
+				{
+					++m_Stats.skippedWrites;
+					std::error_code ignored;
+					if (ownsTemporary)
+						std::filesystem::remove(temporary, ignored);
+				}
+			}
+
+			GltfImageCacheStats Finish() const
+			{
+				auto stats = m_Stats;
+				stats.bytesAfter = m_Budget.Size();
+				stats.evictions = m_Budget.Evictions();
+				return stats;
+			}
+
+		private:
+			std::filesystem::path m_Directory;
+			std::optional<Detail::DecodedImageCacheLease> m_Lease;
+			Detail::DecodedImageCacheBudget m_Budget;
+			std::mutex m_Mutex;
+			GltfImageCacheStats m_Stats;
+		};
 	} // EOF anonymous namespace
 
 	MeshData LoadGltfMesh(const std::filesystem::path& path)
@@ -1450,36 +1562,26 @@ namespace ForgeSim::Assets
 			data->images_count);
 
 		LoadStage images{&options, "Load and decode images", data->images_count};
-		std::filesystem::path cacheDirectory;
+		std::optional<DecodedImageCache> cache;
 		if (!options.imageCacheDirectory.empty() && data->file_type == cgltf_file_type_glb)
-		{
-			cacheDirectory = options.imageCacheDirectory / "decoded-images-v1";
-			std::error_code error;
-			std::filesystem::create_directories(cacheDirectory, error);
-			if (error)
-				cacheDirectory.clear();
-		}
-		std::atomic_size_t cacheHits{0};
+			cache.emplace(options.imageCacheDirectory, options.imageCacheBudgetBytes);
 		const auto decodeImage = [&](cgltf_size index)
 		{
 			const auto& source = data->images[index];
 			const auto* view = source.buffer_view;
-			if (cacheDirectory.empty() || source.uri || !view || !view->buffer ||
+			if (!cache || !cache->Available() || source.uri || !view || !view->buffer ||
 				view->buffer != data->buffers || view->buffer->uri || view->size == 0)
 				return LoadGltfImage(source, path, index);
 			const auto* encoded = cgltf_buffer_view_data(view);
 			if (!encoded)
 				return LoadGltfImage(source, path, index);
-			const auto key = HashImageBytes({encoded, view->size});
+
 			std::filesystem::path entry;
 			try
 			{
-				entry = cacheDirectory / (std::to_string(key) + "-" + std::to_string(view->size));
-				if (auto cached = ReadCachedImage(entry))
-				{
-					cacheHits.fetch_add(1, std::memory_order_relaxed);
+				entry = cache->PathFor({encoded, view->size});
+				if (auto cached = cache->Read(entry))
 					return std::move(*cached);
-				}
 			}
 			catch (const std::exception&)
 			{
@@ -1487,15 +1589,8 @@ namespace ForgeSim::Assets
 			}
 
 			auto image = LoadGltfImage(source, path, index);
-			try
-			{
-				if (!entry.empty())
-					WriteCachedImage(entry, image);
-			}
-			catch (const std::exception&)
-			{
-				// The decoded image is still usable if the cache cannot be written.
-			}
+			if (!entry.empty())
+				cache->Store(entry, image);
 			return image;
 		};
 		const auto appendImage = [&](ImageData image)
@@ -1524,8 +1619,9 @@ namespace ForgeSim::Assets
 			}
 			first += count;
 		}
-		images.Finish(cacheDirectory.empty() ? std::nullopt :
-			std::optional<std::size_t>{cacheHits.load(std::memory_order_relaxed)});
+		const auto cacheStats = cache ? std::optional{cache->Finish()} : std::nullopt;
+		cache.reset();
+		images.Finish(cacheStats);
 
 		sceneAsset.textureResources.samplers.reserve(
 			data->samplers_count);

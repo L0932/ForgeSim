@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <functional>
@@ -20,6 +21,21 @@ namespace ForgeSim::Assets
 
 	enum class GltfProgressPhase { Started, Advanced, Completed };
 
+	inline constexpr std::uint64_t ImageCacheMiB = 1024ull * 1024;
+	inline constexpr std::uint64_t DefaultImageCacheBudgetMiB = 4096;
+
+	struct GltfImageCacheStats
+	{
+		std::uint64_t budgetBytes = 0;
+		std::uint64_t bytesBefore = 0;
+		std::uint64_t bytesAfter = 0;
+		std::size_t hits = 0;
+		std::size_t misses = 0;
+		std::size_t evictions = 0;
+		std::size_t skippedWrites = 0;
+		bool available = false;
+	};
+
 	struct GltfLoadProgress
 	{
 		std::string_view stage;
@@ -27,7 +43,7 @@ namespace ForgeSim::Assets
 		std::size_t completed;
 		std::optional<std::size_t> total;
 		std::chrono::milliseconds elapsed;
-		std::optional<std::size_t> imageCacheHits = std::nullopt;
+		std::optional<GltfImageCacheStats> imageCache = std::nullopt;
 	};
 
 	struct GltfImportOptions
@@ -46,6 +62,7 @@ namespace ForgeSim::Assets
 
 		// Optional persistent cache for decoded images embedded in GLBs.
 		std::filesystem::path imageCacheDirectory;
+		std::uint64_t imageCacheBudgetBytes = DefaultImageCacheBudgetMiB * ImageCacheMiB;
 	};
 
 	// Strict preserves the existing import behavior. The opt-in fallback
