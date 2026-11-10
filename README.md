@@ -195,6 +195,20 @@ Launch the prepared scene with:
 The generated scene copy is intended for local development and should
 not be committed to the ForgeSim repository.
 
+### Decoded image cache
+
+Use `--cache-decoded-images` to reuse decoded textures embedded in GLBs.
+The shared cache defaults to **4096 MiB** (4 GiB). Add
+`--image-cache-budget-mib 1024` to set a smaller limit for the session.
+The next eligible GLB load applies that limit to existing entries, evicting the
+least recently used first. The limit counts committed entries; a temporary file
+can use additional space until it is published or removed. A scene still loads
+from its source when the cache is busy, full, or unavailable.
+
+With `--loading-diagnostics`, the image stage reports hits, misses, evictions,
+skipped writes, and the byte budget and usage. Cache-disabled runs and
+external `.gltf` textures bypass the cache.
+
 ## Rendering Color Management
 
 ForgeSim performs scene lighting in linear color space.

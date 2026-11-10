@@ -2,7 +2,9 @@
 #include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
 
+#include <charconv>
 #include <chrono>
+#include <limits>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -31,6 +33,7 @@ namespace
         bool loadingDiagnostics = false;
         bool parallelImageDecode = true;
         bool cacheDecodedImages = false;
+        std::optional<std::uint64_t> imageCacheBudgetMiB;
         bool imageDecodeModeSpecified = false;
 
         std::optional<fs::path> scenePath;
@@ -57,6 +60,20 @@ namespace
             if (argument == "--cache-decoded-images")
             {
                 result.cacheDecodedImages = true;
+                continue;
+            }
+
+            if (argument == "--image-cache-budget-mib")
+            {
+                if (result.imageCacheBudgetMiB || index + 1 >= argumentCount)
+                    throw std::invalid_argument("Specify --image-cache-budget-mib once with a positive integer.");
+                const std::string_view value{arguments[++index]};
+                std::uint64_t mib = 0;
+                const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), mib);
+                if (error != std::errc{} || end != value.data() + value.size() || mib == 0 ||
+                    mib > std::numeric_limits<std::uint64_t>::max() / ForgeSim::Assets::ImageCacheMiB)
+                    throw std::invalid_argument("--image-cache-budget-mib requires a positive integer MiB value.");
+                result.imageCacheBudgetMiB = mib;
                 continue;
             }
 
@@ -158,6 +175,9 @@ namespace
                 "Specify either a model path or --scene.");
         }
 
+        if (result.imageCacheBudgetMiB && !result.cacheDecodedImages)
+            throw std::invalid_argument("--image-cache-budget-mib requires --cache-decoded-images.");
+
         return result;
     }
 
@@ -174,6 +194,7 @@ namespace
             "                      Skip textures with missing or unusable UV sets.\n"
             "                      Applies to all model loads in this session.\n"
             "  --cache-decoded-images  Cache decoded GLB images between runs.\n"
+            "  --image-cache-budget-mib <MiB>  Set the decoded image cache budget (default: 4096).\n"
             "  --loading-diagnostics   Log scene loading progress and timings.\n"
             "  --parallel-image-decode Decode glTF images concurrently (default).\n"
             "  --serial-image-decode   Decode glTF images one at a time.\n"
@@ -320,7 +341,9 @@ int main(int argumentCount, char* arguments[])
                         : ForgeSim::Assets::GltfTexturePolicy::Strict,
                     .loadingDiagnostics = commandLine.loadingDiagnostics,
                     .parallelImageDecode = commandLine.parallelImageDecode,
-                    .cacheDecodedImages = commandLine.cacheDecodedImages
+                    .cacheDecodedImages = commandLine.cacheDecodedImages,
+                    .imageCacheBudgetBytes = commandLine.imageCacheBudgetMiB.value_or(
+                        ForgeSim::Assets::DefaultImageCacheBudgetMiB) * ForgeSim::Assets::ImageCacheMiB
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,

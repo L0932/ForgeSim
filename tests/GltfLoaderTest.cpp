@@ -10,12 +10,14 @@
 #include <vector>
 
 void RunGltfTextureFallbackTests();
+void RunGltfImageCacheTests();
 
 int main()
 {
 	try
 	{
 		RunGltfTextureFallbackTests();
+		RunGltfImageCacheTests();
 
 		const std::filesystem::path assetDirectory{
 			FORGESIM_TEST_ASSET_DIRECTORY
