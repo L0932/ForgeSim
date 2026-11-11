@@ -632,6 +632,32 @@ namespace
             restored.spotLights.empty(),
             "Empty collections changed during loading.");
     }
+    void TestPivotPersistence()
+    {
+        SceneDocument document;
+        document.objects.push_back(SceneObjectData{
+            .id = 1, .name = "Offset model", .transform = Transform{},
+            .modelPath = "assets/models/OffsetHierarchy.gltf"});
+        document.objects[0].transform.pivot = {5.0f, 2.0f, -1.0f};
+        const auto text = SerializeSceneDocument(document);
+        const auto restored = DeserializeSceneDocument(text);
+        Require(restored.objects[0].transform.pivot == document.objects[0].transform.pivot,
+            "Object pivot did not survive scene serialization.");
+        auto legacy = Json::parse(text);
+        legacy["version"] = 2;
+        legacy["objects"][0]["transform"].erase("pivot");
+        Require(DeserializeSceneDocument(legacy.dump()).objects[0].transform.pivot == glm::vec3{0.0f},
+            "Version 2 scene did not retain authored-origin behavior.");
+        auto invalid = Json::parse(text);
+        invalid["objects"][0]["transform"]["pivot"] = Json::array({0, "invalid", 0});
+        ExpectReadError(invalid.dump(), "objects[0].transform.pivot");
+        document.objects[0].transform.pivot.x = std::numeric_limits<float>::infinity();
+        bool rejected = false;
+        try { static_cast<void>(SerializeSceneDocument(document)); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        Require(rejected, "Non-finite object pivot was serialized.");
+    }
+
 }
 
 int main()
@@ -651,6 +677,7 @@ int main()
         TestRenderingRoundTrip();
         TestMissingRenderingUsesDefaults();
         TestMalformedRendering();
+        TestPivotPersistence();
 
         return EXIT_SUCCESS;
     }

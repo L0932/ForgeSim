@@ -12,7 +12,7 @@
 
 namespace ForgeSim::Sandbox
 {
-    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 2;
+    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 3;
 
     struct SceneObjectData
     {

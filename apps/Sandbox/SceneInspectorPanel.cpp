@@ -2,6 +2,7 @@
 #include "SandboxScene.hpp"
 #include "SceneLightEditing.hpp"
 #include "SceneSelection.hpp"
+#include "SceneTransformEditor.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -109,6 +110,23 @@ namespace ForgeSim::Sandbox
         ImGui::TextWrapped(
             "Model: %s",
             object->modelPath.c_str());
+
+        if (context.transformEditor)
+        {
+            ImGui::SeparatorText("Pivot");
+            ImGui::TextWrapped("Pivot: %.4f, %.4f, %.4f",
+                object->transform.pivot.x, object->transform.pivot.y, object->transform.pivot.z);
+            if (ImGui::Button("Use bounds center", ImVec2(-1.0f, 0.0f)))
+            {
+                // Half each endpoint separately to avoid overflowing their sum.
+                const glm::vec3 center = context.modelBounds.minimum * 0.5f +
+                    context.modelBounds.maximum * 0.5f;
+                static_cast<void>(context.transformEditor->SetObjectPivot(*object, center));
+            }
+            if (ImGui::Button("Use authored origin", ImVec2(-1.0f, 0.0f)))
+                static_cast<void>(context.transformEditor->SetObjectPivot(*object, glm::vec3{0.0f}));
+            ImGui::TextWrapped("Changing the pivot preserves placement. Position locates the pivot.");
+        }
 
         ImGui::SeparatorText("Transform");
 

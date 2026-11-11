@@ -53,6 +53,22 @@ namespace
             "Translation, rotation, or signed scale bounds are wrong.");
     }
 
+    void TestPivotPreservesBounds()
+    {
+        const ForgeSim::Renderer::AxisAlignedBoundingBox local{
+            .minimum = {4.0f, 1.0f, -1.0f}, .maximum = {6.0f, 3.0f, 1.0f}};
+        std::array<SandboxObject, 1> objects{};
+        objects[0].transform.position = {10.0f, 20.0f, 30.0f};
+        objects[0].transform.rotationRadians = {0.2f, 0.5f, -0.3f};
+        objects[0].transform.scale = {-2.0f, 3.0f, 0.5f};
+        const auto before = CalculateSceneBounds(objects, local);
+        Require(objects[0].transform.TrySetPivot({5.0f, 2.0f, 0.0f}),
+            "Could not select the bounds-centered pivot.");
+        const auto after = CalculateSceneBounds(objects, local);
+        Require(Near(before.minimum, after.minimum) && Near(before.maximum, after.maximum),
+            "Choosing a pivot changed the world-space bounds.");
+    }
+
     void TestMultipleObjects()
     {
         const ForgeSim::Renderer::AxisAlignedBoundingBox local{
@@ -94,6 +110,7 @@ int main()
     try
     {
         TestTransformedBounds();
+        TestPivotPreservesBounds();
         TestMultipleObjects();
         TestEmptyScene();
 

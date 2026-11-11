@@ -207,6 +207,18 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
+    bool SceneTransformEditor::SetObjectPivot(SandboxObject& object, const glm::vec3& pivot)
+    {
+        if (IsActive() || m_PendingEdit || object.transform.pivot == pivot)
+            return false;
+        Transform after = object.transform;
+        if (!after.TrySetPivot(pivot)) return false;
+        m_History.RecordApplied(ObjectTransformEdit{
+            .objectId = object.id, .before = object.transform, .after = after});
+        object.transform = after;
+        return true;
+    }
+
 	void SceneTransformEditor::BeginFrame()
 	{
 		m_Gizmo.BeginFrame();
@@ -225,7 +237,7 @@ namespace ForgeSim::Sandbox
 		}
 
 		Transform after = before;
-		glm::mat4 matrix = before.ModelMatrix();
+		glm::mat4 matrix = before.GizmoMatrix();
 
 		const bool operationSupported =
 			SupportsOperation(target, context.operation);

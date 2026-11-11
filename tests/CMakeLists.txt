@@ -1361,3 +1361,18 @@ add_test(
     NAME ForgeSim.Sandbox.ShowcasePersistence
     COMMAND ForgeSimShowcasePersistenceTests
 )
+
+# Imported-node transforms are pure math and need no graphics context.
+add_executable(ForgeSimSceneNodeTransformTests SceneNodeTransformTest.cpp)
+target_include_directories(ForgeSimSceneNodeTransformTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSceneNodeTransformTests PRIVATE
+    ForgeSim::Assets glm::glm-header-only)
+target_compile_definitions(ForgeSimSceneNodeTransformTests PRIVATE
+    FORGESIM_TEST_ASSET_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+target_compile_features(ForgeSimSceneNodeTransformTests PRIVATE cxx_std_20)
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimSceneNodeTransformTests)
+set_target_properties(ForgeSimSceneNodeTransformTests PROPERTIES
+    FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SceneNodeTransform
+    COMMAND ForgeSimSceneNodeTransformTests)

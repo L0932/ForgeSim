@@ -13,6 +13,7 @@ namespace ForgeSim::Sandbox
 {
 	class SandboxScene;
 	class SceneSelection;
+    class SceneTransformEditor;
 
 	struct SceneInspectorPanelContext
 	{
@@ -21,6 +22,7 @@ namespace ForgeSim::Sandbox
 		const Renderer::AxisAlignedBoundingBox& modelBounds;
 
 		bool editingDisabled = false;
+        SceneTransformEditor* transformEditor = nullptr;
 	};
 
 	class SceneInspectorPanel final
