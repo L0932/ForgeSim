@@ -1,6 +1,8 @@
 #include "EditorWorkspace.hpp"
+#include "EditorDockLayout.hpp"
 #include "SandboxPaths.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -86,10 +88,20 @@ namespace ForgeSim::Sandbox
             &left,
             &center);
 
+        // Size the Inspector against the whole workspace, rather than taking
+        // a fixed fraction of the space remaining after the Hierarchy split.
+        // Limit its share on small windows so the Scene remains usable.
+        const float remainingWidth = ImGui::DockBuilderGetNode(center)->Size.x;
+        const float preferredInspectorWidth = std::clamp(
+            viewport->WorkSize.x * 0.24f, 360.0f, 480.0f);
+        const float inspectorRatio = std::min(
+            preferredInspectorWidth / std::max(remainingWidth, 1.0f),
+            0.45f);
+
         ImGui::DockBuilderSplitNode(
             center,
             ImGuiDir_Right,
-            0.28f,
+            inspectorRatio,
             &right,
             &center);
 
@@ -193,6 +205,8 @@ namespace ForgeSim::Sandbox
         {
             BuildDefaultLayout(dockspaceId);
         }
+
+        ResizeEditorDockLayout(dockspaceId, ImGui::GetMainViewport()->WorkSize);
 
         ImGui::DockSpaceOverViewport(
             dockspaceId,

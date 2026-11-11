@@ -59,6 +59,8 @@ namespace ForgeSim::Platform
 		const WindowSpecification& specification
 	)
 	{
+		m_MaximizeOnShow = specification.startMaximized;
+
 		if (!glfwInit())
 		{
 			throw std::runtime_error("Failed to initialize GLFW");
@@ -280,6 +282,11 @@ namespace ForgeSim::Platform
 	void GlfwWindow::Show()
 	{
 		glfwShowWindow(m_Window);
+		if (m_MaximizeOnShow)
+		{
+			glfwMaximizeWindow(m_Window);
+			m_MaximizeOnShow = false;
+		}
 	}
 
 	void GlfwWindow::PollEvents()

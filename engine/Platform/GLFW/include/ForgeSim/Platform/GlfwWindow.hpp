@@ -24,6 +24,7 @@ namespace ForgeSim::Platform
 		int height;
 		std::string title;
 		bool verticalSync = true;
+		bool startMaximized = false;
 	};
 
 	struct FramebufferExtent {
@@ -75,6 +76,7 @@ namespace ForgeSim::Platform
 		
 	private:
 		GLFWwindow* m_Window = nullptr;
+		bool m_MaximizeOnShow = false;
 		InputState m_InputState;
 	};
 }
