@@ -41,6 +41,9 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool IsActive() const noexcept;
 		[[nodiscard]] bool SuppressesPicking() const noexcept;
 
+        [[nodiscard]] bool CanUndo() const noexcept;
+        [[nodiscard]] bool CanRedo() const noexcept;
+
 		[[nodiscard]] bool Undo(SandboxScene& scene);
 		[[nodiscard]] bool Redo(SandboxScene& scene);
 

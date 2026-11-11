@@ -735,9 +735,9 @@ namespace ForgeSim::Sandbox
 			ImGui::GetDrawData());
 	}
 
-	void SandboxDebugUI::BeginWorkspace()
+	void SandboxDebugUI::BeginWorkspace(const std::function<void()>& drawMainToolbar)
 	{
-		if (m_Workspace.Draw())
+		if (m_Workspace.Draw(drawMainToolbar))
 		{
 			m_IsVisible = true;
 		}

@@ -2,6 +2,8 @@
 #include "SandboxPaths.hpp"
 
 #include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -25,6 +27,15 @@ namespace ForgeSim::Sandbox
         ImGui::GetIO().IniFilename = m_SettingsPath.c_str();
 
         m_ThemePath = settingsPath.parent_path() / "editor-theme.json";
+        m_ViewPath = settingsPath.parent_path() / "editor-view.json";
+        try
+        {
+            std::ifstream input(m_ViewPath);
+            const auto saved = nlohmann::json::parse(input, nullptr, false);
+            if (saved.is_object() && saved.value("version", 0) == 1)
+                m_ShowMainToolbar = saved.value("showMainToolbar", true);
+        }
+        catch (...) { /* Invalid local preferences keep the default view. */ }
         m_Theme = LoadEditorTheme(m_ThemePath);
         LoadEditorFont(BundledAssetDirectory() / "fonts" / "Karla-Regular.ttf");
         ApplyEditorTheme(m_Theme);
@@ -99,7 +110,7 @@ namespace ForgeSim::Sandbox
         ImGui::DockBuilderFinish(dockspaceId);
     }
 
-    bool EditorWorkspace::Draw()
+    bool EditorWorkspace::Draw(const std::function<void()>& drawMainToolbar)
     {
         // Apply outside an open menu/window so its layout uses one palette
         // for the entire frame. Changes take effect on the following frame.
@@ -119,6 +130,19 @@ namespace ForgeSim::Sandbox
         {
             if (ImGui::BeginMenu("View"))
             {
+                if (ImGui::MenuItem("Show Main Toolbar", nullptr, &m_ShowMainToolbar))
+                {
+                    try
+                    {
+                        std::ofstream output(m_ViewPath, std::ios::trunc);
+                        output << nlohmann::json{{"version", 1},
+                            {"showMainToolbar", m_ShowMainToolbar}}.dump(2) << '\n';
+                        output.close();
+                        if (!output) Core::LogWarning("Could not save editor view preference.");
+                    }
+                    catch (...) { Core::LogWarning("Could not save editor view preference."); }
+                }
+                ImGui::Separator();
                 resetRequested =
                     ImGui::MenuItem("Reset Layout");
 
@@ -141,6 +165,10 @@ namespace ForgeSim::Sandbox
 
             ImGui::EndMainMenuBar();
         }
+
+        // Reserve toolbar space after menu submission and before the dockspace.
+        if (m_ShowMainToolbar && drawMainToolbar)
+            drawMainToolbar();
 
         if (m_ShowStyleEditor)
         {

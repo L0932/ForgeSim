@@ -474,6 +474,16 @@ namespace ForgeSim::Sandbox
 			m_Interaction.active;
 	}
 
+    bool SceneTransformEditor::CanUndo() const noexcept
+    {
+        return !m_WasActive && !IsActive() && !m_PendingEdit && m_History.CanUndo();
+    }
+
+    bool SceneTransformEditor::CanRedo() const noexcept
+    {
+        return !m_WasActive && !IsActive() && !m_PendingEdit && m_History.CanRedo();
+    }
+
 	bool SceneTransformEditor::Undo(SandboxScene& scene)
 	{
 		if (m_WasActive || IsActive())

@@ -1,4 +1,5 @@
 #include "SceneFilePanel.hpp"
+#include "EditorMainToolbar.hpp"
 
 #include <string>
 #include <utility>
@@ -50,6 +51,14 @@ namespace ForgeSim::Sandbox
         }
 
         ImGui::EndMainMenuBar();
+    }
+
+    SceneToolbarRequest SceneFilePanel::DrawToolbar(const SceneToolbarContext& context)
+    {
+        const auto result = DrawEditorMainToolbar(context);
+        if (result.fileAction != SceneFileAction::None)
+            m_MenuAction = result.fileAction;
+        return {result.undo, result.redo};
     }
 
     SceneFileRequest SceneFilePanel::Draw(

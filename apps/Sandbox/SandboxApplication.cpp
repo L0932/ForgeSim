@@ -475,7 +475,19 @@ namespace ForgeSim::Sandbox
 					Platform::MouseButton::Right).held,
 				m_EditorSession->ScenePath().has_value());
 
-			m_DebugUI.BeginWorkspace();
+            SceneToolbarRequest toolbarRequest;
+            m_DebugUI.BeginWorkspace([&]
+            {
+                toolbarRequest = sceneFilePanel.DrawToolbar(SceneToolbarContext{
+                    .actionsAllowed = !changePending && !transformEditor.IsActive() &&
+                        !input.GetMouseButtonState(Platform::MouseButton::Right).held,
+                    .hasScenePath = m_EditorSession->ScenePath().has_value(),
+                    .canUndo = transformEditor.CanUndo(),
+                    .canRedo = transformEditor.CanRedo(),
+                    .sceneName = scene.Name(),
+                    .dirty = m_EditorSession->HasUnsavedChanges()
+                });
+            });
 
 			TransformEditorUIState editorUI =
 				m_DebugUI.UpdateTransformEditorShortcuts(
@@ -769,11 +781,11 @@ namespace ForgeSim::Sandbox
 					.navigationActive = changePending|| rightMouseDown
 				});
 
-			if (!changePending&& editorUI.undoRequested)
+			if (!changePending && (editorUI.undoRequested || toolbarRequest.undo))
 			{
 				static_cast<void>(transformEditor.Undo(scene));
 			}
-			else if (!changePending&& editorUI.redoRequested)
+			else if (!changePending && (editorUI.redoRequested || toolbarRequest.redo))
 			{
 				static_cast<void>(transformEditor.Redo(scene));
 			}
