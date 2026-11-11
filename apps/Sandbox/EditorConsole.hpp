@@ -6,6 +6,7 @@
 #include <deque>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <imgui.h>
 #include <ForgeSim/Core/Log.hpp>
 #include <ForgeSim/Build/Version.hpp>
@@ -23,9 +24,8 @@ namespace ForgeSim::Sandbox
             const auto incoming = Core::ReadLogEntries(m_LastSequence);
             for (const auto& entry : incoming)
             {
-                m_Entries.push_back(entry);
+                Append({entry, false});
                 m_LastSequence = entry.sequence;
-                if (m_Entries.size() > Core::LogHistoryCapacity) m_Entries.pop_front();
             }
 
             // Preserve the old Scene File window ID and its saved dock placement.
@@ -71,11 +71,12 @@ namespace ForgeSim::Sandbox
                     bool visible = false;
                     const auto& background = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
                     const bool light = background.x + background.y + background.z > 1.5f;
-                    for (const auto& entry : m_Entries)
+                    for (const auto& row : m_Entries)
                     {
-                        if ((entry.level == Core::LogLevel::Info && !m_ShowInfo) ||
+                        const auto& entry = row.log;
+                        if ((!row.command && ((entry.level == Core::LogLevel::Info && !m_ShowInfo) ||
                             (entry.level == Core::LogLevel::Warning && !m_ShowWarnings) ||
-                            (entry.level == Core::LogLevel::Error && !m_ShowErrors) ||
+                            (entry.level == Core::LogLevel::Error && !m_ShowErrors))) ||
                             !m_Filter.PassFilter(entry.message.c_str())) continue;
                         visible = true;
                         auto color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
@@ -91,10 +92,16 @@ namespace ForgeSim::Sandbox
                             color = light ? ImVec4(.70f,.08f,.08f,1) : ImVec4(1,.40f,.37f,1);
                         }
                         ImGui::PushStyleColor(ImGuiCol_Text, color);
-                        ImGui::TextWrapped("[%s] %s", level, entry.message.c_str());
+                        if (row.command)
+                            ImGui::TextWrapped("%s", entry.message.c_str());
+                        else
+                            ImGui::TextWrapped("[%s] %s", level, entry.message.c_str());
                         ImGui::PopStyleColor();
-                        ImGui::SetItemTooltip("%s:%u", entry.sourceFile.c_str(),
-                            static_cast<unsigned int>(entry.sourceLine));
+                        if (row.command)
+                            ImGui::SetItemTooltip("Submitted command");
+                        else
+                            ImGui::SetItemTooltip("%s:%u", entry.sourceFile.c_str(),
+                                static_cast<unsigned int>(entry.sourceLine));
                     }
                     if (!visible) ImGui::TextDisabled("No matching messages.");
                     if (m_ScrollToBottom || (m_AutoScroll && !incoming.empty() && atBottom))
@@ -123,7 +130,7 @@ namespace ForgeSim::Sandbox
                     {
                         line = line.substr(first, line.find_last_not_of(" \t\r\n") - first + 1);
                         m_History.Add(line);
-                        Core::LogInfo("> " + line);
+                        AppendCommand(line);
                         const auto result = m_Commands.Execute(line,
                             {sceneName, scenePath, dirty, Build::Version});
                         if (result.clear) Clear();
@@ -140,6 +147,31 @@ namespace ForgeSim::Sandbox
         }
 
     private:
+        struct Row
+        {
+            Core::LogEntry log;
+            bool command = false;
+        };
+
+        void Append(Row row)
+        {
+            m_Entries.push_back(std::move(row));
+            if (m_Entries.size() > Core::LogHistoryCapacity) m_Entries.pop_front();
+        }
+
+        void AppendCommand(std::string_view line)
+        {
+            // Keep application messages preceding this command in order.
+            for (const auto& entry : Core::ReadLogEntries(m_LastSequence))
+            {
+                Append({entry, false});
+                m_LastSequence = entry.sequence;
+            }
+            Core::LogEntry echo;
+            echo.message = "> " + std::string(line);
+            Append({std::move(echo), true});
+        }
+
         void Clear()
         {
             // Consume any pending echo/results so clear cannot reappear next frame.
@@ -165,7 +197,7 @@ namespace ForgeSim::Sandbox
         bool m_RefocusInput = false;
         bool m_ScrollToBottom = false;
         std::uint64_t m_LastSequence = 0;
-        std::deque<Core::LogEntry> m_Entries;
+        std::deque<Row> m_Entries;
         ImGuiTextFilter m_Filter;
         bool m_AutoScroll = true;
         bool m_ShowInfo = true;
