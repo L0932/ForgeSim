@@ -1376,3 +1376,32 @@ set_target_properties(ForgeSimSceneNodeTransformTests PROPERTIES
     FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SceneNodeTransform
     COMMAND ForgeSimSceneNodeTransformTests)
+
+
+add_executable(ForgeSimConsoleCommandsTests ConsoleCommandsTest.cpp)
+target_include_directories(ForgeSimConsoleCommandsTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_compile_features(ForgeSimConsoleCommandsTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimConsoleCommandsTests)
+set_target_properties(ForgeSimConsoleCommandsTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ConsoleCommands COMMAND ForgeSimConsoleCommandsTests)
+
+add_executable(ForgeSimConsoleProjectRootTests
+    ConsoleProjectRootTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+target_include_directories(ForgeSimConsoleProjectRootTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimConsoleProjectRootTests PRIVATE
+    glm::glm-header-only nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimConsoleProjectRootTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimConsoleProjectRootTests)
+set_target_properties(ForgeSimConsoleProjectRootTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ConsoleProjectRoot COMMAND ForgeSimConsoleProjectRootTests)

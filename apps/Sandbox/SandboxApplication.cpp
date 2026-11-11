@@ -1,4 +1,8 @@
 #include "FreeCameraController.hpp"
+#include "ConsoleProjectRoot.hpp"
+#include "ConsoleTextureFallback.hpp"
+#include "ConsoleImageCache.hpp"
+#include "ConsoleLoadingDiagnostics.hpp"
 #include "LightDebugLayout.hpp"
 #include "LightPicking.hpp"
 #include "SandboxApplication.hpp"
@@ -341,7 +345,49 @@ namespace ForgeSim::Sandbox
 
 		std::vector<LightPickTarget> lightPickTargets;
 
-		SceneFilePanel sceneFilePanel;
+        ConsoleProjectRoot sceneOpenRoot{m_EditorSession->ProjectRoot()};
+        SceneFilePanel sceneFilePanel;
+        sceneFilePanel.RegisterConsoleCommand("project.root",
+            "Show or set the project root for subsequent scene opens.",
+            "project.root [directory]", 0, 1,
+            [&sceneOpenRoot](auto arguments, const auto&)
+            { return sceneOpenRoot.Execute(arguments); });
+        sceneFilePanel.RegisterConsoleCommand("textures.fallback",
+            "Show or set texture fallbacks for subsequent model loads.",
+            "textures.fallback [on|off]", 0, 1,
+            [this](auto arguments, const auto&)
+            {
+                bool enabled = m_Renderer.TexturePolicy() == Assets::GltfTexturePolicy::SkipUnusableTextures;
+                auto result = ExecuteTextureFallbackCommand(arguments, enabled);
+                if (!result.error && !arguments.empty())
+                    m_Renderer.SetTexturePolicy(enabled ? Assets::GltfTexturePolicy::SkipUnusableTextures
+                        : Assets::GltfTexturePolicy::Strict);
+                return result;
+            });
+        sceneFilePanel.RegisterConsoleCommand("images.cache",
+            "Show or set decoded-image caching for subsequent model loads.",
+            "images.cache [on|off]", 0, 1,
+            [this](auto arguments, const auto&)
+            {
+                bool enabled = m_Renderer.DecodedImageCaching();
+                auto result = ExecuteImageCacheCommand(arguments, enabled);
+                if (!result.error && !arguments.empty())
+                    m_Renderer.SetDecodedImageCaching(enabled);
+                return result;
+            });
+
+        sceneFilePanel.RegisterConsoleCommand("loading.diagnostics",
+            "Show or set scene-load timing and import-stage diagnostics.",
+            "loading.diagnostics [on|off]", 0, 1,
+            [this](auto arguments, const auto&)
+            {
+                bool enabled = m_Renderer.LoadingDiagnostics();
+                auto result = ExecuteLoadingDiagnosticsCommand(arguments, enabled);
+                if (!result.error && !arguments.empty())
+                    m_Renderer.SetLoadingDiagnostics(enabled);
+                return result;
+            });
+
 		SceneHierarchyPanel hierarchyPanel;
 		SceneInspectorPanel inspectorPanel;
 		SceneViewportPanel sceneViewportPanel;
@@ -493,12 +539,7 @@ namespace ForgeSim::Sandbox
                 });
             });
 
-			TransformEditorUIState editorUI =
-				m_DebugUI.UpdateTransformEditorShortcuts(
-					transformEditor.IsActive(),
-					changePending||
-					input.GetMouseButtonState(
-						Platform::MouseButton::Right).held);
+
 
 			runtimeDiagnostics.SetEnabled(
 				m_DebugUI.RuntimeDiagnosticsEnabled());
@@ -550,6 +591,13 @@ namespace ForgeSim::Sandbox
 									? "opening another scene"
 									: "closing"
 					});
+
+			TransformEditorUIState editorUI =
+				m_DebugUI.UpdateTransformEditorShortcuts(
+					transformEditor.IsActive(),
+					sceneFilePanel.ConsoleWantsKeyboard() || changePending ||
+					input.GetMouseButtonState(
+						Platform::MouseButton::Right).held);
 
 
 			hierarchyPanel.Draw(
@@ -606,6 +654,7 @@ namespace ForgeSim::Sandbox
 			const bool previouslyNavigating = viewportNavigationActive;
 
 			if (!rightMouseDown ||
+                sceneFilePanel.ConsoleWantsKeyboard() ||
 				changePending ||
 				!viewport.IsDrawable())
 			{
@@ -792,11 +841,11 @@ namespace ForgeSim::Sandbox
 					.navigationActive = changePending|| rightMouseDown
 				});
 
-			if (!changePending && (editorUI.undoRequested || toolbarRequest.undo))
+			if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.undoRequested || toolbarRequest.undo))
 			{
 				static_cast<void>(transformEditor.Undo(scene));
 			}
-			else if (!changePending && (editorUI.redoRequested || toolbarRequest.redo))
+			else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.redoRequested || toolbarRequest.redo))
 			{
 				static_cast<void>(transformEditor.Redo(scene));
 			}
@@ -1174,6 +1223,17 @@ namespace ForgeSim::Sandbox
 			// The editor frame must end before beginning a loading frame.
 			if (openAfterFrame)
 			{
+                const bool logLoadTimings = m_Renderer.LoadingDiagnostics();
+                const auto loadStart = std::chrono::steady_clock::now();
+                const auto logTiming = [&](std::string_view label, auto start)
+                {
+                    if (logLoadTimings)
+                    {
+                        const double milliseconds = std::chrono::duration<double, std::milli>(
+                            std::chrono::steady_clock::now() - start).count();
+                        Core::LogInfo(std::string(label) + ": " + std::to_string(milliseconds) + " ms");
+                    }
+                };
 				try
 				{
 					const auto drawProgress = [this](const Assets::GltfLoadProgress& progress)
@@ -1184,8 +1244,11 @@ namespace ForgeSim::Sandbox
 						0, std::nullopt, std::chrono::milliseconds{0}});
 					// Read after Save and Continue, so opening the same
 					// file uses the version that was just saved.
+                    const auto documentStart = std::chrono::steady_clock::now();
 					EditorSession replacement =
-						m_EditorSession->PrepareOpen(pendingOpenPath);
+						m_EditorSession->PrepareOpen(pendingOpenPath, sceneOpenRoot.Path());
+                    logTiming("Scene document loaded", documentStart);
+                    const auto resourcesStart = std::chrono::steady_clock::now();
 
 					const auto modelPath =
 						replacement.SharedModelPath();
@@ -1193,6 +1256,7 @@ namespace ForgeSim::Sandbox
 					m_Renderer.LoadSceneResources(modelPath,
 						ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
 							replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), drawProgress);
+                    logTiming("Scene resources ready", resourcesStart);
 
 					// Empty scenes render no objects and can retain
 					// the renderer's existing unused model resources.
@@ -1214,6 +1278,7 @@ namespace ForgeSim::Sandbox
 					pendingOpenPath.clear();
 					sceneFileMessage = "Scene opened.";
                     Core::LogInfo("Scene loaded: " + scene.Name());
+                    logTiming("Scene open completed", loadStart);
 				}
 				catch (const std::exception& exception)
 				{
@@ -1221,6 +1286,7 @@ namespace ForgeSim::Sandbox
 					pendingOpenPath.clear();
 					sceneFileMessage = exception.what();
 					Core::LogError(sceneFileMessage);
+                    logTiming("Scene open failed after", loadStart);
 				}
 			}
 		}

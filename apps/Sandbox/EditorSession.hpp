@@ -40,8 +40,10 @@ namespace ForgeSim::Sandbox
         // Prepare replacement sessions without modifying this session.
         [[nodiscard]] EditorSession PrepareNew() const;
 
+        // An override applies only to the prepared replacement, never this scene.
         [[nodiscard]] EditorSession PrepareOpen(
-            const std::filesystem::path& path) const;
+            const std::filesystem::path& path,
+            std::optional<std::filesystem::path> projectRoot = std::nullopt) const;
 
         // Save requires an existing scene path.
         void Save();

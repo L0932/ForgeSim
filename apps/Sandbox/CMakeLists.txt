@@ -91,6 +91,12 @@ target_sources(
 		SceneCameraValidation.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
+        ConsoleLoadingDiagnostics.hpp
+        ConsoleImageCache.hpp
+        ConsoleTextureFallback.hpp
+        ConsoleProjectRoot.hpp
+        ConsoleCommands.hpp
+        EditorConsole.hpp
 		SceneFilePanel.hpp
         SceneFilePanel.cpp
 		SceneHierarchyPanel.hpp
