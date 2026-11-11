@@ -62,6 +62,8 @@ target_sources(
         EditorSession.cpp
 		EditorWorkspace.hpp
 		EditorWorkspace.cpp
+        EditorTheme.hpp
+        EditorTheme.cpp
 		LightGizmoTransform.hpp
 		LightGizmoTransform.cpp
 		SandboxApplication.hpp

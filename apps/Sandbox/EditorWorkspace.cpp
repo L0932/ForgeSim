@@ -24,6 +24,20 @@ namespace ForgeSim::Sandbox
 
         ImGui::GetIO().IniFilename = m_SettingsPath.c_str();
 
+        m_ThemePath = settingsPath.parent_path() / "editor-theme.json";
+        m_Theme = LoadEditorTheme(m_ThemePath);
+        LoadEditorFont(BundledAssetDirectory() / "fonts" / "Karla-Regular.ttf");
+        ApplyEditorTheme(m_Theme);
+
+        // Set geometry once; palette changes leave these dimensions intact.
+        auto& style = ImGui::GetStyle();
+        style.WindowPadding = ImVec2(10.0f, 10.0f);
+        style.FramePadding = ImVec2(8.0f, 4.0f);
+        style.ItemSpacing = ImVec2(8.0f, 6.0f);
+        style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
+        style.FrameRounding = 3.0f;
+        style.GrabRounding = 3.0f;
+
         Core::LogInfo(
             "Editor layout settings: " + m_SettingsPath);
     }
@@ -98,6 +112,17 @@ namespace ForgeSim::Sandbox
 
     bool EditorWorkspace::Draw()
     {
+        // Apply outside an open menu/window so its layout uses one palette
+        // for the entire frame. Changes take effect on the following frame.
+        if (m_PendingTheme)
+        {
+            m_Theme = *m_PendingTheme;
+            m_PendingTheme.reset();
+            ApplyEditorTheme(m_Theme);
+            if (!SaveEditorTheme(m_ThemePath, m_Theme))
+                Core::LogWarning("Could not save editor theme preference.");
+        }
+
         bool resetRequested = false;
 
         // Append View alongside the existing File menu.
@@ -108,10 +133,33 @@ namespace ForgeSim::Sandbox
                 resetRequested =
                     ImGui::MenuItem("Reset Layout");
 
+                if (ImGui::BeginMenu("Theme"))
+                {
+                    for (const auto theme : {EditorTheme::ForgeSimDark,
+                        EditorTheme::Light, EditorTheme::ImGuiClassic, EditorTheme::ImGuiDark})
+                    {
+                        if (ImGui::MenuItem(EditorThemeName(theme).data(), nullptr, m_Theme == theme))
+                            m_PendingTheme = theme;
+                    }
+                    ImGui::EndMenu();
+                }
+
+                ImGui::MenuItem("Style Editor", nullptr, &m_ShowStyleEditor);
+
                 ImGui::EndMenu();
             }
 
             ImGui::EndMainMenuBar();
+        }
+
+        if (m_ShowStyleEditor)
+        {
+            if (ImGui::Begin("Style Editor", &m_ShowStyleEditor))
+            {
+                ImGui::ShowStyleEditor();
+            }
+
+            ImGui::End();
         }
 
         const ImGuiID dockspaceId =

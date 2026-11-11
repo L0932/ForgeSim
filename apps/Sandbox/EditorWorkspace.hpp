@@ -1,6 +1,10 @@
 #pragma once
 
+#include <filesystem>
+#include <optional>
 #include <string>
+
+#include "EditorTheme.hpp"
 
 namespace ForgeSim::Sandbox
 {
@@ -18,5 +22,9 @@ namespace ForgeSim::Sandbox
 
         // ImGui retains a pointer to this string.
         std::string m_SettingsPath;
+        std::filesystem::path m_ThemePath;
+        EditorTheme m_Theme = EditorTheme::ForgeSimDark;
+        std::optional<EditorTheme> m_PendingTheme;
+        bool m_ShowStyleEditor = false;
     };
 }

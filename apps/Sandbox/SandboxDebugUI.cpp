@@ -51,7 +51,6 @@ namespace ForgeSim::Sandbox
 
 		m_Workspace.Initialize();
 
-		ImGui::StyleColorsDark();
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
 			window.NativeHandle(),
@@ -119,65 +118,67 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		if (ImGui::Begin("Transform Gizmo"))
-		{
-			// Keep the operation and coordinate space stable
-			// throughout an active drag.
-			ImGui::BeginDisabled(editingActive);
+        if (ImGui::Begin("Transform Gizmo"))
+        {
+            const auto& style = ImGui::GetStyle();
+            const float available = ImGui::GetContentRegionAvail().x;
+            const auto choiceButton = [](const char* label, bool selected,
+                float width, const char* tooltip)
+            {
+                if (selected)
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+                const bool pressed = ImGui::Button(label, ImVec2(width, 0.0f));
+                if (selected)
+                    ImGui::PopStyleColor();
+                ImGui::SetItemTooltip("%s", tooltip);
+                return pressed;
+            };
 
-			if (ImGui::RadioButton(
-				"Translate (W)",
-				state.operation == GizmoOperation::Translate))
-			{
-				state.operation = GizmoOperation::Translate;
-			}
+            // Fall back to stacked buttons when the panel is too narrow.
+            const bool operationRow = available >=
+                3.0f * (ImGui::CalcTextSize("Rotate").x + 2.0f * style.FramePadding.x)
+                + 2.0f * style.ItemSpacing.x;
+            const float operationWidth = operationRow
+                ? (available - 2.0f * style.ItemSpacing.x) / 3.0f : -1.0f;
 
-			ImGui::SameLine();
+            ImGui::SeparatorText("Operation");
+            // Keep operation and space stable throughout an active drag.
+            ImGui::BeginDisabled(editingActive);
+            if (choiceButton("Move", state.operation == GizmoOperation::Translate,
+                operationWidth, "Translate selection (W)"))
+                state.operation = GizmoOperation::Translate;
+            if (operationRow) ImGui::SameLine();
+            if (choiceButton("Rotate", state.operation == GizmoOperation::Rotate,
+                operationWidth, "Rotate selection (E)"))
+                state.operation = GizmoOperation::Rotate;
+            if (operationRow) ImGui::SameLine();
+            if (choiceButton("Scale", state.operation == GizmoOperation::Scale,
+                operationWidth, "Scale selection (R)"))
+                state.operation = GizmoOperation::Scale;
 
-			if (ImGui::RadioButton(
-				"Rotate (E)",
-				state.operation == GizmoOperation::Rotate))
-			{
-				state.operation = GizmoOperation::Rotate;
-			}
+            ImGui::Spacing();
+            ImGui::SeparatorText("Coordinate space");
+            const bool scaling = state.operation == GizmoOperation::Scale;
+            const bool spaceRow = available >=
+                2.0f * (ImGui::CalcTextSize("World").x + 2.0f * style.FramePadding.x)
+                + style.ItemSpacing.x;
+            const float spaceWidth = spaceRow
+                ? (available - style.ItemSpacing.x) / 2.0f : -1.0f;
+            ImGui::BeginDisabled(scaling);
+            if (choiceButton("World", !scaling && state.space == GizmoSpace::World,
+                spaceWidth, "Use world axes (X toggles space)"))
+                state.space = GizmoSpace::World;
+            if (spaceRow) ImGui::SameLine();
+            if (choiceButton("Local", scaling || state.space == GizmoSpace::Local,
+                spaceWidth, "Use local axes (X toggles space)"))
+                state.space = GizmoSpace::Local;
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
 
-			ImGui::SameLine();
-
-			if (ImGui::RadioButton(
-				"Scale (R)",
-				state.operation == GizmoOperation::Scale))
-			{
-				state.operation = GizmoOperation::Scale;
-			}
-
-			ImGui::BeginDisabled(
-				state.operation == GizmoOperation::Scale);
-
-			if (ImGui::RadioButton(
-				"World",
-				state.space == GizmoSpace::World))
-			{
-				state.space = GizmoSpace::World;
-			}
-
-			ImGui::SameLine();
-
-			if (ImGui::RadioButton(
-				"Local",
-				state.space == GizmoSpace::Local))
-			{
-				state.space = GizmoSpace::Local;
-			}
-
-			ImGui::EndDisabled();
-			ImGui::EndDisabled();
-
-			if (state.operation == GizmoOperation::Scale)
-			{
-				ImGui::TextDisabled("Scale uses local axes.");
-			}
-		}
-
+            if (scaling)
+                ImGui::TextWrapped("Scale uses local axes.");
+        }
 		ImGui::End();
 
 		// Let active UI controls handle their own keyboard input.
@@ -335,7 +336,8 @@ namespace ForgeSim::Sandbox
 		ImGui::TextUnformatted(
 			"Press F1 to show or hide this panel.");
 
-		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::SeparatorText("Viewport");
 
 		ImGui::Checkbox(
 			"Show reference grid",
@@ -349,6 +351,7 @@ namespace ForgeSim::Sandbox
 			"Show scene lights",
 			&m_ShowLights);
 
+		ImGui::Spacing();
 		ImGui::SeparatorText("Camera");
 
 		const glm::vec3& cameraPosition =
@@ -372,7 +375,7 @@ namespace ForgeSim::Sandbox
 			cameraForward.y,
 			cameraForward.z);
 
-		if (ImGui::Button("Copy camera pose"))
+		if (ImGui::Button("Copy camera pose", ImVec2(-1.0f, 0.0f)))
 		{
 			std::array<char, 512> cameraPose{};
 
@@ -392,9 +395,11 @@ namespace ForgeSim::Sandbox
 				cameraPose.data());
 		}
 
+		ImGui::Spacing();
+		ImGui::SeparatorText("Saved viewpoint");
 		ImGui::BeginDisabled(context.cameraEditingDisabled);
 
-		if (ImGui::Button("Save current viewpoint"))
+		if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
 		{
             const SceneCameraData saved = CaptureSceneCamera(
                 context.camera, context.referenceViewport);
@@ -411,7 +416,7 @@ namespace ForgeSim::Sandbox
 
 		ImGui::BeginDisabled(!context.scene.SavedCamera());
 
-		if (ImGui::Button("Clear saved viewpoint"))
+		if (ImGui::Button("Clear saved viewpoint", ImVec2(-1.0f, 0.0f)))
 		{
 			context.scene.ClearSavedCamera();
 		}
@@ -537,15 +542,19 @@ namespace ForgeSim::Sandbox
 		ImGui::BeginDisabled(
 			rendering.showEnvironmentBackground);
 
+		ImGui::TextWrapped("Fallback background color");
+		ImGui::SetNextItemWidth(-1.0f);
 		renderingChanged |= ImGui::ColorEdit3(
-			"Fallback background color",
+			"##Fallback background color",
 			&rendering.backgroundColor.x,
 			ImGuiColorEditFlags_Float);
 
 		ImGui::EndDisabled();
 
+		ImGui::TextWrapped("Exposure");
+		ImGui::SetNextItemWidth(-1.0f);
 		renderingChanged |= ImGui::SliderFloat(
-			"Exposure",
+			"##Exposure",
 			&rendering.exposure,
 			0.05f,
 			5.0f,
@@ -553,8 +562,10 @@ namespace ForgeSim::Sandbox
 			ImGuiSliderFlags_Logarithmic |
 			ImGuiSliderFlags_AlwaysClamp);
 
+		ImGui::TextWrapped("Environment intensity");
+		ImGui::SetNextItemWidth(-1.0f);
 		renderingChanged |= ImGui::SliderFloat(
-			"Environment intensity",
+			"##Environment intensity",
 			&rendering.environmentIntensity,
 			0.0f,
 			2.0f,
@@ -564,14 +575,20 @@ namespace ForgeSim::Sandbox
 		ImGui::SeparatorText("Anti-aliasing");
         ImGui::Checkbox("Enable FXAA", &m_FxaaSettings.enabled);
         ImGui::BeginDisabled(!m_FxaaSettings.enabled);
-        ImGui::SliderFloat("Relative edge threshold", &m_FxaaSettings.relativeContrastThreshold,
+        ImGui::TextWrapped("Relative edge threshold");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("##Relative edge threshold", &m_FxaaSettings.relativeContrastThreshold,
             0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::SliderFloat("Minimum edge threshold", &m_FxaaSettings.minimumContrastThreshold,
+        ImGui::TextWrapped("Minimum edge threshold");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("##Minimum edge threshold", &m_FxaaSettings.minimumContrastThreshold,
             0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::SliderFloat("Subpixel smoothing", &m_FxaaSettings.subpixelBlending,
+        ImGui::TextWrapped("Subpixel smoothing");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SliderFloat("##Subpixel smoothing", &m_FxaaSettings.subpixelBlending,
             0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::EndDisabled();
-        if (ImGui::Button("Reset FXAA settings"))
+        if (ImGui::Button("Reset FXAA settings", ImVec2(-1.0f, 0.0f)))
             m_FxaaSettings = Renderer::FxaaSettings{};
 
         ImGui::SeparatorText("Directional shadows");
@@ -587,16 +604,20 @@ namespace ForgeSim::Sandbox
 			"Enable PCF",
 			&rendering.directionalShadows.filteringEnabled);
 
+		ImGui::TextWrapped("Minimum bias");
+		ImGui::SetNextItemWidth(-1.0f);
 		renderingChanged |= ImGui::SliderFloat(
-			"Minimum bias",
+			"##Minimum bias",
 			&rendering.directionalShadows.minimumBias,
 			0.0f,
 			0.01f,
 			"%.6f",
 			ImGuiSliderFlags_AlwaysClamp);
 
+		ImGui::TextWrapped("Slope bias");
+		ImGui::SetNextItemWidth(-1.0f);
 		renderingChanged |= ImGui::SliderFloat(
-			"Slope bias",
+			"##Slope bias",
 			&rendering.directionalShadows.slopeBias,
 			0.0f,
 			0.02f,
@@ -605,7 +626,7 @@ namespace ForgeSim::Sandbox
 
 		ImGui::EndDisabled();
 
-		if (ImGui::Button("Reset shadow settings"))
+		if (ImGui::Button("Reset shadow settings", ImVec2(-1.0f, 0.0f)))
 		{
 			rendering.directionalShadows =
 				DirectionalShadowSettings{};
@@ -638,9 +659,13 @@ namespace ForgeSim::Sandbox
             m_EnvironmentInputInitialized = true;
         }
         int environmentSource = static_cast<int>(context.scene.RenderingSettings().environmentSource);
-        const bool environmentSourceChanged = ImGui::Combo("Source", &environmentSource,
+        ImGui::TextWrapped("Source");
+        ImGui::SetNextItemWidth(-1.0f);
+        const bool environmentSourceChanged = ImGui::Combo("##Source", &environmentSource,
             "Bundled studio\0None\0Project HDR asset\0");
-        ImGui::InputText("Project-relative HDR path", m_EnvironmentAsset.data(), m_EnvironmentAsset.size());
+        ImGui::TextWrapped("Project-relative HDR path");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputText("##Project-relative HDR path", m_EnvironmentAsset.data(), m_EnvironmentAsset.size());
         const bool applyEnvironment = ImGui::Button("Apply project HDR");
         if (environmentSourceChanged || applyEnvironment)
         {
@@ -673,12 +698,16 @@ namespace ForgeSim::Sandbox
 		ImGui::BeginDisabled(
 			!m_SelectionHighlightEnabled);
 
+		ImGui::TextWrapped("Highlight color");
+		ImGui::SetNextItemWidth(-1.0f);
 		ImGui::ColorEdit3(
-			"Highlight color",
+			"##Highlight color",
 			&m_SelectionHighlightColor.x);
 
+		ImGui::TextWrapped("Highlight strength");
+		ImGui::SetNextItemWidth(-1.0f);
 		ImGui::SliderFloat(
-			"Highlight strength",
+			"##Highlight strength",
 			&m_SelectionHighlightStrength,
 			0.0f,
 			1.0f,

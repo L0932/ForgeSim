@@ -63,8 +63,10 @@ namespace ForgeSim::Sandbox
 
         if (context.selection.Empty())
         {
+            ImGui::PushTextWrapPos();
             ImGui::TextDisabled(
                 "Select an object or light to inspect.");
+            ImGui::PopTextWrapPos();
         }
         else if (context.selection.SelectedObjectId())
         {
@@ -92,7 +94,9 @@ namespace ForgeSim::Sandbox
 
         if (!object)
         {
+            ImGui::PushTextWrapPos();
             ImGui::TextDisabled("Selected object no longer exists.");
+            ImGui::PopTextWrapPos();
             return;
         }
 
@@ -108,8 +112,10 @@ namespace ForgeSim::Sandbox
 
         ImGui::SeparatorText("Transform");
 
+        ImGui::TextWrapped("Position");
+        ImGui::SetNextItemWidth(-1.0f);
         ImGui::DragFloat3(
-            "Position",
+            "##Position",
             &object->transform.position.x,
             CalculatePositionDragSpeed(context.modelBounds),
             0.0f,
@@ -120,8 +126,10 @@ namespace ForgeSim::Sandbox
         glm::vec3 rotationDegrees =
             glm::degrees(object->transform.rotationRadians);
 
+        ImGui::TextWrapped("Rotation");
+        ImGui::SetNextItemWidth(-1.0f);
         if (ImGui::DragFloat3(
-            "Rotation",
+            "##Rotation",
             &rotationDegrees.x,
             1.0f,
             0.0f,
@@ -164,13 +172,17 @@ namespace ForgeSim::Sandbox
 				"Light enabled",
 				&candidate.enabled);
 
+			ImGui::TextWrapped("Light color");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::ColorEdit3(
-				"Light color",
+				"##Light color",
 				&candidate.color.x,
 				ImGuiColorEditFlags_Float);
 
+			ImGui::TextWrapped("Light intensity");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat(
-				"Light intensity",
+				"##Light intensity",
 				&candidate.intensity,
 				0.05f,
 				0.0f,
@@ -178,8 +190,10 @@ namespace ForgeSim::Sandbox
 				"%.2f",
 				ImGuiSliderFlags_AlwaysClamp);
 
+			ImGui::TextWrapped("Light editor position");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat3(
-				"Light editor position",
+				"##Light editor position",
 				&candidate.position.x,
 				lightPositionDragSpeed,
 				0.0f,
@@ -187,19 +201,25 @@ namespace ForgeSim::Sandbox
 				"%.6f",
 				ImGuiSliderFlags_NoRoundToFormat);
 
+			ImGui::TextWrapped("Direction to light");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat3(
-				"Direction to light",
+				"##Direction to light",
 				&candidate.directionToLight.x,
 				0.01f,
 				0.0f,
 				0.0f,
 				"%.3f");
 
+			ImGui::PushTextWrapPos();
 			ImGui::TextDisabled(
 				"Position moves the editor marker, not the illumination.");
+			ImGui::PopTextWrapPos();
 
+			ImGui::PushTextWrapPos();
 			ImGui::TextDisabled(
 				"Direction points from the surface toward the light.");
+			ImGui::PopTextWrapPos();
 
 			if (changed)
 			{
@@ -224,13 +244,17 @@ namespace ForgeSim::Sandbox
 				"Point light enabled",
 				&candidate.enabled);
 
+			ImGui::TextWrapped("Point light color");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::ColorEdit3(
-				"Point light color",
+				"##Point light color",
 				&candidate.color.x,
 				ImGuiColorEditFlags_Float);
 
+			ImGui::TextWrapped("Point light intensity");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat(
-				"Point light intensity",
+				"##Point light intensity",
 				&candidate.intensity,
 				0.05f,
 				0.0f,
@@ -238,8 +262,10 @@ namespace ForgeSim::Sandbox
 				"%.2f",
 				ImGuiSliderFlags_AlwaysClamp);
 
+			ImGui::TextWrapped("Point light position");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat3(
-				"Point light position",
+				"##Point light position",
 				&candidate.position.x,
 				lightPositionDragSpeed,
 				0.0f,
@@ -247,8 +273,10 @@ namespace ForgeSim::Sandbox
 				"%.6f",
 				ImGuiSliderFlags_NoRoundToFormat);
 
+			ImGui::TextWrapped("Point light range");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat(
-				"Point light range",
+				"##Point light range",
 				&candidate.range,
 				lightPositionDragSpeed,
 				0.000001f,
@@ -282,13 +310,17 @@ namespace ForgeSim::Sandbox
 				"Spot light enabled",
 				&candidate.enabled);
 
+			ImGui::TextWrapped("Spot light color");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::ColorEdit3(
-				"Spot light color",
+				"##Spot light color",
 				&candidate.color.x,
 				ImGuiColorEditFlags_Float);
 
+			ImGui::TextWrapped("Spot light intensity");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat(
-				"Spot light intensity",
+				"##Spot light intensity",
 				&candidate.intensity,
 				0.05f,
 				0.0f,
@@ -296,8 +328,10 @@ namespace ForgeSim::Sandbox
 				"%.2f",
 				ImGuiSliderFlags_AlwaysClamp);
 
+			ImGui::TextWrapped("Spot light position");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat3(
-				"Spot light position",
+				"##Spot light position",
 				&candidate.position.x,
 				lightPositionDragSpeed,
 				0.0f,
@@ -305,16 +339,20 @@ namespace ForgeSim::Sandbox
 				"%.6f",
 				ImGuiSliderFlags_NoRoundToFormat);
 
+			ImGui::TextWrapped("Emission direction");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat3(
-				"Emission direction",
+				"##Emission direction",
 				&candidate.emissionDirection.x,
 				0.01f,
 				0.0f,
 				0.0f,
 				"%.3f");
 
+			ImGui::TextWrapped("Spot light range");
+			ImGui::SetNextItemWidth(-1.0f);
 			changed |= ImGui::DragFloat(
-				"Spot light range",
+				"##Spot light range",
 				&candidate.range,
 				lightPositionDragSpeed,
 				0.000001f,
@@ -329,8 +367,10 @@ namespace ForgeSim::Sandbox
 			float outerConeDegrees =
 				glm::degrees(candidate.outerConeAngleRadians);
 
+			ImGui::TextWrapped("Inner cone half-angle");
+			ImGui::SetNextItemWidth(-1.0f);
 			if (ImGui::DragFloat(
-				"Inner cone half-angle",
+				"##Inner cone half-angle",
 				&innerConeDegrees,
 				0.1f,
 				0.0f,
@@ -343,8 +383,10 @@ namespace ForgeSim::Sandbox
 				changed = true;
 			}
 
+			ImGui::TextWrapped("Outer cone half-angle");
+			ImGui::SetNextItemWidth(-1.0f);
 			if (ImGui::DragFloat(
-				"Outer cone half-angle",
+				"##Outer cone half-angle",
 				&outerConeDegrees,
 				0.1f,
 				0.0f,
@@ -357,8 +399,10 @@ namespace ForgeSim::Sandbox
 				changed = true;
 			}
 
+			ImGui::PushTextWrapPos();
 			ImGui::TextDisabled(
 				"Angles are measured from the emission axis.");
+			ImGui::PopTextWrapPos();
 
 			if (changed)
 			{
