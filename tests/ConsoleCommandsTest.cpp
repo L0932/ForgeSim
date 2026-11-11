@@ -1,4 +1,7 @@
 #include "ConsoleCommands.hpp"
+#include "ConsoleTextureFallback.hpp"
+#include "ConsoleImageCache.hpp"
+#include "ConsoleLoadingDiagnostics.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -31,6 +34,12 @@ int main() {
     Require(commands.Execute("test.echo").error, "Missing argument");
     Require(commands.Execute("test.echo one two").error, "Too many arguments");
     Require(commands.Execute("test.echo hello").message == "hello", "Registered command execution");
+    Require(commands.Execute(R"(test.echo "C:\Assets with spaces\Cathedral_01\")").message ==
+        R"(C:\Assets with spaces\Cathedral_01\)", "Quoted Windows path with trailing separator");
+    Require(commands.Execute(R"(test.echo "C:/Assets/église")").message == "C:/Assets/église", "UTF-8 path");
+    Require(commands.Execute(R"(test.echo "unterminated)").error, "Unclosed quote rejected");
+    Require(commands.Execute(R"(test.echo "")").message.empty(), "Empty quoted argument retained");
+
     commands.Register("test.fail", "Throw.", "test.fail", 0, 0,
         [](auto, const auto&) -> ConsoleCommandResult { throw std::runtime_error("handler failed"); });
     Require(commands.Execute("test.fail").error, "Execution failure containment");
@@ -39,6 +48,65 @@ int main() {
     try { commands.Register("version", "", "", 0, 0, [](auto, const auto&) { return ConsoleCommandResult{}; }); }
     catch (const std::invalid_argument&) { duplicate = true; }
     Require(duplicate, "Duplicate registration rejected");
+
+    bool fallback = false;
+    commands.Register("textures.fallback", "Texture policy", "textures.fallback [on|off]", 0, 1,
+        [&fallback](auto args, const auto&) { return ExecuteTextureFallbackCommand(args, fallback); });
+    Require(commands.Execute("textures.fallback").message.find("off") != std::string::npos,
+        "Query initial fallback policy");
+    Require(!commands.Execute("textures.fallback on").error && fallback, "Enable fallbacks");
+    Require(commands.Execute("textures.fallback maybe").error && fallback, "Invalid toggle preserves policy");
+    Require(commands.Execute("textures.fallback on extra").error && fallback, "Extra toggle argument rejected");
+    auto chain = commands.ExecuteLine("textures.fallback off; version", context);
+    Require(chain.size() == 2 && !chain[0].error && !fallback &&
+        chain[1].message == "ForgeSim 0.1.0-dev", "Sequential commands");
+    chain = commands.ExecuteLine(R"(test.echo "C:/folder;name"; textures.fallback on)");
+    Require(chain.size() == 2 && chain[0].message == "C:/folder;name" && fallback,
+        "Quoted semicolon stays in path argument");
+    chain = commands.ExecuteLine("textures.fallback off; missing; textures.fallback on");
+    Require(chain.size() == 2 && chain.back().error && !fallback, "Error stops later commands");
+    chain = commands.ExecuteLine(R"(textures.fallback on; test.echo "unfinished)");
+    Require(chain.size() == 1 && chain[0].error && !fallback, "Bad quoting prevents all execution");
+    chain = commands.ExecuteLine(" ; ; textures.fallback on; ; ");
+    Require(chain.size() == 1 && fallback, "Ignore empty command segments");
+    Require(commands.ExecuteLine("; ; ").empty(), "Empty command chain");
+    chain = commands.ExecuteLine("clear; help");
+    Require(chain.size() == 2 && chain[0].clear && !chain[1].error, "Clear then help chain");
+
+    bool caching = false;
+    commands.Register("images.cache", "Decoded images", "images.cache [on|off]", 0, 1,
+        [&caching](auto args, const auto&) { return ExecuteImageCacheCommand(args, caching); });
+    Require(commands.Execute("images.cache").message.find("off") != std::string::npos,
+        "Query disabled cache");
+    Require(!commands.Execute("images.cache on").error && caching, "Enable decoded-image caching");
+    Require(commands.Execute("images.cache").message.find("on") != std::string::npos && caching,
+        "Query enabled cache preserves setting");
+    Require(commands.Execute("images.cache invalid").error && caching,
+        "Invalid cache option preserves setting");
+    Require(commands.Execute("images.cache on extra").error && caching,
+        "Reject extra cache arguments");
+    Require(!commands.Execute("images.cache off").error && !caching, "Disable decoded-image caching");
+    chain = commands.ExecuteLine(R"(test.echo "C:/Assets with spaces"; textures.fallback on; images.cache on)");
+    Require(chain.size() == 3 && !chain.back().error && caching && fallback,
+        "Cache and fallback settings in one line");
+    chain = commands.ExecuteLine("images.cache off; missing; images.cache on");
+    Require(chain.back().error && !caching, "Failed chain leaves later cache setting unapplied");
+
+    bool diagnostics = true;
+    commands.Register("loading.diagnostics", "Load timings", "loading.diagnostics [on|off]", 0, 1,
+        [&diagnostics](auto args, const auto&) { return ExecuteLoadingDiagnosticsCommand(args, diagnostics); });
+    Require(commands.Execute("loading.diagnostics").message.find("on") != std::string::npos && diagnostics,
+        "Query startup diagnostics policy");
+    Require(!commands.Execute("loading.diagnostics off").error && !diagnostics, "Disable load diagnostics");
+    Require(commands.Execute("loading.diagnostics bad").error && !diagnostics,
+        "Invalid diagnostics argument preserves setting");
+    Require(commands.Execute("loading.diagnostics on extra").error && !diagnostics,
+        "Reject extra diagnostics arguments");
+    chain = commands.ExecuteLine(R"(test.echo "C:/Assets"; textures.fallback on; images.cache on; loading.diagnostics on)");
+    Require(chain.size() == 4 && !chain.back().error && diagnostics && caching && fallback,
+        "Combined load settings and timings");
+    Require(commands.Execute("help loading.diagnostics").message.find("[on|off]") != std::string::npos,
+        "Diagnostics usage available through help");
 
     ConsoleCommandHistory history;
     Require(history.Previous("draft") == "draft", "Empty history");

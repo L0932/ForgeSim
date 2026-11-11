@@ -64,20 +64,57 @@ namespace ForgeSim::Sandbox
                 throw std::invalid_argument("Duplicate Console command registration.");
         }
 
+        // Validate quote boundaries before executing any part of a chain.
+        // Runtime errors stop the chain; earlier successful commands remain applied.
+        [[nodiscard]] std::vector<ConsoleCommandResult> ExecuteLine(std::string_view line,
+            const ConsoleCommandContext& context = {}) const
+        {
+            std::vector<std::string_view> commands;
+            bool quoted = false;
+            std::size_t start = 0;
+            for (std::size_t index = 0; index < line.size(); ++index)
+            {
+                if (line[index] == '"') quoted = !quoted;
+                else if (line[index] == ';' && !quoted)
+                {
+                    commands.push_back(line.substr(start, index - start));
+                    start = index + 1;
+                }
+            }
+            if (quoted) return {{"Unclosed double quote in command line. No commands executed.", true}};
+            commands.push_back(line.substr(start));
+            std::vector<ConsoleCommandResult> results;
+            for (auto command : commands)
+            {
+                if (command.find_first_not_of(" \t\r\n") == std::string_view::npos) continue;
+                results.push_back(Execute(command, context));
+                if (results.back().error) break;
+            }
+            return results;
+        }
+
         [[nodiscard]] ConsoleCommandResult Execute(std::string_view line,
             const ConsoleCommandContext& context = {}) const
         {
             try
             {
                 std::vector<std::string> words;
-                for (std::size_t begin = 0; begin < line.size();)
+                // Double quotes group arguments; backslashes remain literal so
+                // native Windows paths, including trailing separators, work.
+                std::string word;
+                bool quoted = false;
+                bool started = false;
+                for (char character : line)
                 {
-                    if (std::isspace(static_cast<unsigned char>(line[begin]))) { ++begin; continue; }
-                    auto end = begin;
-                    while (end < line.size() && !std::isspace(static_cast<unsigned char>(line[end]))) ++end;
-                    words.emplace_back(line.substr(begin, end - begin));
-                    begin = end;
+                    if (character == '"') { quoted = !quoted; started = true; }
+                    else if (!quoted && std::isspace(static_cast<unsigned char>(character)))
+                    {
+                        if (started) { words.push_back(std::move(word)); word.clear(); started = false; }
+                    }
+                    else { word += character; started = true; }
                 }
+                if (quoted) return {"Unclosed double quote in command.", true};
+                if (started) words.push_back(std::move(word));
                 if (words.empty()) return {};
                 if (words[0] == "help")
                 {

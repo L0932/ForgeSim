@@ -98,7 +98,8 @@ namespace ForgeSim::Sandbox
     }
 
     EditorSession EditorSession::PrepareOpen(
-        const std::filesystem::path& path) const
+        const std::filesystem::path& path,
+        std::optional<std::filesystem::path> projectRoot) const
     {
         if (path.empty() || path.filename().empty())
         {
@@ -113,14 +114,20 @@ namespace ForgeSim::Sandbox
                 : m_DefaultSceneDirectory / path)
             .lexically_normal();
 
+        const auto root = projectRoot
+            ? std::filesystem::canonical(std::filesystem::absolute(*projectRoot))
+            : m_ProjectRoot;
+        if (projectRoot && !std::filesystem::is_directory(root))
+            throw std::invalid_argument("Project root must name an existing directory.");
+
         const SceneDocument document =
             LoadSceneDocument(
                 resolvedPath,
-                m_ProjectRoot);
+                root);
 
         return EditorSession{
             document,
-            m_ProjectRoot,
+            root,
             resolvedPath,
             m_DefaultSceneDirectory
         };

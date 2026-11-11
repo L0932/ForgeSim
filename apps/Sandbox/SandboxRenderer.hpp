@@ -135,6 +135,18 @@ namespace ForgeSim::Sandbox
 
 		void ReloadChangedShaders();
 
+        // Changes import policy for future model loads; existing GPU resources
+        // remain active until a replacement scene/model is loaded successfully.
+        void SetTexturePolicy(Assets::GltfTexturePolicy policy) noexcept { m_TexturePolicy = policy; }
+        [[nodiscard]] Assets::GltfTexturePolicy TexturePolicy() const noexcept { return m_TexturePolicy; }
+
+        // Preserve the configured disk budget and existing cache files.
+        void SetDecodedImageCaching(bool enabled) noexcept { m_CacheDecodedImages = enabled; }
+        [[nodiscard]] bool DecodedImageCaching() const noexcept { return m_CacheDecodedImages; }
+
+        void SetLoadingDiagnostics(bool enabled) noexcept { m_LoadingDiagnostics = enabled; }
+        [[nodiscard]] bool LoadingDiagnostics() const noexcept { return m_LoadingDiagnostics; }
+
         // Prepare the environment and model before committing either replacement.
         // An absent model retains unused existing model resources for empty scenes.
         void LoadSceneResources(
@@ -261,10 +273,10 @@ namespace ForgeSim::Sandbox
         std::optional<Renderer::OpenGL::ShadowMap> m_DirectionalTransmissionMap;
         glm::mat4 m_DirectionalLightViewProjection{ 1.0f };
 
-		const Assets::GltfTexturePolicy m_TexturePolicy;
-		const bool m_LoadingDiagnostics;
+		Assets::GltfTexturePolicy m_TexturePolicy;
+		bool m_LoadingDiagnostics;
 		const bool m_ParallelImageDecode;
-		const bool m_CacheDecodedImages;
+		bool m_CacheDecodedImages;
 		const std::uint64_t m_ImageCacheBudgetBytes;
 		const std::function<void(const Assets::GltfLoadProgress&)> m_OnLoadProgress;
 		std::filesystem::path m_ObjectModelPath;

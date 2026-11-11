@@ -18,6 +18,13 @@ namespace ForgeSim::Sandbox
     public:
         [[nodiscard]] bool WantsKeyboard() const noexcept { return m_WantsKeyboard; }
 
+        void RegisterCommand(std::string name, std::string description, std::string usage,
+            std::size_t minimumArguments, std::size_t maximumArguments, ConsoleCommands::Handler handler)
+        {
+            m_Commands.Register(std::move(name), std::move(description), std::move(usage),
+                minimumArguments, maximumArguments, std::move(handler));
+        }
+
         void Draw(std::string_view sceneName, std::string_view scenePath, bool dirty)
         {
             m_WantsKeyboard = false;
@@ -131,12 +138,14 @@ namespace ForgeSim::Sandbox
                         line = line.substr(first, line.find_last_not_of(" \t\r\n") - first + 1);
                         m_History.Add(line);
                         AppendCommand(line);
-                        const auto result = m_Commands.Execute(line,
-                            {sceneName, scenePath, dirty, Build::Version});
-                        if (result.clear) Clear();
-                        if (!result.message.empty())
-                            Core::Log(result.error ? Core::LogLevel::Error : Core::LogLevel::Info,
-                                result.message);
+                        for (const auto& result : m_Commands.ExecuteLine(line,
+                            {sceneName, scenePath, dirty, Build::Version}))
+                        {
+                            if (result.clear) Clear();
+                            if (!result.message.empty())
+                                Core::Log(result.error ? Core::LogLevel::Error : Core::LogLevel::Info,
+                                    result.message);
+                        }
                         m_ScrollToBottom = true;
                     }
                     m_Input[0] = '\0';

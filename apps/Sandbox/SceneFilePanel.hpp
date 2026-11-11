@@ -59,6 +59,13 @@ namespace ForgeSim::Sandbox
     public:
         [[nodiscard]] bool ConsoleWantsKeyboard() const noexcept { return m_Console.WantsKeyboard(); }
 
+        void RegisterConsoleCommand(std::string name, std::string description, std::string usage,
+            std::size_t minimumArguments, std::size_t maximumArguments, ConsoleCommands::Handler handler)
+        {
+            m_Console.RegisterCommand(std::move(name), std::move(description), std::move(usage),
+                minimumArguments, maximumArguments, std::move(handler));
+        }
+
         void DrawMenu(bool actionsAllowed, bool hasScenePath);
         // Draw before creating the workspace dockspace.
         [[nodiscard]] SceneToolbarRequest DrawToolbar(const SceneToolbarContext& context);
