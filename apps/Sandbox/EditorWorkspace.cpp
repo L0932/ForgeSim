@@ -136,7 +136,8 @@ namespace ForgeSim::Sandbox
                 if (ImGui::BeginMenu("Theme"))
                 {
                     for (const auto theme : {EditorTheme::ForgeSimDark,
-                        EditorTheme::Light, EditorTheme::ImGuiClassic, EditorTheme::ImGuiDark})
+                        EditorTheme::ForgeSimDarkBlue, EditorTheme::Light,
+                        EditorTheme::ImGuiClassic, EditorTheme::ImGuiDark})
                     {
                         if (ImGui::MenuItem(EditorThemeName(theme).data(), nullptr, m_Theme == theme))
                             m_PendingTheme = theme;

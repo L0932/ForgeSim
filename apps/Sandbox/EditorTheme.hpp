@@ -10,7 +10,8 @@ namespace ForgeSim::Sandbox
         ForgeSimDark, 
         Light, 
         ImGuiClassic,
-        ImGuiDark
+        ImGuiDark,
+        ForgeSimDarkBlue
     };
 
     [[nodiscard]] std::string_view EditorThemeName(EditorTheme theme) noexcept;

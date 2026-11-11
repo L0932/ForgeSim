@@ -1,4 +1,6 @@
 #include "SceneInspectorPanel.hpp"
+#include "EditorSectionHeader.hpp"
+#include "InspectorPropertyWidgets.hpp"
 #include "SandboxScene.hpp"
 #include "SceneLightEditing.hpp"
 #include "SceneSelection.hpp"
@@ -101,7 +103,7 @@ namespace ForgeSim::Sandbox
             return;
         }
 
-        ImGui::TextUnformatted(object->name.c_str());
+        ImGui::TextWrapped("%s", object->name.c_str());
 
         ImGui::Text(
             "Object ID: %llu",
@@ -113,49 +115,49 @@ namespace ForgeSim::Sandbox
 
         if (context.transformEditor)
         {
-            ImGui::SeparatorText("Pivot");
-            ImGui::TextWrapped("Pivot: %.4f, %.4f, %.4f",
-                object->transform.pivot.x, object->transform.pivot.y, object->transform.pivot.z);
-            if (ImGui::Button("Use bounds center", ImVec2(-1.0f, 0.0f)))
+            if (EditorSectionHeader("Pivot", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                // Half each endpoint separately to avoid overflowing their sum.
-                const glm::vec3 center = context.modelBounds.minimum * 0.5f +
-                    context.modelBounds.maximum * 0.5f;
-                static_cast<void>(context.transformEditor->SetObjectPivot(*object, center));
+                ImGui::TextWrapped("Pivot: %.4f, %.4f, %.4f",
+                    object->transform.pivot.x, object->transform.pivot.y, object->transform.pivot.z);
+                if (ImGui::Button("Use bounds center", ImVec2(-1.0f, 0.0f)))
+                {
+                    // Half each endpoint separately to avoid overflowing their sum.
+                    const glm::vec3 center = context.modelBounds.minimum * 0.5f +
+                        context.modelBounds.maximum * 0.5f;
+                    static_cast<void>(context.transformEditor->SetObjectPivot(*object, center));
+                }
+                if (ImGui::Button("Use authored origin", ImVec2(-1.0f, 0.0f)))
+                    static_cast<void>(context.transformEditor->SetObjectPivot(*object, glm::vec3{0.0f}));
+                ImGui::TextWrapped("Changing the pivot preserves placement. Position locates the pivot.");
             }
-            if (ImGui::Button("Use authored origin", ImVec2(-1.0f, 0.0f)))
-                static_cast<void>(context.transformEditor->SetObjectPivot(*object, glm::vec3{0.0f}));
-            ImGui::TextWrapped("Changing the pivot preserves placement. Position locates the pivot.");
         }
 
-        ImGui::SeparatorText("Transform");
-
-        ImGui::TextWrapped("Position");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::DragFloat3(
-            "##Position",
-            &object->transform.position.x,
-            CalculatePositionDragSpeed(context.modelBounds),
-            0.0f,
-            0.0f,
-            "%.6f",
-            ImGuiSliderFlags_NoRoundToFormat);
-
-        glm::vec3 rotationDegrees =
-            glm::degrees(object->transform.rotationRadians);
-
-        ImGui::TextWrapped("Rotation");
-        ImGui::SetNextItemWidth(-1.0f);
-        if (ImGui::DragFloat3(
-            "##Rotation",
-            &rotationDegrees.x,
-            1.0f,
-            0.0f,
-            0.0f,
-            "%.1f deg"))
+        if (EditorSectionHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            object->transform.rotationRadians =
-                glm::radians(rotationDegrees);
+
+            InspectorUI::DragFloat3(
+                "##Position", "Position",
+                &object->transform.position.x,
+                CalculatePositionDragSpeed(context.modelBounds),
+                0.0f,
+                0.0f,
+                "%.6f",
+                ImGuiSliderFlags_NoRoundToFormat);
+
+            glm::vec3 rotationDegrees =
+                glm::degrees(object->transform.rotationRadians);
+
+            if (InspectorUI::DragFloat3(
+                "##Rotation", "Rotation",
+                &rotationDegrees.x,
+                1.0f,
+                0.0f,
+                0.0f,
+                "%.1f deg"))
+            {
+                object->transform.rotationRadians =
+                    glm::radians(rotationDegrees);
+            }
         }
     }
 
@@ -175,75 +177,69 @@ namespace ForgeSim::Sandbox
 		if (context.selection.IsLightSelected(
 			context.scene.MainDirectionalLight().id))
 		{
-			ImGui::SeparatorText("Directional Light");
+            if (EditorSectionHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen))
+            {
 
-			DirectionalLight& target = context.scene.MainDirectionalLight();
-			DirectionalLight candidate = target;
+                DirectionalLight& target = context.scene.MainDirectionalLight();
+                DirectionalLight candidate = target;
 
-			ImGui::Text(
-				"Light ID: %llu",
-				static_cast<unsigned long long>(target.id));
+                ImGui::Text(
+                    "Light ID: %llu",
+                    static_cast<unsigned long long>(target.id));
 
-			bool changed = false;
+                bool changed = false;
 
-			changed |= ImGui::Checkbox(
-				"Light enabled",
-				&candidate.enabled);
+                changed |= ImGui::Checkbox(
+                    "Light enabled",
+                    &candidate.enabled);
 
-			ImGui::TextWrapped("Light color");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::ColorEdit3(
-				"##Light color",
-				&candidate.color.x,
-				ImGuiColorEditFlags_Float);
+                changed |= InspectorUI::ColorEdit3(
+                    "##Light color", "Color",
+                    &candidate.color.x,
+                    ImGuiColorEditFlags_Float);
 
-			ImGui::TextWrapped("Light intensity");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat(
-				"##Light intensity",
-				&candidate.intensity,
-				0.05f,
-				0.0f,
-				100.0f,
-				"%.2f",
-				ImGuiSliderFlags_AlwaysClamp);
+                changed |= InspectorUI::DragFloat(
+                    "##Light intensity", "Intensity",
+                    &candidate.intensity,
+                    0.05f,
+                    0.0f,
+                    100.0f,
+                    "%.2f",
+                    ImGuiSliderFlags_AlwaysClamp);
 
-			ImGui::TextWrapped("Light editor position");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat3(
-				"##Light editor position",
-				&candidate.position.x,
-				lightPositionDragSpeed,
-				0.0f,
-				0.0f,
-				"%.6f",
-				ImGuiSliderFlags_NoRoundToFormat);
+                changed |= InspectorUI::DragFloat3(
+                    "##Light editor position", "Editor position",
+                    &candidate.position.x,
+                    lightPositionDragSpeed,
+                    0.0f,
+                    0.0f,
+                    "%.6f",
+                    ImGuiSliderFlags_NoRoundToFormat);
 
-			ImGui::TextWrapped("Direction to light");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat3(
-				"##Direction to light",
-				&candidate.directionToLight.x,
-				0.01f,
-				0.0f,
-				0.0f,
-				"%.3f");
+                changed |= InspectorUI::DragFloat3(
+                    "##Direction to light", "Direction to light",
+                    &candidate.directionToLight.x,
+                    0.01f,
+                    0.0f,
+                    0.0f,
+                    "%.3f");
 
-			ImGui::PushTextWrapPos();
-			ImGui::TextDisabled(
-				"Position moves the editor marker, not the illumination.");
-			ImGui::PopTextWrapPos();
+                ImGui::PushTextWrapPos();
+                ImGui::TextDisabled(
+                    "Position moves the editor marker, not the illumination.");
+                ImGui::PopTextWrapPos();
 
-			ImGui::PushTextWrapPos();
-			ImGui::TextDisabled(
-				"Direction points from the surface toward the light.");
-			ImGui::PopTextWrapPos();
+                ImGui::PushTextWrapPos();
+                ImGui::TextDisabled(
+                    "Direction points from the surface toward the light.");
+                ImGui::PopTextWrapPos();
 
-			if (changed)
-			{
-				m_LightValidationError =
-					TryApplyLightEdit(target, candidate);
-			}
+                if (changed)
+                {
+                    m_LightValidationError =
+                        TryApplyLightEdit(target, candidate);
+                }
+            }
 		}
 
 		for (PointLight& target : context.scene.PointLights())
@@ -253,7 +249,8 @@ namespace ForgeSim::Sandbox
 				continue;
 			}
 
-			ImGui::SeparatorText("Selected Point Light");
+            if (!EditorSectionHeader("Point Light", ImGuiTreeNodeFlags_DefaultOpen))
+                break;
 
 			PointLight candidate = target;
 			bool changed = false;
@@ -262,17 +259,13 @@ namespace ForgeSim::Sandbox
 				"Point light enabled",
 				&candidate.enabled);
 
-			ImGui::TextWrapped("Point light color");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::ColorEdit3(
-				"##Point light color",
+			changed |= InspectorUI::ColorEdit3(
+			    "##Point light color", "Color",
 				&candidate.color.x,
 				ImGuiColorEditFlags_Float);
 
-			ImGui::TextWrapped("Point light intensity");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat(
-				"##Point light intensity",
+			changed |= InspectorUI::DragFloat(
+			    "##Point light intensity", "Intensity",
 				&candidate.intensity,
 				0.05f,
 				0.0f,
@@ -280,10 +273,8 @@ namespace ForgeSim::Sandbox
 				"%.2f",
 				ImGuiSliderFlags_AlwaysClamp);
 
-			ImGui::TextWrapped("Point light position");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat3(
-				"##Point light position",
+			changed |= InspectorUI::DragFloat3(
+			    "##Point light position", "Position",
 				&candidate.position.x,
 				lightPositionDragSpeed,
 				0.0f,
@@ -291,10 +282,8 @@ namespace ForgeSim::Sandbox
 				"%.6f",
 				ImGuiSliderFlags_NoRoundToFormat);
 
-			ImGui::TextWrapped("Point light range");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat(
-				"##Point light range",
+			changed |= InspectorUI::DragFloat(
+			    "##Point light range", "Range",
 				&candidate.range,
 				lightPositionDragSpeed,
 				0.000001f,
@@ -319,7 +308,8 @@ namespace ForgeSim::Sandbox
 				continue;
 			}
 
-			ImGui::SeparatorText("Selected Spot Light");
+            if (!EditorSectionHeader("Spot Light", ImGuiTreeNodeFlags_DefaultOpen))
+                break;
 
 			SpotLight candidate = target;
 			bool changed = false;
@@ -328,17 +318,13 @@ namespace ForgeSim::Sandbox
 				"Spot light enabled",
 				&candidate.enabled);
 
-			ImGui::TextWrapped("Spot light color");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::ColorEdit3(
-				"##Spot light color",
+			changed |= InspectorUI::ColorEdit3(
+			    "##Spot light color", "Color",
 				&candidate.color.x,
 				ImGuiColorEditFlags_Float);
 
-			ImGui::TextWrapped("Spot light intensity");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat(
-				"##Spot light intensity",
+			changed |= InspectorUI::DragFloat(
+			    "##Spot light intensity", "Intensity",
 				&candidate.intensity,
 				0.05f,
 				0.0f,
@@ -346,10 +332,8 @@ namespace ForgeSim::Sandbox
 				"%.2f",
 				ImGuiSliderFlags_AlwaysClamp);
 
-			ImGui::TextWrapped("Spot light position");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat3(
-				"##Spot light position",
+			changed |= InspectorUI::DragFloat3(
+			    "##Spot light position", "Position",
 				&candidate.position.x,
 				lightPositionDragSpeed,
 				0.0f,
@@ -357,20 +341,16 @@ namespace ForgeSim::Sandbox
 				"%.6f",
 				ImGuiSliderFlags_NoRoundToFormat);
 
-			ImGui::TextWrapped("Emission direction");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat3(
-				"##Emission direction",
+			changed |= InspectorUI::DragFloat3(
+			    "##Emission direction", "Emission direction",
 				&candidate.emissionDirection.x,
 				0.01f,
 				0.0f,
 				0.0f,
 				"%.3f");
 
-			ImGui::TextWrapped("Spot light range");
-			ImGui::SetNextItemWidth(-1.0f);
-			changed |= ImGui::DragFloat(
-				"##Spot light range",
+			changed |= InspectorUI::DragFloat(
+			    "##Spot light range", "Range",
 				&candidate.range,
 				lightPositionDragSpeed,
 				0.000001f,
@@ -385,10 +365,8 @@ namespace ForgeSim::Sandbox
 			float outerConeDegrees =
 				glm::degrees(candidate.outerConeAngleRadians);
 
-			ImGui::TextWrapped("Inner cone half-angle");
-			ImGui::SetNextItemWidth(-1.0f);
-			if (ImGui::DragFloat(
-				"##Inner cone half-angle",
+			if (InspectorUI::DragFloat(
+			    "##Inner cone half-angle", "Inner half-angle",
 				&innerConeDegrees,
 				0.1f,
 				0.0f,
@@ -401,10 +379,8 @@ namespace ForgeSim::Sandbox
 				changed = true;
 			}
 
-			ImGui::TextWrapped("Outer cone half-angle");
-			ImGui::SetNextItemWidth(-1.0f);
-			if (ImGui::DragFloat(
-				"##Outer cone half-angle",
+			if (InspectorUI::DragFloat(
+			    "##Outer cone half-angle", "Outer half-angle",
 				&outerConeDegrees,
 				0.1f,
 				0.0f,

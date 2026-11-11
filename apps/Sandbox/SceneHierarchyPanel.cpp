@@ -1,4 +1,5 @@
 #include "SceneHierarchyPanel.hpp"
+#include "EditorSectionHeader.hpp"
 
 #include <string>
 
@@ -45,7 +46,7 @@ namespace ForgeSim::Sandbox
             context.selection.Clear();
         }
 
-        if (ImGui::CollapsingHeader(
+        if (EditorSectionHeader(
             "Objects",
             ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -71,7 +72,7 @@ namespace ForgeSim::Sandbox
             }
         }
 
-        if (ImGui::CollapsingHeader(
+        if (EditorSectionHeader(
             "Lights",
             ImGuiTreeNodeFlags_DefaultOpen))
         {
