@@ -254,7 +254,8 @@ namespace ForgeSim::Sandbox
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (ImGui::IsKeyPressed(
+		if (!ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive() &&
+            ImGui::IsKeyPressed(
 			ImGuiKey_F1,
 			false))
 		{

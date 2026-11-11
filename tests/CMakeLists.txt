@@ -1376,3 +1376,12 @@ set_target_properties(ForgeSimSceneNodeTransformTests PROPERTIES
     FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SceneNodeTransform
     COMMAND ForgeSimSceneNodeTransformTests)
+
+
+add_executable(ForgeSimConsoleCommandsTests ConsoleCommandsTest.cpp)
+target_include_directories(ForgeSimConsoleCommandsTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_compile_features(ForgeSimConsoleCommandsTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimConsoleCommandsTests)
+set_target_properties(ForgeSimConsoleCommandsTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ConsoleCommands COMMAND ForgeSimConsoleCommandsTests)

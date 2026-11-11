@@ -493,12 +493,7 @@ namespace ForgeSim::Sandbox
                 });
             });
 
-			TransformEditorUIState editorUI =
-				m_DebugUI.UpdateTransformEditorShortcuts(
-					transformEditor.IsActive(),
-					changePending||
-					input.GetMouseButtonState(
-						Platform::MouseButton::Right).held);
+
 
 			runtimeDiagnostics.SetEnabled(
 				m_DebugUI.RuntimeDiagnosticsEnabled());
@@ -550,6 +545,13 @@ namespace ForgeSim::Sandbox
 									? "opening another scene"
 									: "closing"
 					});
+
+			TransformEditorUIState editorUI =
+				m_DebugUI.UpdateTransformEditorShortcuts(
+					transformEditor.IsActive(),
+					sceneFilePanel.ConsoleWantsKeyboard() || changePending ||
+					input.GetMouseButtonState(
+						Platform::MouseButton::Right).held);
 
 
 			hierarchyPanel.Draw(
@@ -606,6 +608,7 @@ namespace ForgeSim::Sandbox
 			const bool previouslyNavigating = viewportNavigationActive;
 
 			if (!rightMouseDown ||
+                sceneFilePanel.ConsoleWantsKeyboard() ||
 				changePending ||
 				!viewport.IsDrawable())
 			{
@@ -792,11 +795,11 @@ namespace ForgeSim::Sandbox
 					.navigationActive = changePending|| rightMouseDown
 				});
 
-			if (!changePending && (editorUI.undoRequested || toolbarRequest.undo))
+			if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.undoRequested || toolbarRequest.undo))
 			{
 				static_cast<void>(transformEditor.Undo(scene));
 			}
-			else if (!changePending && (editorUI.redoRequested || toolbarRequest.redo))
+			else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.redoRequested || toolbarRequest.redo))
 			{
 				static_cast<void>(transformEditor.Redo(scene));
 			}

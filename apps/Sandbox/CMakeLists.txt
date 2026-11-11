@@ -91,6 +91,8 @@ target_sources(
 		SceneCameraValidation.cpp
 		SceneEditHistory.hpp
 		SceneEditHistory.cpp
+        ConsoleCommands.hpp
+        EditorConsole.hpp
 		SceneFilePanel.hpp
         SceneFilePanel.cpp
 		SceneHierarchyPanel.hpp

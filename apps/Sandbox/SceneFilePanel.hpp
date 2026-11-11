@@ -57,6 +57,8 @@ namespace ForgeSim::Sandbox
     class SceneFilePanel final
     {
     public:
+        [[nodiscard]] bool ConsoleWantsKeyboard() const noexcept { return m_Console.WantsKeyboard(); }
+
         void DrawMenu(bool actionsAllowed, bool hasScenePath);
         // Draw before creating the workspace dockspace.
         [[nodiscard]] SceneToolbarRequest DrawToolbar(const SceneToolbarContext& context);
