@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -15,7 +16,7 @@ namespace ForgeSim::Sandbox
         void Initialize();
 
         // Returns true when the default layout was applied.
-        [[nodiscard]] bool Draw();
+        [[nodiscard]] bool Draw(const std::function<void()>& drawMainToolbar = {});
 
     private:
         void BuildDefaultLayout(unsigned int dockspaceId);
@@ -23,6 +24,8 @@ namespace ForgeSim::Sandbox
         // ImGui retains a pointer to this string.
         std::string m_SettingsPath;
         std::filesystem::path m_ThemePath;
+        std::filesystem::path m_ViewPath;
+        bool m_ShowMainToolbar = true;
         EditorTheme m_Theme = EditorTheme::ForgeSimDark;
         std::optional<EditorTheme> m_PendingTheme;
         bool m_ShowStyleEditor = false;

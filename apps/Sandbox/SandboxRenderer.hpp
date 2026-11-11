@@ -66,6 +66,7 @@ namespace ForgeSim::Sandbox
 		bool showGrid = true;
 		bool showObjectBounds = false;
 		bool showLights = true;
+        bool showDirectionalLightGuide = true;
 		DirectionalShadowSettings directionalShadows{};
 		Renderer::FxaaSettings fxaa{};
 

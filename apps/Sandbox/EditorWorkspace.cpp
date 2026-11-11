@@ -1,7 +1,11 @@
 #include "EditorWorkspace.hpp"
+#include "EditorDockLayout.hpp"
 #include "SandboxPaths.hpp"
 
+#include <algorithm>
 #include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -25,6 +29,15 @@ namespace ForgeSim::Sandbox
         ImGui::GetIO().IniFilename = m_SettingsPath.c_str();
 
         m_ThemePath = settingsPath.parent_path() / "editor-theme.json";
+        m_ViewPath = settingsPath.parent_path() / "editor-view.json";
+        try
+        {
+            std::ifstream input(m_ViewPath);
+            const auto saved = nlohmann::json::parse(input, nullptr, false);
+            if (saved.is_object() && saved.value("version", 0) == 1)
+                m_ShowMainToolbar = saved.value("showMainToolbar", true);
+        }
+        catch (...) { /* Invalid local preferences keep the default view. */ }
         m_Theme = LoadEditorTheme(m_ThemePath);
         LoadEditorFont(BundledAssetDirectory() / "fonts" / "Karla-Regular.ttf");
         ApplyEditorTheme(m_Theme);
@@ -63,6 +76,8 @@ namespace ForgeSim::Sandbox
             viewport->WorkSize);
 
         ImGuiID center = dockspaceId;
+        ImGuiID console = 0;
+        ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.22f, &console, &center);
         ImGuiID left = 0;
         ImGuiID right = 0;
 
@@ -73,10 +88,20 @@ namespace ForgeSim::Sandbox
             &left,
             &center);
 
+        // Size the Inspector against the whole workspace, rather than taking
+        // a fixed fraction of the space remaining after the Hierarchy split.
+        // Limit its share on small windows so the Scene remains usable.
+        const float remainingWidth = ImGui::DockBuilderGetNode(center)->Size.x;
+        const float preferredInspectorWidth = std::clamp(
+            viewport->WorkSize.x * 0.24f, 360.0f, 480.0f);
+        const float inspectorRatio = std::min(
+            preferredInspectorWidth / std::max(remainingWidth, 1.0f),
+            0.45f);
+
         ImGui::DockBuilderSplitNode(
             center,
             ImGuiDir_Right,
-            0.28f,
+            inspectorRatio,
             &right,
             &center);
 
@@ -90,27 +115,16 @@ namespace ForgeSim::Sandbox
             &leftBottom,
             &leftTop);
 
-        ImGuiID rightTop = 0;
-        ImGuiID rightBottom = 0;
-
-        ImGui::DockBuilderSplitNode(
-            right,
-            ImGuiDir_Up,
-            0.30f,
-            &rightTop,
-            &rightBottom);
-
         ImGui::DockBuilderDockWindow("Scene", center);
         ImGui::DockBuilderDockWindow("Hierarchy", leftTop);
-        ImGui::DockBuilderDockWindow("Scene File", leftTop);
+        ImGui::DockBuilderDockWindow("Console###Scene File", console);
         ImGui::DockBuilderDockWindow("ForgeSim Debug", leftBottom);
-        ImGui::DockBuilderDockWindow("Transform Gizmo", rightTop);
-        ImGui::DockBuilderDockWindow("Inspector", rightBottom);
+        ImGui::DockBuilderDockWindow("Inspector", right);
 
         ImGui::DockBuilderFinish(dockspaceId);
     }
 
-    bool EditorWorkspace::Draw()
+    bool EditorWorkspace::Draw(const std::function<void()>& drawMainToolbar)
     {
         // Apply outside an open menu/window so its layout uses one palette
         // for the entire frame. Changes take effect on the following frame.
@@ -130,13 +144,27 @@ namespace ForgeSim::Sandbox
         {
             if (ImGui::BeginMenu("View"))
             {
+                if (ImGui::MenuItem("Show Main Toolbar", nullptr, &m_ShowMainToolbar))
+                {
+                    try
+                    {
+                        std::ofstream output(m_ViewPath, std::ios::trunc);
+                        output << nlohmann::json{{"version", 1},
+                            {"showMainToolbar", m_ShowMainToolbar}}.dump(2) << '\n';
+                        output.close();
+                        if (!output) Core::LogWarning("Could not save editor view preference.");
+                    }
+                    catch (...) { Core::LogWarning("Could not save editor view preference."); }
+                }
+                ImGui::Separator();
                 resetRequested =
                     ImGui::MenuItem("Reset Layout");
 
                 if (ImGui::BeginMenu("Theme"))
                 {
                     for (const auto theme : {EditorTheme::ForgeSimDark,
-                        EditorTheme::Light, EditorTheme::ImGuiClassic, EditorTheme::ImGuiDark})
+                        EditorTheme::ForgeSimDarkBlue, EditorTheme::Light,
+                        EditorTheme::ImGuiClassic, EditorTheme::ImGuiDark})
                     {
                         if (ImGui::MenuItem(EditorThemeName(theme).data(), nullptr, m_Theme == theme))
                             m_PendingTheme = theme;
@@ -151,6 +179,10 @@ namespace ForgeSim::Sandbox
 
             ImGui::EndMainMenuBar();
         }
+
+        // Reserve toolbar space after menu submission and before the dockspace.
+        if (m_ShowMainToolbar && drawMainToolbar)
+            drawMainToolbar();
 
         if (m_ShowStyleEditor)
         {
@@ -173,6 +205,8 @@ namespace ForgeSim::Sandbox
         {
             BuildDefaultLayout(dockspaceId);
         }
+
+        ResizeEditorDockLayout(dockspaceId, ImGui::GetMainViewport()->WorkSize);
 
         ImGui::DockSpaceOverViewport(
             dockspaceId,

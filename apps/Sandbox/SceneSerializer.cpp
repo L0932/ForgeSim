@@ -616,6 +616,10 @@ namespace ForgeSim::Sandbox
             { "rendering", WriteRendering(document.rendering) },
             { "cameraBookmarks", bookmarks },
             { "objects", objects },
+            { "editorVisibility", {
+                { "hiddenObjectIds", document.hiddenObjectIds },
+                { "hiddenLightIds", document.hiddenLightIds }
+            } },
             {
                 "directionalLight",
                 WriteLight(document.directionalLight)
@@ -653,7 +657,7 @@ namespace ForgeSim::Sandbox
             ReadMember(root, "version", ""),
             "version");
 
-        if (version != 1 && version != 2 && version != CurrentSceneDocumentVersion)
+        if (version < 1 || version > CurrentSceneDocumentVersion)
         {
             ReadError(
                 "version",
@@ -750,6 +754,24 @@ namespace ForgeSim::Sandbox
                 ReadSpotLight(
                     spotLights[index],
                     "spotLights[" + std::to_string(index) + "]"));
+        }
+
+        if (const auto visibility = root.find("editorVisibility"); visibility != root.end())
+        {
+            if (!visibility->is_object()) ReadError("editorVisibility", "Expected an object.");
+            const auto readIds = [&](const char* member, auto& destination)
+            {
+                if (const auto ids = visibility->find(member); ids != visibility->end())
+                {
+                    const std::string property = std::string("editorVisibility.") + member;
+                    const auto& entries = ReadArray(*ids, property);
+                    for (std::size_t index = 0; index < entries.size(); ++index)
+                        destination.push_back(ReadUnsigned(entries[index],
+                            property + "[" + std::to_string(index) + "]"));
+                }
+            };
+            readIds("hiddenObjectIds", document.hiddenObjectIds);
+            readIds("hiddenLightIds", document.hiddenLightIds);
         }
 
         if (const auto error = ValidateSceneDocument(document))

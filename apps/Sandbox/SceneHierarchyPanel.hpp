@@ -3,11 +3,13 @@
 #include "SandboxScene.hpp"
 #include "SceneSelection.hpp"
 
+#include <imgui.h>
+
 namespace ForgeSim::Sandbox
 {
     struct SceneHierarchyPanelContext
     {
-        const SandboxScene& scene;
+        SandboxScene& scene;
         SceneSelection& selection;
 
         bool interactionDisabled = false;
@@ -16,13 +18,16 @@ namespace ForgeSim::Sandbox
     class SceneHierarchyPanel final
     {
     public:
-        void Draw(const SceneHierarchyPanelContext& context) const;
+        void Draw(const SceneHierarchyPanelContext& context);
+
 
     private:
-        static void DrawLightEntry(
+        void DrawLightEntry(
             const char* typeName,
             SceneLightId id,
             bool enabled,
-            SceneSelection& selection);
+            SceneSelection& selection, SandboxScene& scene);
+
+        ImGuiTextFilter m_Filter;
     };
 }

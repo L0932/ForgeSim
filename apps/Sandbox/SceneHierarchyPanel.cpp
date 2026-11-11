@@ -1,111 +1,182 @@
 #include "SceneHierarchyPanel.hpp"
+#include "EditorSectionHeader.hpp"
 
+#include <algorithm>
 #include <string>
-
-#include <imgui.h>
 
 namespace ForgeSim::Sandbox
 {
-    void SceneHierarchyPanel::DrawLightEntry(
-        const char* typeName,
-        SceneLightId id,
-        bool enabled,
-        SceneSelection& selection)
+    namespace
     {
-        const std::string idText = std::to_string(id);
-
-        const std::string label =
-            std::string{ typeName } + " " + idText +
-            (enabled ? "" : " (disabled)") +
-            "###Light_" + idText;
-
-        if (ImGui::Selectable(
-            label.c_str(),
-            selection.IsLightSelected(id)))
+        std::string LightLabel(const char* typeName, SceneLightId id, bool enabled)
         {
-            selection.SelectLight(id);
+            return std::string(typeName) + " " + std::to_string(id) +
+                (enabled ? "" : " (disabled)");
         }
+        struct HierarchyRowAction { bool select = false; bool toggle = false; };
+
+        HierarchyRowAction DrawVisibilityRow(const std::string& label, const std::string& buttonId,
+            bool selected, bool visible)
+        {
+            const auto& style = ImGui::GetStyle();
+            const float buttonSize = ImGui::GetFrameHeight();
+            const float rowWidth = std::max(1.0f,
+                ImGui::GetContentRegionAvail().x - buttonSize - style.ItemSpacing.x);
+            if (!visible) ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
+            ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0,.5f));
+            const bool select = ImGui::Selectable(label.c_str(), selected,
+                ImGuiSelectableFlags_None, ImVec2(rowWidth,buttonSize));
+            ImGui::PopStyleVar();
+            if (!visible) ImGui::PopStyleColor();
+            ImGui::SameLine();
+            const bool toggle = ImGui::Button(buttonId.c_str(), ImVec2(buttonSize,buttonSize));
+            ImGui::SetItemTooltip(visible ? "Hide in Scene (saved with the scene)" : "Show in Scene (saved with the scene)");
+            const auto min = ImGui::GetItemRectMin();
+            const ImVec2 center{min.x + buttonSize*.5f,min.y + buttonSize*.5f};
+            const float radius = buttonSize*.29f;
+            const float weight = std::max(1.0f,buttonSize*.055f);
+            const auto color = ImGui::GetColorU32(visible ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+            auto* draw = ImGui::GetWindowDrawList();
+            draw->AddBezierCubic({center.x-radius,center.y},
+                {center.x-radius*.5f,center.y-radius}, {center.x+radius*.5f,center.y-radius},
+                {center.x+radius,center.y},color,weight);
+            draw->AddBezierCubic({center.x-radius,center.y},
+                {center.x-radius*.5f,center.y+radius}, {center.x+radius*.5f,center.y+radius},
+                {center.x+radius,center.y},color,weight);
+            draw->AddCircleFilled(center,radius*.28f,color);
+            if (!visible) draw->AddLine({center.x-radius,center.y-radius},
+                {center.x+radius,center.y+radius},color,weight);
+            return {select,toggle};
+        }
+
     }
 
-    void SceneHierarchyPanel::Draw(
-        const SceneHierarchyPanelContext& context) const
+    void SceneHierarchyPanel::DrawLightEntry(const char* typeName, SceneLightId id,
+        bool enabled, SceneSelection& selection, SandboxScene& scene)
+    {
+        const auto visible = LightLabel(typeName, id, enabled);
+        if (!m_Filter.PassFilter(visible.c_str())) return;
+        const auto label = visible + "###Light_" + std::to_string(id);
+        const bool visibleInScene = scene.IsLightVisible(id);
+        const auto action = DrawVisibilityRow(label, "##VisibilityLight_" + std::to_string(id),
+            selection.IsLightSelected(id), visibleInScene);
+        if (action.select) selection.SelectLight(id);
+        if (action.toggle) scene.SetLightVisible(id, !visibleInScene);
+    }
+
+    void SceneHierarchyPanel::Draw(const SceneHierarchyPanelContext& context)
     {
         if (!ImGui::Begin("Hierarchy"))
         {
             ImGui::End();
             return;
         }
+        // Compact list density belongs to the Hierarchy, independent of the
+        // larger form controls in the Inspector and Debug panels.
+        const auto padding = ImGui::GetStyle().FramePadding;
+        const auto spacing = ImGui::GetStyle().ItemSpacing;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+            ImVec2(padding.x, std::max(1.0f, padding.y * 0.5f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+            ImVec2(spacing.x, std::max(1.0f, ImGui::GetFontSize() * 0.125f)));
 
         ImGui::BeginDisabled(context.interactionDisabled);
 
-        if (ImGui::Selectable(
-            "None",
-            context.selection.Empty()))
+        const auto& style = ImGui::GetStyle();
+        const float clearWidth = ImGui::CalcTextSize("Clear").x + 2.0f * style.FramePadding.x;
+        ImGui::SetNextItemWidth(std::max(1.0f,
+            ImGui::GetContentRegionAvail().x - clearWidth - style.ItemSpacing.x));
+        bool changed = ImGui::InputTextWithHint("##HierarchySearch", "Search hierarchy...",
+            m_Filter.InputBuf, IM_ARRAYSIZE(m_Filter.InputBuf));
+        ImGui::SetItemTooltip("Filter names and light types (case-insensitive).\nSeparate alternatives with commas; exclude terms with a leading minus.");
+        ImGui::SameLine();
+        ImGui::BeginDisabled(m_Filter.InputBuf[0] == '\0');
+        if (ImGui::Button("Clear"))
         {
-            context.selection.Clear();
+            m_Filter.Clear();
+            changed = true;
         }
-
-        if (ImGui::CollapsingHeader(
-            "Objects",
-            ImGuiTreeNodeFlags_DefaultOpen))
+        ImGui::EndDisabled();
+        if (changed)
         {
-            if (context.scene.Objects().empty())
-            {
-                ImGui::TextDisabled("No objects.");
-            }
+            m_Filter.Build();
+            // Exclusions take precedence regardless of their position in the query.
+            std::stable_partition(m_Filter.Filters.begin(), m_Filter.Filters.end(),
+                [](const ImGuiTextFilter::ImGuiTextRange& term)
+                { return term.b != term.e && term.b[0] == '-'; });
+        }
+        const bool filtering = m_Filter.IsActive();
+        if (context.scene.HasHiddenObjects() && ImGui::Button("Show all objects", ImVec2(-1,0)))
+            context.scene.ShowAllObjects();
+        if (context.scene.HasHiddenLights() && ImGui::Button("Show all lights", ImVec2(-1,0)))
+            context.scene.ShowAllLights();
 
-            for (const SandboxObject& object :
-                context.scene.Objects())
-            {
-                const std::string label =
-                    object.name +
-                    "###Object_" +
-                    std::to_string(object.id);
+        // Count matches independently of section expansion. Filtering never
+        // changes selection, including a selected item hidden by the query.
+        std::size_t objectMatches = 0, lightMatches = 0;
+        bool selectedMatches = context.selection.Empty();
+        for (const auto& object : context.scene.Objects())
+        {
+            if (!m_Filter.PassFilter(object.name.c_str())) continue;
+            ++objectMatches;
+            selectedMatches |= context.selection.IsObjectSelected(object.id);
+        }
+        const auto countLight = [&](const char* type, const auto& light)
+        {
+            const auto label = LightLabel(type, light.id, light.enabled);
+            if (!m_Filter.PassFilter(label.c_str())) return;
+            ++lightMatches;
+            selectedMatches |= context.selection.IsLightSelected(light.id);
+        };
+        const auto& directional = context.scene.MainDirectionalLight();
+        countLight("Directional Light", directional);
+        for (const auto& light : context.scene.PointLights()) countLight("Point Light", light);
+        for (const auto& light : context.scene.SpotLights()) countLight("Spot Light", light);
 
-                if (ImGui::Selectable(
-                    label.c_str(),
-                    context.selection.IsObjectSelected(object.id)))
+        if (filtering && !selectedMatches)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
+            ImGui::TextWrapped("Selected item is hidden by the filter.");
+            ImGui::PopStyleColor();
+        }
+        if (ImGui::Selectable("None", context.selection.Empty())) context.selection.Clear();
+
+        if (filtering && objectMatches + lightMatches == 0)
+            ImGui::TextWrapped("No matching objects or lights.");
+
+        if (!filtering || objectMatches > 0)
+        {
+            if (changed && filtering) ImGui::SetNextItemOpen(true);
+            if (EditorSectionHeader("Objects", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                if (context.scene.Objects().empty()) ImGui::TextDisabled("No objects.");
+                for (const auto& object : context.scene.Objects())
                 {
-                    context.selection.SelectObject(object.id);
+                    if (!m_Filter.PassFilter(object.name.c_str())) continue;
+                    const auto id = std::to_string(object.id);
+                    const auto label = object.name + "###Object_" + id;
+                    const bool visible = context.scene.IsObjectVisible(object.id);
+                    const auto action = DrawVisibilityRow(label, "##VisibilityObject_" + id,
+                        context.selection.IsObjectSelected(object.id), visible);
+                    if (action.select) context.selection.SelectObject(object.id);
+                    if (action.toggle) context.scene.SetObjectVisible(object.id, !visible);
                 }
             }
         }
-
-        if (ImGui::CollapsingHeader(
-            "Lights",
-            ImGuiTreeNodeFlags_DefaultOpen))
+        if (!filtering || lightMatches > 0)
         {
-            const DirectionalLight& directional =
-                context.scene.MainDirectionalLight();
-
-            DrawLightEntry(
-                "Directional Light",
-                directional.id,
-                directional.enabled,
-                context.selection);
-
-            for (const PointLight& light :
-                context.scene.PointLights())
+            if (changed && filtering) ImGui::SetNextItemOpen(true);
+            if (EditorSectionHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                DrawLightEntry(
-                    "Point Light",
-                    light.id,
-                    light.enabled,
-                    context.selection);
-            }
-
-            for (const SpotLight& light :
-                context.scene.SpotLights())
-            {
-                DrawLightEntry(
-                    "Spot Light",
-                    light.id,
-                    light.enabled,
-                    context.selection);
+                DrawLightEntry("Directional Light", directional.id, directional.enabled, context.selection, context.scene);
+                for (const auto& light : context.scene.PointLights())
+                    DrawLightEntry("Point Light", light.id, light.enabled, context.selection, context.scene);
+                for (const auto& light : context.scene.SpotLights())
+                    DrawLightEntry("Spot Light", light.id, light.enabled, context.selection, context.scene);
             }
         }
-
         ImGui::EndDisabled();
+        ImGui::PopStyleVar(2);
         ImGui::End();
     }
 }

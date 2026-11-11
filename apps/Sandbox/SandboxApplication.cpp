@@ -192,6 +192,7 @@ namespace ForgeSim::Sandbox
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
+        Core::LogInfo("Scene loaded: " + document.name);
 	}
 
 	void SandboxApplication::Run(std::optional<std::chrono::steady_clock::time_point> startupStart)
@@ -366,6 +367,9 @@ namespace ForgeSim::Sandbox
 		bool exitRequested = false;
 		bool cameraFramingRequested = true;
         std::optional<SceneCameraData> cameraRestoreRequest;
+        std::vector<SandboxObject> visibleObjects;
+        std::vector<PointLight> visiblePointLights;
+        std::vector<SpotLight> visibleSpotLights;
 		bool viewportNavigationActive = false;
 
 		// Light guides and their picking radius follow the transformed
@@ -475,10 +479,22 @@ namespace ForgeSim::Sandbox
 					Platform::MouseButton::Right).held,
 				m_EditorSession->ScenePath().has_value());
 
-			m_DebugUI.BeginWorkspace();
+            SceneToolbarRequest toolbarRequest;
+            m_DebugUI.BeginWorkspace([&]
+            {
+                toolbarRequest = sceneFilePanel.DrawToolbar(SceneToolbarContext{
+                    .actionsAllowed = !changePending && !transformEditor.IsActive() &&
+                        !input.GetMouseButtonState(Platform::MouseButton::Right).held,
+                    .hasScenePath = m_EditorSession->ScenePath().has_value(),
+                    .canUndo = transformEditor.CanUndo(),
+                    .canRedo = transformEditor.CanRedo(),
+                    .sceneName = scene.Name(),
+                    .dirty = m_EditorSession->HasUnsavedChanges()
+                });
+            });
 
-			const TransformEditorUIState editorUI =
-				m_DebugUI.DrawTransformEditorControls(
+			TransformEditorUIState editorUI =
+				m_DebugUI.UpdateTransformEditorShortcuts(
 					transformEditor.IsActive(),
 					changePending||
 					input.GetMouseButtonState(
@@ -561,8 +577,7 @@ namespace ForgeSim::Sandbox
 					: 1.0f
 			};
 
-			const SceneViewportState& viewport =
-				sceneViewportPanel.Begin(framebufferScale);
+            SceneViewportState viewport = sceneViewportPanel.Begin(framebufferScale);
 
 			if (viewport.IsDrawable())
 			{
@@ -575,6 +590,10 @@ namespace ForgeSim::Sandbox
 				sceneViewportPanel.DrawImage(
 					m_Renderer.SceneColorTexture());
 			}
+
+            editorUI = m_DebugUI.DrawTransformEditorToolbar(viewport,
+                changePending || transformEditor.IsActive() ||
+                input.GetMouseButtonState(Platform::MouseButton::Right).held);
 
 			const bool leftMouseDown =
 				input.GetMouseButtonState(
@@ -751,10 +770,17 @@ namespace ForgeSim::Sandbox
 				selection,
 				scene);
 
+            // Keep the Inspector selection when hiding an object, but omit its gizmo.
+            SceneSelection gizmoSelection = selection;
+            if (const auto id = selection.SelectedObjectId(); id && !scene.IsObjectVisible(*id))
+                gizmoSelection.Clear();
+            if (const auto id = selection.SelectedLightId(); id && !scene.IsLightVisible(*id))
+                gizmoSelection.Clear();
+
 			transformEditor.Update(
 				SceneTransformEditorContext{
 					.scene = scene,
-					.selection = selection,
+					.selection = gizmoSelection,
 					.view = view,
 					.projection = projection,
 					.viewportPosition = viewport.position,
@@ -766,11 +792,11 @@ namespace ForgeSim::Sandbox
 					.navigationActive = changePending|| rightMouseDown
 				});
 
-			if (!changePending&& editorUI.undoRequested)
+			if (!changePending && (editorUI.undoRequested || toolbarRequest.undo))
 			{
 				static_cast<void>(transformEditor.Undo(scene));
 			}
-			else if (!changePending&& editorUI.redoRequested)
+			else if (!changePending && (editorUI.redoRequested || toolbarRequest.redo))
 			{
 				static_cast<void>(transformEditor.Redo(scene));
 			}
@@ -781,6 +807,15 @@ namespace ForgeSim::Sandbox
 				viewportNavigationActive ||
 				transformEditor.SuppressesPicking();
 
+            // Feed the same visible subset to picking and all render passes,
+            // including object bounds, highlights, and shadows.
+            visibleObjects.clear();
+            for (const auto& object : scene.Objects())
+                if (scene.IsObjectVisible(object.id)) visibleObjects.push_back(object);
+
+            std::erase_if(lightPickTargets, [&](const LightPickTarget& target)
+                { return !scene.IsLightVisible(target.id); });
+
 			selectionController.Update(
 				input,
 				viewport.cursorPixels,
@@ -788,7 +823,7 @@ namespace ForgeSim::Sandbox
 				view,
 				projection,
 				m_Renderer.ObjectLocalBounds(),
-				scene.Objects(),
+				visibleObjects,
 				lightPickTargets,
 				selection,
 				pickingSuppressed);
@@ -819,6 +854,7 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.ShowObjectBounds(),
 
 				.showLights = m_DebugUI.ShowLights(),
+                .showDirectionalLightGuide = scene.IsLightVisible(scene.MainDirectionalLight().id),
 
 				.directionalShadows = scene.RenderingSettings().directionalShadows,
                 .fxaa = m_DebugUI.Fxaa(),
@@ -841,16 +877,25 @@ namespace ForgeSim::Sandbox
 				.renderToTexture = true
 			};
 
+            DirectionalLight visibleDirectional = scene.MainDirectionalLight();
+            visibleDirectional.enabled &= scene.IsLightVisible(visibleDirectional.id);
+            visiblePointLights.clear();
+            for (const auto& light : scene.PointLights())
+                if (scene.IsLightVisible(light.id)) visiblePointLights.push_back(light);
+            visibleSpotLights.clear();
+            for (const auto& light : scene.SpotLights())
+                if (scene.IsLightVisible(light.id)) visibleSpotLights.push_back(light);
+
 			m_Renderer.Render(
-				scene.Objects(),
+				visibleObjects,
 				selection.SelectedObjectId(),
 				view,
 				projection,
 				camera.Position(),
 				SceneLightingView{
-					.directionalLight = scene.MainDirectionalLight(),
-					.pointLights = scene.PointLights(),
-					.spotLights = scene.SpotLights()
+					.directionalLight = visibleDirectional,
+					.pointLights = visiblePointLights,
+					.spotLights = visibleSpotLights
 				},
 				renderSettings);
 
@@ -976,6 +1021,7 @@ namespace ForgeSim::Sandbox
 						}
 
 						sceneFileMessage = "Scene saved.";
+                        Core::LogInfo("Scene saved: " + scene.Name());
 						break;
 					}
 
@@ -996,6 +1042,7 @@ namespace ForgeSim::Sandbox
 
 						m_EditorSession->SaveAs(*path);
 						sceneFileMessage = "Scene saved.";
+                        Core::LogInfo("Scene saved: " + scene.Name());
 						break;
 					}
 
@@ -1032,6 +1079,7 @@ namespace ForgeSim::Sandbox
 							m_EditorSession->SaveAs(*path);
 						}
 
+                        Core::LogInfo("Scene saved: " + scene.Name());
 						completePendingAction = true;
 						break;
 					}
@@ -1093,6 +1141,7 @@ namespace ForgeSim::Sandbox
 
 							pendingAction = PendingSceneAction::None;
 							sceneFileMessage = "New scene created.";
+                            Core::LogInfo(sceneFileMessage);
 						}
 						else if (pendingAction == PendingSceneAction::Open)
 						{
@@ -1164,6 +1213,7 @@ namespace ForgeSim::Sandbox
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
 					sceneFileMessage = "Scene opened.";
+                    Core::LogInfo("Scene loaded: " + scene.Name());
 				}
 				catch (const std::exception& exception)
 				{

@@ -1,4 +1,6 @@
 #include "SandboxDebugUI.hpp"
+#include "EditorSectionHeader.hpp"
+#include "SceneViewportToolbar.hpp"
 #include "SandboxScene.hpp"
 #include "SandboxPaths.hpp"
 #include "SceneCameraState.hpp"
@@ -50,6 +52,7 @@ namespace ForgeSim::Sandbox
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		m_Workspace.Initialize();
+        m_ViewportTools.Load(EditorSettingsDirectory() / "viewport-tools.json");
 
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
@@ -75,7 +78,7 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	TransformEditorUIState SandboxDebugUI::DrawTransformEditorControls(
+	TransformEditorUIState SandboxDebugUI::UpdateTransformEditorShortcuts(
 		bool editingActive,
 		bool navigationActive)
 	{
@@ -118,68 +121,6 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-        if (ImGui::Begin("Transform Gizmo"))
-        {
-            const auto& style = ImGui::GetStyle();
-            const float available = ImGui::GetContentRegionAvail().x;
-            const auto choiceButton = [](const char* label, bool selected,
-                float width, const char* tooltip)
-            {
-                if (selected)
-                    ImGui::PushStyleColor(ImGuiCol_Button,
-                        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
-                const bool pressed = ImGui::Button(label, ImVec2(width, 0.0f));
-                if (selected)
-                    ImGui::PopStyleColor();
-                ImGui::SetItemTooltip("%s", tooltip);
-                return pressed;
-            };
-
-            // Fall back to stacked buttons when the panel is too narrow.
-            const bool operationRow = available >=
-                3.0f * (ImGui::CalcTextSize("Rotate").x + 2.0f * style.FramePadding.x)
-                + 2.0f * style.ItemSpacing.x;
-            const float operationWidth = operationRow
-                ? (available - 2.0f * style.ItemSpacing.x) / 3.0f : -1.0f;
-
-            ImGui::SeparatorText("Operation");
-            // Keep operation and space stable throughout an active drag.
-            ImGui::BeginDisabled(editingActive);
-            if (choiceButton("Move", state.operation == GizmoOperation::Translate,
-                operationWidth, "Translate selection (W)"))
-                state.operation = GizmoOperation::Translate;
-            if (operationRow) ImGui::SameLine();
-            if (choiceButton("Rotate", state.operation == GizmoOperation::Rotate,
-                operationWidth, "Rotate selection (E)"))
-                state.operation = GizmoOperation::Rotate;
-            if (operationRow) ImGui::SameLine();
-            if (choiceButton("Scale", state.operation == GizmoOperation::Scale,
-                operationWidth, "Scale selection (R)"))
-                state.operation = GizmoOperation::Scale;
-
-            ImGui::Spacing();
-            ImGui::SeparatorText("Coordinate space");
-            const bool scaling = state.operation == GizmoOperation::Scale;
-            const bool spaceRow = available >=
-                2.0f * (ImGui::CalcTextSize("World").x + 2.0f * style.FramePadding.x)
-                + style.ItemSpacing.x;
-            const float spaceWidth = spaceRow
-                ? (available - style.ItemSpacing.x) / 2.0f : -1.0f;
-            ImGui::BeginDisabled(scaling);
-            if (choiceButton("World", !scaling && state.space == GizmoSpace::World,
-                spaceWidth, "Use world axes (X toggles space)"))
-                state.space = GizmoSpace::World;
-            if (spaceRow) ImGui::SameLine();
-            if (choiceButton("Local", scaling || state.space == GizmoSpace::Local,
-                spaceWidth, "Use local axes (X toggles space)"))
-                state.space = GizmoSpace::Local;
-            ImGui::EndDisabled();
-            ImGui::EndDisabled();
-
-            if (scaling)
-                ImGui::TextWrapped("Scale uses local axes.");
-        }
-		ImGui::End();
 
 		// Let active UI controls handle their own keyboard input.
 		if (!editingActive &&
@@ -202,6 +143,16 @@ namespace ForgeSim::Sandbox
 
 		return state;
 	}
+
+
+    TransformEditorUIState SandboxDebugUI::DrawTransformEditorToolbar(
+        SceneViewportState& viewport, bool disabled)
+    {
+        if (viewport.IsDrawable() && m_ViewportTools.Draw(m_TransformEditorState,
+            {viewport.position.x, viewport.position.y}, {viewport.size.x, viewport.size.y}, disabled))
+            viewport.hovered = false;
+        return m_TransformEditorState;
+    }
 
 	SandboxDebugUI::~SandboxDebugUI()
 	{
@@ -311,126 +262,132 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	void SandboxDebugUI::Draw(const SandboxDebugUIContext& context)
-	{
-		const Core::RuntimeDiagnosticsSnapshot*
-			diagnosticsSnapshot =
-			context.diagnosticsSnapshot;
+    void SandboxDebugUI::Draw(const SandboxDebugUIContext& context)
+    {
+        const Core::RuntimeDiagnosticsSnapshot*
+            diagnosticsSnapshot =
+            context.diagnosticsSnapshot;
 
-		const Renderer::PerspectiveCamera& camera =
-			context.camera;
+        const Renderer::PerspectiveCamera& camera =
+            context.camera;
 
-		if (!m_IsVisible)
-		{
-			return;
-		}
+        if (!m_IsVisible)
+        {
+            return;
+        }
 
-		ImGui::Begin(
-			"ForgeSim Debug",
-			&m_IsVisible);
+        ImGui::Begin(
+            "ForgeSim Debug",
+            &m_IsVisible);
 
-		ImGui::Text(
-			"ForgeSim Sandbox %s",
-			ForgeSim::Build::Version);
+        ImGui::Text(
+            "ForgeSim Sandbox %s",
+            ForgeSim::Build::Version);
 
-		ImGui::TextUnformatted(
-			"Press F1 to show or hide this panel.");
+        ImGui::TextUnformatted(
+            "Press F1 to show or hide this panel.");
 
-		ImGui::Spacing();
-		ImGui::SeparatorText("Viewport");
+        ImGui::Spacing();
+        if (EditorSectionHeader("Viewport", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Checkbox(
+                "Show reference grid",
+                &m_ShowGrid);
 
-		ImGui::Checkbox(
-			"Show reference grid",
-			&m_ShowGrid);
+            ImGui::Checkbox(
+                "Show object bounds",
+                &m_ShowObjectBounds);
 
-		ImGui::Checkbox(
-			"Show object bounds",
-			&m_ShowObjectBounds);
+            ImGui::Checkbox(
+                "Show scene lights",
+                &m_ShowLights);
 
-		ImGui::Checkbox(
-			"Show scene lights",
-			&m_ShowLights);
+            ImGui::Spacing();
+        }
 
-		ImGui::Spacing();
-		ImGui::SeparatorText("Camera");
+        if (EditorSectionHeader("Camera"))
+        {
+            const glm::vec3& cameraPosition =
+                camera.Position();
 
-		const glm::vec3& cameraPosition =
-			camera.Position();
+            const glm::vec3 cameraForward =
+                camera.ForwardDirection();
 
-		const glm::vec3 cameraForward =
-			camera.ForwardDirection();
+            const glm::vec3 cameraTarget =
+                cameraPosition + cameraForward;
 
-		const glm::vec3 cameraTarget =
-			cameraPosition + cameraForward;
+            ImGui::Text(
+                "Position: %.3f, %.3f, %.3f",
+                cameraPosition.x,
+                cameraPosition.y,
+                cameraPosition.z);
 
-		ImGui::Text(
-			"Position: %.3f, %.3f, %.3f",
-			cameraPosition.x,
-			cameraPosition.y,
-			cameraPosition.z);
+            ImGui::Text(
+                "Forward: %.3f, %.3f, %.3f",
+                cameraForward.x,
+                cameraForward.y,
+                cameraForward.z);
 
-		ImGui::Text(
-			"Forward: %.3f, %.3f, %.3f",
-			cameraForward.x,
-			cameraForward.y,
-			cameraForward.z);
+            if (ImGui::Button("Copy camera pose", ImVec2(-1.0f, 0.0f)))
+            {
+                std::array<char, 512> cameraPose{};
 
-		if (ImGui::Button("Copy camera pose", ImVec2(-1.0f, 0.0f)))
-		{
-			std::array<char, 512> cameraPose{};
+                std::snprintf(
+                    cameraPose.data(),
+                    cameraPose.size(),
+                    "glm::vec3{ %.3ff, %.3ff, %.3ff },\n"
+                    "glm::vec3{ %.3ff, %.3ff, %.3ff },",
+                    cameraPosition.x,
+                    cameraPosition.y,
+                    cameraPosition.z,
+                    cameraTarget.x,
+                    cameraTarget.y,
+                    cameraTarget.z);
 
-			std::snprintf(
-				cameraPose.data(),
-				cameraPose.size(),
-				"glm::vec3{ %.3ff, %.3ff, %.3ff },\n"
-				"glm::vec3{ %.3ff, %.3ff, %.3ff },",
-				cameraPosition.x,
-				cameraPosition.y,
-				cameraPosition.z,
-				cameraTarget.x,
-				cameraTarget.y,
-				cameraTarget.z);
+                ImGui::SetClipboardText(
+                    cameraPose.data());
+            }
 
-			ImGui::SetClipboardText(
-				cameraPose.data());
-		}
+            ImGui::Spacing();
+        }
 
-		ImGui::Spacing();
-		ImGui::SeparatorText("Saved viewpoint");
-		ImGui::BeginDisabled(context.cameraEditingDisabled);
+        if (EditorSectionHeader("Saved viewpoint"))
+        {
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
 
-		if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
-		{
-            const SceneCameraData saved = CaptureSceneCamera(
-                context.camera, context.referenceViewport);
+            if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
+            {
+                const SceneCameraData saved = CaptureSceneCamera(
+                    context.camera, context.referenceViewport);
 
-			if (const auto error = context.scene.TrySetSavedCamera(saved))
-			{
-				Core::LogError(
-					std::string{ "Cannot save viewpoint at 'camera." } +
-					std::string{ error->property } +
-					"': " +
-					std::string{ error->message });
-			}
-		}
+                if (const auto error = context.scene.TrySetSavedCamera(saved))
+                {
+                    Core::LogError(
+                        std::string{ "Cannot save viewpoint at 'camera." } +
+                        std::string{ error->property } +
+                        "': " +
+                        std::string{ error->message });
+                }
+            }
 
-		ImGui::BeginDisabled(!context.scene.SavedCamera());
+            ImGui::BeginDisabled(!context.scene.SavedCamera());
 
-		if (ImGui::Button("Clear saved viewpoint", ImVec2(-1.0f, 0.0f)))
-		{
-			context.scene.ClearSavedCamera();
-		}
+            if (ImGui::Button("Clear saved viewpoint", ImVec2(-1.0f, 0.0f)))
+            {
+                context.scene.ClearSavedCamera();
+            }
 
-		ImGui::EndDisabled();
-		ImGui::EndDisabled();
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
 
-		ImGui::TextUnformatted(
-			context.scene.SavedCamera()
-			? "Scene has a saved viewpoint."
-			: "Scene will use automatic framing.");
+            ImGui::TextUnformatted(
+                context.scene.SavedCamera()
+                ? "Scene has a saved viewpoint."
+                : "Scene will use automatic framing.");
 
-		ImGui::TextWrapped(
-			"Save the scene file to keep viewpoint changes.");
+            ImGui::TextWrapped(
+                "Save the scene file to keep viewpoint changes.");
+        }
 
         const auto reportAction = [&](auto&& action)
         {
@@ -445,337 +402,354 @@ namespace ForgeSim::Sandbox
             }
         };
 
-        ImGui::SeparatorText("Camera bookmarks");
-        ImGui::BeginDisabled(context.cameraEditingDisabled);
-        ImGui::InputText("Bookmark name", m_BookmarkName.data(), m_BookmarkName.size());
-        if (ImGui::Button("Add bookmark"))
+        if (EditorSectionHeader("Camera bookmarks"))
         {
-            reportAction([&]
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+            ImGui::InputText("Bookmark name", m_BookmarkName.data(), m_BookmarkName.size());
+            if (ImGui::Button("Add bookmark"))
             {
-                context.scene.AddCameraBookmark(m_BookmarkName.data(),
-                    CaptureSceneCamera(context.camera, context.referenceViewport));
-                m_SelectedBookmark = m_BookmarkName.data();
-            });
-        }
-
-        std::optional<std::size_t> requestedBookmark;
-        if (ImGui::BeginCombo("Bookmarks",
-            m_SelectedBookmark.empty() ? "Select a bookmark" : m_SelectedBookmark.c_str()))
-        {
-            const auto bookmarks = context.scene.CameraBookmarks();
-            for (std::size_t index = 0; index < bookmarks.size(); ++index)
-            {
-                ImGui::PushID(static_cast<int>(index));
-                if (ImGui::Selectable(bookmarks[index].name.c_str(),
-                    bookmarks[index].name == m_SelectedBookmark))
+                reportAction([&]
                 {
-                    requestedBookmark = index;
+                    context.scene.AddCameraBookmark(m_BookmarkName.data(),
+                        CaptureSceneCamera(context.camera, context.referenceViewport));
+                    m_SelectedBookmark = m_BookmarkName.data();
+                });
+            }
+
+            std::optional<std::size_t> requestedBookmark;
+            if (ImGui::BeginCombo("Bookmarks",
+                m_SelectedBookmark.empty() ? "Select a bookmark" : m_SelectedBookmark.c_str()))
+            {
+                const auto bookmarks = context.scene.CameraBookmarks();
+                for (std::size_t index = 0; index < bookmarks.size(); ++index)
+                {
+                    ImGui::PushID(static_cast<int>(index));
+                    if (ImGui::Selectable(bookmarks[index].name.c_str(),
+                        bookmarks[index].name == m_SelectedBookmark))
+                    {
+                        requestedBookmark = index;
+                    }
+                    ImGui::PopID();
                 }
-                ImGui::PopID();
+                ImGui::EndCombo();
             }
-            ImGui::EndCombo();
-        }
-        if (requestedBookmark)
-        {
-            reportAction([&]
+            if (requestedBookmark)
             {
-                const auto& bookmark = context.scene.CameraBookmarks()[*requestedBookmark];
-                // Verify restoration before changing the active authored viewpoint.
-                static_cast<void>(CreateSceneCamera(bookmark.camera));
-                m_SelectedBookmark = bookmark.name;
-                context.scene.SelectCameraBookmark(*requestedBookmark);
-                context.cameraRestoreRequest = context.scene.SavedCamera();
-            });
-        }
-
-        const auto bookmarks = context.scene.CameraBookmarks();
-        const auto selected = std::find_if(bookmarks.begin(), bookmarks.end(), [&](const auto& bookmark)
-        {
-            return bookmark.name == m_SelectedBookmark;
-        });
-        ImGui::BeginDisabled(selected == bookmarks.end());
-        if (ImGui::Button("Update bookmark from current view"))
-        {
-            reportAction([&]
-            {
-                context.scene.UpdateCameraBookmark(
-                    static_cast<std::size_t>(selected - bookmarks.begin()),
-                    CaptureSceneCamera(context.camera, context.referenceViewport));
-            });
-        }
-        if (ImGui::Button("Delete bookmark"))
-        {
-            reportAction([&]
-            {
-                context.scene.RemoveCameraBookmark(
-                    static_cast<std::size_t>(selected - bookmarks.begin()));
-                m_SelectedBookmark.clear();
-            });
-        }
-        ImGui::EndDisabled();
-        ImGui::EndDisabled();
-        ImGui::TextWrapped("Selecting a bookmark also saves it as the active viewpoint. "
-            "Updating a bookmark changes its stored view; select it to make that view active.");
-        if (const auto& saved = context.scene.SavedCamera(); saved && saved->referenceViewport)
-        {
-            const auto extent = *saved->referenceViewport;
-            ImGui::Text("Reference viewport: %u x %u (aspect %.4f)",
-                extent.width, extent.height,
-                static_cast<double>(extent.width) / extent.height);
-            if (context.referenceViewport &&
-                (context.referenceViewport->width != extent.width ||
-                    context.referenceViewport->height != extent.height))
-                ImGui::TextWrapped("Current viewport dimensions differ from the reference capture.");
-        }
-
-		ImGui::SeparatorText("Rendering");
-
-		ImGui::BeginDisabled(context.cameraEditingDisabled);
-
-		SceneRenderingSettings rendering =
-			context.scene.RenderingSettings();
-
-		bool renderingChanged = ImGui::Checkbox(
-			"Show environment background",
-			&rendering.showEnvironmentBackground);
-
-		ImGui::BeginDisabled(
-			rendering.showEnvironmentBackground);
-
-		ImGui::TextWrapped("Fallback background color");
-		ImGui::SetNextItemWidth(-1.0f);
-		renderingChanged |= ImGui::ColorEdit3(
-			"##Fallback background color",
-			&rendering.backgroundColor.x,
-			ImGuiColorEditFlags_Float);
-
-		ImGui::EndDisabled();
-
-		ImGui::TextWrapped("Exposure");
-		ImGui::SetNextItemWidth(-1.0f);
-		renderingChanged |= ImGui::SliderFloat(
-			"##Exposure",
-			&rendering.exposure,
-			0.05f,
-			5.0f,
-			"%.2f",
-			ImGuiSliderFlags_Logarithmic |
-			ImGuiSliderFlags_AlwaysClamp);
-
-		ImGui::TextWrapped("Environment intensity");
-		ImGui::SetNextItemWidth(-1.0f);
-		renderingChanged |= ImGui::SliderFloat(
-			"##Environment intensity",
-			&rendering.environmentIntensity,
-			0.0f,
-			2.0f,
-			"%.2f",
-			ImGuiSliderFlags_AlwaysClamp);
-
-		ImGui::SeparatorText("Anti-aliasing");
-        ImGui::Checkbox("Enable FXAA", &m_FxaaSettings.enabled);
-        ImGui::BeginDisabled(!m_FxaaSettings.enabled);
-        ImGui::TextWrapped("Relative edge threshold");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::SliderFloat("##Relative edge threshold", &m_FxaaSettings.relativeContrastThreshold,
-            0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::TextWrapped("Minimum edge threshold");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::SliderFloat("##Minimum edge threshold", &m_FxaaSettings.minimumContrastThreshold,
-            0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::TextWrapped("Subpixel smoothing");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::SliderFloat("##Subpixel smoothing", &m_FxaaSettings.subpixelBlending,
-            0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::EndDisabled();
-        if (ImGui::Button("Reset FXAA settings", ImVec2(-1.0f, 0.0f)))
-            m_FxaaSettings = Renderer::FxaaSettings{};
-
-        ImGui::SeparatorText("Directional shadows");
-
-		renderingChanged |= ImGui::Checkbox(
-			"Enable shadows",
-			&rendering.directionalShadows.enabled);
-
-		ImGui::BeginDisabled(
-			!rendering.directionalShadows.enabled);
-
-		renderingChanged |= ImGui::Checkbox(
-			"Enable PCF",
-			&rendering.directionalShadows.filteringEnabled);
-
-		ImGui::TextWrapped("Minimum bias");
-		ImGui::SetNextItemWidth(-1.0f);
-		renderingChanged |= ImGui::SliderFloat(
-			"##Minimum bias",
-			&rendering.directionalShadows.minimumBias,
-			0.0f,
-			0.01f,
-			"%.6f",
-			ImGuiSliderFlags_AlwaysClamp);
-
-		ImGui::TextWrapped("Slope bias");
-		ImGui::SetNextItemWidth(-1.0f);
-		renderingChanged |= ImGui::SliderFloat(
-			"##Slope bias",
-			&rendering.directionalShadows.slopeBias,
-			0.0f,
-			0.02f,
-			"%.6f",
-			ImGuiSliderFlags_AlwaysClamp);
-
-		ImGui::EndDisabled();
-
-		if (ImGui::Button("Reset shadow settings", ImVec2(-1.0f, 0.0f)))
-		{
-			rendering.directionalShadows =
-				DirectionalShadowSettings{};
-            renderingChanged = true;
-		}
-
-		if (renderingChanged)
-		{
-			if (const auto error =
-				context.scene.TrySetRenderingSettings(rendering))
-			{
-				ImGui::TextWrapped(
-					"Cannot update rendering.%.*s: %.*s",
-					static_cast<int>(error->property.size()),
-					error->property.data(),
-					static_cast<int>(error->message.size()),
-					error->message.data());
-			}
-		}
-
-
-        ImGui::EndDisabled();
-
-        ImGui::SeparatorText("Environment asset");
-        ImGui::BeginDisabled(context.cameraEditingDisabled);
-        if (!m_EnvironmentInputInitialized)
-        {
-            std::snprintf(m_EnvironmentAsset.data(), m_EnvironmentAsset.size(), "%s",
-                context.scene.RenderingSettings().environmentAsset.c_str());
-            m_EnvironmentInputInitialized = true;
-        }
-        int environmentSource = static_cast<int>(context.scene.RenderingSettings().environmentSource);
-        ImGui::TextWrapped("Source");
-        ImGui::SetNextItemWidth(-1.0f);
-        const bool environmentSourceChanged = ImGui::Combo("##Source", &environmentSource,
-            "Bundled studio\0None\0Project HDR asset\0");
-        ImGui::TextWrapped("Project-relative HDR path");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::InputText("##Project-relative HDR path", m_EnvironmentAsset.data(), m_EnvironmentAsset.size());
-        const bool applyEnvironment = ImGui::Button("Apply project HDR");
-        if (environmentSourceChanged || applyEnvironment)
-        {
-            try
-            {
-                auto settings = context.scene.RenderingSettings();
-                settings.environmentSource = applyEnvironment ? SceneEnvironmentSource::ProjectAsset
-                    : static_cast<SceneEnvironmentSource>(environmentSource);
-                settings.environmentAsset = settings.environmentSource == SceneEnvironmentSource::ProjectAsset
-                    ? std::string{ m_EnvironmentAsset.data() } : std::string{};
-                context.applyEnvironment(settings);
-                m_PresentationMessage = "Environment applied. Save the scene to keep it.";
+                reportAction([&]
+                {
+                    const auto& bookmark = context.scene.CameraBookmarks()[*requestedBookmark];
+                    // Verify restoration before changing the active authored viewpoint.
+                    static_cast<void>(CreateSceneCamera(bookmark.camera));
+                    m_SelectedBookmark = bookmark.name;
+                    context.scene.SelectCameraBookmark(*requestedBookmark);
+                    context.cameraRestoreRequest = context.scene.SavedCamera();
+                });
             }
-            catch (const std::exception& error)
+
+            const auto bookmarks = context.scene.CameraBookmarks();
+            const auto selected = std::find_if(bookmarks.begin(), bookmarks.end(), [&](const auto& bookmark)
             {
-                m_PresentationMessage = error.what();
+                return bookmark.name == m_SelectedBookmark;
+            });
+            ImGui::BeginDisabled(selected == bookmarks.end());
+            if (ImGui::Button("Update bookmark from current view"))
+            {
+                reportAction([&]
+                {
+                    context.scene.UpdateCameraBookmark(
+                        static_cast<std::size_t>(selected - bookmarks.begin()),
+                        CaptureSceneCamera(context.camera, context.referenceViewport));
+                });
+            }
+            if (ImGui::Button("Delete bookmark"))
+            {
+                reportAction([&]
+                {
+                    context.scene.RemoveCameraBookmark(
+                        static_cast<std::size_t>(selected - bookmarks.begin()));
+                    m_SelectedBookmark.clear();
+                });
+            }
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
+            ImGui::TextWrapped("Selecting a bookmark also saves it as the active viewpoint. "
+                "Updating a bookmark changes its stored view; select it to make that view active.");
+            if (const auto& saved = context.scene.SavedCamera(); saved && saved->referenceViewport)
+            {
+                const auto extent = *saved->referenceViewport;
+                ImGui::Text("Reference viewport: %u x %u (aspect %.4f)",
+                    extent.width, extent.height,
+                    static_cast<double>(extent.width) / extent.height);
+                if (context.referenceViewport &&
+                    (context.referenceViewport->width != extent.width ||
+                        context.referenceViewport->height != extent.height))
+                    ImGui::TextWrapped("Current viewport dimensions differ from the reference capture.");
             }
         }
-        ImGui::TextWrapped("Example: environments/Cathedral.hdr (relative to the project root).");
-        ImGui::EndDisabled();
+
+        SceneRenderingSettings rendering = context.scene.RenderingSettings();
+        bool renderingChanged = false;
+
+        if (EditorSectionHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+
+            renderingChanged |= ImGui::Checkbox(
+                "Show environment background",
+                &rendering.showEnvironmentBackground);
+
+            ImGui::BeginDisabled(
+                rendering.showEnvironmentBackground);
+
+            ImGui::TextWrapped("Fallback background color");
+            ImGui::SetNextItemWidth(-1.0f);
+            renderingChanged |= ImGui::ColorEdit3(
+                "##Fallback background color",
+                &rendering.backgroundColor.x,
+                ImGuiColorEditFlags_Float);
+
+            ImGui::EndDisabled();
+
+            ImGui::TextWrapped("Exposure");
+            ImGui::SetNextItemWidth(-1.0f);
+            renderingChanged |= ImGui::SliderFloat(
+                "##Exposure",
+                &rendering.exposure,
+                0.05f,
+                5.0f,
+                "%.2f",
+                ImGuiSliderFlags_Logarithmic |
+                ImGuiSliderFlags_AlwaysClamp);
+
+            ImGui::TextWrapped("Environment intensity");
+            ImGui::SetNextItemWidth(-1.0f);
+            renderingChanged |= ImGui::SliderFloat(
+                "##Environment intensity",
+                &rendering.environmentIntensity,
+                0.0f,
+                2.0f,
+                "%.2f",
+                ImGuiSliderFlags_AlwaysClamp);
+
+            ImGui::EndDisabled();
+        }
+
+        if (EditorSectionHeader("Anti-aliasing"))
+        {
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+            ImGui::Checkbox("Enable FXAA", &m_FxaaSettings.enabled);
+            ImGui::BeginDisabled(!m_FxaaSettings.enabled);
+            ImGui::TextWrapped("Relative edge threshold");
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::SliderFloat("##Relative edge threshold", &m_FxaaSettings.relativeContrastThreshold,
+                0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::TextWrapped("Minimum edge threshold");
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::SliderFloat("##Minimum edge threshold", &m_FxaaSettings.minimumContrastThreshold,
+                0.0f, 1.0f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::TextWrapped("Subpixel smoothing");
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::SliderFloat("##Subpixel smoothing", &m_FxaaSettings.subpixelBlending,
+                0.0f, 1.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::EndDisabled();
+            if (ImGui::Button("Reset FXAA settings", ImVec2(-1.0f, 0.0f)))
+                m_FxaaSettings = Renderer::FxaaSettings{};
+
+            ImGui::EndDisabled();
+        }
+
+        if (EditorSectionHeader("Directional shadows"))
+        {
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+
+            renderingChanged |= ImGui::Checkbox(
+                "Enable shadows",
+                &rendering.directionalShadows.enabled);
+
+            ImGui::BeginDisabled(
+                !rendering.directionalShadows.enabled);
+
+            renderingChanged |= ImGui::Checkbox(
+                "Enable PCF",
+                &rendering.directionalShadows.filteringEnabled);
+
+            ImGui::TextWrapped("Minimum bias");
+            ImGui::SetNextItemWidth(-1.0f);
+            renderingChanged |= ImGui::SliderFloat(
+                "##Minimum bias",
+                &rendering.directionalShadows.minimumBias,
+                0.0f,
+                0.01f,
+                "%.6f",
+                ImGuiSliderFlags_AlwaysClamp);
+
+            ImGui::TextWrapped("Slope bias");
+            ImGui::SetNextItemWidth(-1.0f);
+            renderingChanged |= ImGui::SliderFloat(
+                "##Slope bias",
+                &rendering.directionalShadows.slopeBias,
+                0.0f,
+                0.02f,
+                "%.6f",
+                ImGuiSliderFlags_AlwaysClamp);
+
+            ImGui::EndDisabled();
+
+            if (ImGui::Button("Reset shadow settings", ImVec2(-1.0f, 0.0f)))
+            {
+                rendering.directionalShadows =
+                    DirectionalShadowSettings{};
+                renderingChanged = true;
+            }
+
+            ImGui::EndDisabled();
+        }
+
+        if (renderingChanged)
+        {
+            if (const auto error =
+                context.scene.TrySetRenderingSettings(rendering))
+            {
+                ImGui::TextWrapped(
+                    "Cannot update rendering.%.*s: %.*s",
+                    static_cast<int>(error->property.size()),
+                    error->property.data(),
+                    static_cast<int>(error->message.size()),
+                    error->message.data());
+            }
+        }
+
+        if (EditorSectionHeader("Environment asset"))
+        {
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+            if (!m_EnvironmentInputInitialized)
+            {
+                std::snprintf(m_EnvironmentAsset.data(), m_EnvironmentAsset.size(), "%s",
+                    context.scene.RenderingSettings().environmentAsset.c_str());
+                m_EnvironmentInputInitialized = true;
+            }
+            int environmentSource = static_cast<int>(context.scene.RenderingSettings().environmentSource);
+            ImGui::TextWrapped("Source");
+            ImGui::SetNextItemWidth(-1.0f);
+            const bool environmentSourceChanged = ImGui::Combo("##Source", &environmentSource,
+                "Bundled studio\0None\0Project HDR asset\0");
+            ImGui::TextWrapped("Project-relative HDR path");
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::InputText("##Project-relative HDR path", m_EnvironmentAsset.data(), m_EnvironmentAsset.size());
+            const bool applyEnvironment = ImGui::Button("Apply project HDR");
+            if (environmentSourceChanged || applyEnvironment)
+            {
+                try
+                {
+                    auto settings = context.scene.RenderingSettings();
+                    settings.environmentSource = applyEnvironment ? SceneEnvironmentSource::ProjectAsset
+                        : static_cast<SceneEnvironmentSource>(environmentSource);
+                    settings.environmentAsset = settings.environmentSource == SceneEnvironmentSource::ProjectAsset
+                        ? std::string{ m_EnvironmentAsset.data() } : std::string{};
+                    context.applyEnvironment(settings);
+                    m_PresentationMessage = "Environment applied. Save the scene to keep it.";
+                }
+                catch (const std::exception& error)
+                {
+                    m_PresentationMessage = error.what();
+                }
+            }
+            ImGui::TextWrapped("Example: environments/Cathedral.hdr (relative to the project root).");
+            ImGui::EndDisabled();
+        }
+
         if (!m_PresentationMessage.empty())
             ImGui::TextWrapped("%s", m_PresentationMessage.c_str());
 
-		ImGui::SeparatorText("Selection");
+        if (EditorSectionHeader("Selection"))
+        {
+            ImGui::Checkbox(
+                "Show selection highlight",
+                &m_SelectionHighlightEnabled);
 
-		ImGui::Checkbox(
-			"Show selection highlight",
-			&m_SelectionHighlightEnabled);
+            ImGui::BeginDisabled(
+                !m_SelectionHighlightEnabled);
 
-		ImGui::BeginDisabled(
-			!m_SelectionHighlightEnabled);
+            ImGui::TextWrapped("Highlight color");
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::ColorEdit3(
+                "##Highlight color",
+                &m_SelectionHighlightColor.x);
 
-		ImGui::TextWrapped("Highlight color");
-		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::ColorEdit3(
-			"##Highlight color",
-			&m_SelectionHighlightColor.x);
+            ImGui::TextWrapped("Highlight strength");
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::SliderFloat(
+                "##Highlight strength",
+                &m_SelectionHighlightStrength,
+                0.0f,
+                1.0f,
+                "%.2f");
 
-		ImGui::TextWrapped("Highlight strength");
-		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::SliderFloat(
-			"##Highlight strength",
-			&m_SelectionHighlightStrength,
-			0.0f,
-			1.0f,
-			"%.2f");
+            ImGui::EndDisabled();
+        }
 
-		ImGui::EndDisabled();
+        if (EditorSectionHeader("Runtime Diagnostics"))
+        {
+            ImGui::Checkbox(
+                "Enable runtime diagnostics",
+                &m_RuntimeDiagnosticsEnabled);
 
-		ImGui::SeparatorText("Runtime Diagnostics");
+            if (!m_RuntimeDiagnosticsEnabled)
+            {
+                ImGui::TextDisabled(
+                    "Runtime diagnostics are disabled.");
+            }
+            else if (diagnosticsSnapshot == nullptr)
+            {
+                ImGui::TextDisabled(
+                    "Collecting runtime diagnostics...");
+            }
+            else
+            {
+                const double droppedMilliseconds =
+                    std::chrono::duration<double, std::milli>{
+                        diagnosticsSnapshot->droppedSimulationTime
+                }.count();
 
-		ImGui::Checkbox(
-			"Enable runtime diagnostics",
-			&m_RuntimeDiagnosticsEnabled);
+                ImGui::Text(
+                    "Frame rate: %.1f FPS",
+                    diagnosticsSnapshot
+                    ->frameStatistics
+                    .framesPerSecond);
 
-		if (!m_RuntimeDiagnosticsEnabled)
-		{
-			ImGui::TextDisabled(
-				"Runtime diagnostics are disabled.");
-		}
-		else if (diagnosticsSnapshot == nullptr)
-		{
-			ImGui::TextDisabled(
-				"Collecting runtime diagnostics...");
-		}
-		else
-		{
-			const double droppedMilliseconds =
-				std::chrono::duration<double, std::milli>{
-					diagnosticsSnapshot->droppedSimulationTime
-			}.count();
+                ImGui::Text(
+                    "Average frame time: %.3f ms",
+                    diagnosticsSnapshot
+                    ->frameStatistics
+                    .averageFrameTimeMilliseconds);
 
-			ImGui::Text(
-				"Frame rate: %.1f FPS",
-				diagnosticsSnapshot
-				->frameStatistics
-				.framesPerSecond);
+                ImGui::Text(
+                    "Frames sampled: %llu",
+                    static_cast<unsigned long long>(
+                        diagnosticsSnapshot
+                        ->frameStatistics
+                        .frameCount));
 
-			ImGui::Text(
-				"Average frame time: %.3f ms",
-				diagnosticsSnapshot
-				->frameStatistics
-				.averageFrameTimeMilliseconds);
+                ImGui::Text(
+                    "Fixed updates: %llu",
+                    static_cast<unsigned long long>(
+                        diagnosticsSnapshot
+                        ->fixedUpdateCount));
 
-			ImGui::Text(
-				"Frames sampled: %llu",
-				static_cast<unsigned long long>(
-					diagnosticsSnapshot
-					->frameStatistics
-					.frameCount));
+                ImGui::Text(
+                    "Catch-up limit events: %llu",
+                    static_cast<unsigned long long>(
+                        diagnosticsSnapshot
+                        ->catchUpLimitedFrameCount));
 
-			ImGui::Text(
-				"Fixed updates: %llu",
-				static_cast<unsigned long long>(
-					diagnosticsSnapshot
-					->fixedUpdateCount));
+                ImGui::Text(
+                    "Dropped simulation time: %.3f ms",
+                    droppedMilliseconds);
+            }
+        }
 
-			ImGui::Text(
-				"Catch-up limit events: %llu",
-				static_cast<unsigned long long>(
-					diagnosticsSnapshot
-					->catchUpLimitedFrameCount));
-
-			ImGui::Text(
-				"Dropped simulation time: %.3f ms",
-				droppedMilliseconds);
-		}
-
-		ImGui::End();
-	}
+        ImGui::End();
+    }
 
 	void SandboxDebugUI::EndFrame()
 	{
@@ -785,9 +759,9 @@ namespace ForgeSim::Sandbox
 			ImGui::GetDrawData());
 	}
 
-	void SandboxDebugUI::BeginWorkspace()
+	void SandboxDebugUI::BeginWorkspace(const std::function<void()>& drawMainToolbar)
 	{
-		if (m_Workspace.Draw())
+		if (m_Workspace.Draw(drawMainToolbar))
 		{
 			m_IsVisible = true;
 		}

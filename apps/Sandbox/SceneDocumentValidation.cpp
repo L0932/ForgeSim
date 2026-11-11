@@ -245,6 +245,23 @@ namespace ForgeSim::Sandbox
             }
         }
 
+        const auto validateHiddenIds = [](const auto& hidden, const auto& known,
+            const char* property) -> std::optional<Error>
+        {
+            std::unordered_set<std::uint64_t> seen;
+            for (std::size_t index = 0; index < hidden.size(); ++index)
+            {
+                const std::string entry = std::string(property) + "[" + std::to_string(index) + "]";
+                if (!known.contains(hidden[index])) return Error{entry, "Visibility references an unknown ID."};
+                if (!seen.insert(hidden[index]).second) return Error{entry, "Duplicate visibility ID."};
+            }
+            return std::nullopt;
+        };
+        if (const auto error = validateHiddenIds(document.hiddenObjectIds, objectIds,
+            "editorVisibility.hiddenObjectIds")) return error;
+        if (const auto error = validateHiddenIds(document.hiddenLightIds, lightIds,
+            "editorVisibility.hiddenLightIds")) return error;
+
         return std::nullopt;
     }
 }

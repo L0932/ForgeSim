@@ -6,6 +6,8 @@
 #include "SceneLightValidation.hpp"
 #include "SceneSelection.hpp"
 #include "TransformEditorUIState.hpp"
+#include "SceneViewportToolbar.hpp"
+#include "SceneViewportPanel.hpp"
 
 #include "SceneCameraData.hpp"
 #include "SceneRenderingSettings.hpp"
@@ -89,11 +91,15 @@ namespace ForgeSim::Sandbox
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
-		void BeginWorkspace();
+		void BeginWorkspace(const std::function<void()>& drawMainToolbar = {});
 
-		[[nodiscard]] TransformEditorUIState DrawTransformEditorControls(
+		[[nodiscard]] TransformEditorUIState UpdateTransformEditorShortcuts(
 			bool editingActive,
 			bool navigationActive);
+
+        // Draw over the Scene image and suppress input under its tools overlay.
+        [[nodiscard]] TransformEditorUIState DrawTransformEditorToolbar(
+            SceneViewportState& viewport, bool disabled);
 
 		[[nodiscard]] bool WantsMouseCapture()
 			const noexcept;
@@ -145,5 +151,6 @@ namespace ForgeSim::Sandbox
 		TransformEditorUIState m_TransformEditorState;
 
 		EditorWorkspace m_Workspace;
+        SceneViewportTools m_ViewportTools;
 	};
 }

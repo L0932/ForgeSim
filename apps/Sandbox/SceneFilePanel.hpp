@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EditorConsole.hpp"
+
 #include <string>
 #include <string_view>
 
@@ -36,15 +38,34 @@ namespace ForgeSim::Sandbox
         std::string path;
     };
 
+    struct SceneToolbarContext
+    {
+        bool actionsAllowed = false;
+        bool hasScenePath = false;
+        bool canUndo = false;
+        bool canRedo = false;
+        std::string_view sceneName;
+        bool dirty = false;
+    };
+
+    struct SceneToolbarRequest
+    {
+        bool undo = false;
+        bool redo = false;
+    };
+
     class SceneFilePanel final
     {
     public:
         void DrawMenu(bool actionsAllowed, bool hasScenePath);
+        // Draw before creating the workspace dockspace.
+        [[nodiscard]] SceneToolbarRequest DrawToolbar(const SceneToolbarContext& context);
 
         [[nodiscard]] SceneFileRequest Draw(
             const SceneFilePanelContext& context);
 
     private:
+        EditorConsole m_Console;
         SceneFileAction m_MenuAction = SceneFileAction::None;
     };
 }

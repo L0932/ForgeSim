@@ -23,6 +23,23 @@ namespace ForgeSim::Sandbox
 		}
 	{}
 
+    void SandboxScene::SetObjectVisible(SandboxObjectId id, bool visible)
+    {
+        if (visible) m_HiddenObjects.erase(id);
+        else if (FindObject(id)) m_HiddenObjects.insert(id);
+    }
+
+    void SandboxScene::SetLightVisible(SceneLightId id, bool visible)
+    {
+        if (visible) m_HiddenLights.erase(id);
+        else if (m_DirectionalLight.id == id ||
+            std::any_of(m_PointLights.begin(), m_PointLights.end(),
+                [id](const auto& light) { return light.id == id; }) ||
+            std::any_of(m_SpotLights.begin(), m_SpotLights.end(),
+                [id](const auto& light) { return light.id == id; }))
+            m_HiddenLights.insert(id);
+    }
+
 	DirectionalLight&
 		SandboxScene::MainDirectionalLight() noexcept
 	{

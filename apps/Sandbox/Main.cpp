@@ -301,7 +301,8 @@ int main(int argumentCount, char* arguments[])
             .width = 1280,
             .height = 720,
             .title = "ForgeSim Sandbox",
-            .verticalSync = true
+            .verticalSync = true,
+            .startMaximized = true
         };
 
         if (commandLine.scenePath)
