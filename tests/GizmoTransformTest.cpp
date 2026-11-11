@@ -1,4 +1,5 @@
 #include "GizmoTransform.hpp"
+#include <glm/geometric.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -161,6 +162,50 @@ namespace
 			zeroScale.ModelMatrix(),
 			GizmoOperation::Scale);
 	}
+    void TestCenteredPivot()
+    {
+        Transform transform;
+        transform.position = {10.0f, 20.0f, 30.0f};
+        transform.rotationRadians = {0.25f, 0.5f, -0.3f};
+        transform.scale = {-2.0f, 3.0f, 0.5f};
+        const glm::mat4 original = transform.ModelMatrix();
+        if (!transform.TrySetPivot({5.0f, 2.0f, 0.0f}))
+            throw std::runtime_error("Could not set a finite pivot.");
+        const auto requireSameMatrix = [](const glm::mat4& a, const glm::mat4& b)
+        {
+            for (int column = 0; column < 4; ++column)
+                for (int row = 0; row < 4; ++row)
+                    if (std::abs(a[column][row] - b[column][row]) > 1e-4f)
+                        throw std::runtime_error("Changing pivot moved the geometry.");
+        };
+        requireSameMatrix(original, transform.ModelMatrix());
+        const glm::vec3 anchor{transform.ModelMatrix() * glm::vec4{transform.pivot, 1.0f}};
+        if (glm::length(anchor - transform.position) > 1e-4f)
+            throw std::runtime_error("Pivot did not map to the transform position.");
+
+        for (const auto operation : {GizmoOperation::Translate, GizmoOperation::Rotate,
+            GizmoOperation::Scale})
+        {
+            Transform edited = transform;
+            if (operation == GizmoOperation::Translate) edited.position.x += 3.0f;
+            if (operation == GizmoOperation::Rotate) edited.rotationRadians.y += 0.2f;
+            if (operation == GizmoOperation::Scale) edited.scale.y *= 1.5f;
+            Transform applied = transform;
+            if (!TryApplyGizmoTransform(applied, edited.GizmoMatrix(), operation))
+                throw std::runtime_error("Gizmo rejected a transform with a centered pivot.");
+            requireSameMatrix(applied.ModelMatrix(), edited.ModelMatrix());
+            if (applied.pivot != transform.pivot)
+                throw std::runtime_error("Gizmo changed the chosen pivot.");
+        }
+        if (!transform.TrySetPivot({0.0f, 0.0f, 0.0f}))
+            throw std::runtime_error("Could not restore the authored origin.");
+        requireSameMatrix(original, transform.ModelMatrix());
+        const auto unchanged = transform.ModelMatrix();
+        if (transform.TrySetPivot({std::numeric_limits<float>::infinity(), 0.0f, 0.0f}))
+            throw std::runtime_error("Non-finite pivot was accepted.");
+        requireSameMatrix(unchanged, transform.ModelMatrix());
+    }
+
 }
 
 int main()
@@ -171,6 +216,7 @@ int main()
 		TestOperation(GizmoOperation::Rotate);
 		TestOperation(GizmoOperation::Scale);
 		TestRejectedEdits();
+        TestCenteredPivot();
 
 		return EXIT_SUCCESS;
 	}

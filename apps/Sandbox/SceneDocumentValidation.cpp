@@ -28,6 +28,11 @@ namespace ForgeSim::Sandbox
             const Transform& transform,
             const std::string& property)
         {
+            if (!IsFinite(transform.pivot))
+            {
+                return Error{property + ".pivot", "Pivot components must be finite."};
+            }
+
             if (!IsFinite(transform.position))
             {
                 return Error{

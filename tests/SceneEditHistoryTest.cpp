@@ -23,7 +23,7 @@ namespace
 	{
 		return left.position == right.position &&
 			left.rotationRadians == right.rotationRadians &&
-			left.scale == right.scale;
+			left.scale == right.scale && left.pivot == right.pivot;
 	}
 
 	void TestMixedHistory()
@@ -43,6 +43,7 @@ namespace
 		objectAfter.position = { 2.0f, 3.0f, 4.0f };
 		objectAfter.rotationRadians = { 0.2f, -0.3f, 0.4f };
 		objectAfter.scale = { -2.0f, 3.0f, 0.5f };
+        objectAfter.pivot = {5.0f, 2.0f, -1.0f};
 
 		object.transform = objectAfter;
 

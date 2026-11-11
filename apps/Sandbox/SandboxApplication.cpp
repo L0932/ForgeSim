@@ -896,7 +896,8 @@ namespace ForgeSim::Sandbox
 					.editingDisabled =
 						changePending ||
 						transformEditor.IsActive() ||
-						rightMouseDown
+						rightMouseDown,
+                    .transformEditor = &transformEditor
 				});
 
 			bool openAfterFrame = false;

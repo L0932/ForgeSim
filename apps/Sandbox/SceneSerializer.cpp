@@ -34,7 +34,8 @@ namespace ForgeSim::Sandbox
                     "rotationRadians",
                     WriteVector(transform.rotationRadians)
                 },
-                { "scale", WriteVector(transform.scale) }
+                { "scale", WriteVector(transform.scale) },
+                { "pivot", WriteVector(transform.pivot) }
             };
         }
 
@@ -320,7 +321,11 @@ namespace ForgeSim::Sandbox
 
                 .scale = ReadVector(
                     ReadMember(value, "scale", property),
-                    property + ".scale")
+                    property + ".scale"),
+
+                .pivot = value.contains("pivot")
+                    ? ReadVector(value.at("pivot"), property + ".pivot")
+                    : glm::vec3{0.0f}
             };
         }
 
@@ -648,7 +653,7 @@ namespace ForgeSim::Sandbox
             ReadMember(root, "version", ""),
             "version");
 
-        if (version != 1 && version != CurrentSceneDocumentVersion)
+        if (version != 1 && version != 2 && version != CurrentSceneDocumentVersion)
         {
             ReadError(
                 "version",
@@ -664,7 +669,7 @@ namespace ForgeSim::Sandbox
             ReadMember(root, "name", ""),
             "name");
 
-        if (version == CurrentSceneDocumentVersion)
+        if (version >= 2)
         {
             const Json& camera = ReadMember(root, "camera", "");
 

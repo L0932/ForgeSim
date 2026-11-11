@@ -32,6 +32,9 @@ namespace ForgeSim::Sandbox
 	public:
 		void BeginFrame();
 
+        // Changes only the pivot, preserving placement and recording undo/redo.
+        [[nodiscard]] bool SetObjectPivot(SandboxObject& object, const glm::vec3& pivot);
+
 		void Update(
 			const SceneTransformEditorContext& context);
 

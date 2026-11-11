@@ -134,7 +134,7 @@ namespace ForgeSim::Sandbox
 		}
 
 		const glm::mat4 reconstructed =
-			candidate.ModelMatrix();
+			candidate.GizmoMatrix();
 
 		if (!IsFinite(reconstructed) ||
 			!MatricesMatch(reconstructed, matrix))
