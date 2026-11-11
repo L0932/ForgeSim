@@ -35,20 +35,31 @@ namespace ForgeSim::Sandbox
                 ImGui::TextWrapped("%s", title.c_str());
                 ImGui::SetItemTooltip("%.*s", static_cast<int>(scenePath.size()),
                     scenePath.empty() ? "" : scenePath.data());
+                // Keep the toolbar compact without changing other editor controls.
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 1.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 4.0f));
                 if (ImGui::Button("Clear")) Clear();
                 const auto option = [](const char* label, bool& value)
                 {
-                    const float width = ImGui::GetFrameHeight() +
-                        ImGui::GetStyle().ItemInnerSpacing.x + ImGui::CalcTextSize(label).x;
+                    const auto& style = ImGui::GetStyle();
+                    const float width = ImGui::CalcTextSize(label).x + style.FramePadding.x * 2.0f;
                     const float used = ImGui::GetItemRectMax().x - ImGui::GetCursorScreenPos().x;
-                    if (ImGui::GetContentRegionAvail().x - used > width + ImGui::GetStyle().ItemSpacing.x)
+                    if (ImGui::GetContentRegionAvail().x - used >= width + style.ItemSpacing.x)
                         ImGui::SameLine();
-                    ImGui::Checkbox(label, &value);
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                        style.Colors[value ? ImGuiCol_ButtonActive : ImGuiCol_Button]);
+                    ImGui::PushStyleColor(ImGuiCol_Text,
+                        style.Colors[value ? ImGuiCol_Text : ImGuiCol_TextDisabled]);
+                    if (ImGui::Button(label)) value = !value;
+                    ImGui::PopStyleColor(2);
+                    ImGui::SetItemTooltip("%s: %s. Click to %s.", label,
+                        value ? "on" : "off", value ? "disable" : "enable");
                 };
                 option("Auto-scroll", m_AutoScroll);
                 option("Info", m_ShowInfo);
                 option("Warnings", m_ShowWarnings);
                 option("Errors", m_ShowErrors);
+                ImGui::PopStyleVar(2);
                 ImGui::SetNextItemWidth(-1.0f);
                 if (ImGui::InputTextWithHint("##ConsoleFilter", "Filter messages...",
                     m_Filter.InputBuf, IM_ARRAYSIZE(m_Filter.InputBuf))) m_Filter.Build();
