@@ -90,22 +90,11 @@ namespace ForgeSim::Sandbox
             &leftBottom,
             &leftTop);
 
-        ImGuiID rightTop = 0;
-        ImGuiID rightBottom = 0;
-
-        ImGui::DockBuilderSplitNode(
-            right,
-            ImGuiDir_Up,
-            0.30f,
-            &rightTop,
-            &rightBottom);
-
         ImGui::DockBuilderDockWindow("Scene", center);
         ImGui::DockBuilderDockWindow("Hierarchy", leftTop);
         ImGui::DockBuilderDockWindow("Scene File", leftTop);
         ImGui::DockBuilderDockWindow("ForgeSim Debug", leftBottom);
-        ImGui::DockBuilderDockWindow("Transform Gizmo", rightTop);
-        ImGui::DockBuilderDockWindow("Inspector", rightBottom);
+        ImGui::DockBuilderDockWindow("Inspector", right);
 
         ImGui::DockBuilderFinish(dockspaceId);
     }

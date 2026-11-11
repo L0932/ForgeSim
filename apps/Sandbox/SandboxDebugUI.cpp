@@ -1,4 +1,5 @@
 #include "SandboxDebugUI.hpp"
+#include "SceneViewportToolbar.hpp"
 #include "SandboxScene.hpp"
 #include "SandboxPaths.hpp"
 #include "SceneCameraState.hpp"
@@ -50,6 +51,7 @@ namespace ForgeSim::Sandbox
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		m_Workspace.Initialize();
+        m_ViewportTools.Load(EditorSettingsDirectory() / "viewport-tools.json");
 
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
@@ -75,7 +77,7 @@ namespace ForgeSim::Sandbox
 		}
 	}
 
-	TransformEditorUIState SandboxDebugUI::DrawTransformEditorControls(
+	TransformEditorUIState SandboxDebugUI::UpdateTransformEditorShortcuts(
 		bool editingActive,
 		bool navigationActive)
 	{
@@ -118,68 +120,6 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-        if (ImGui::Begin("Transform Gizmo"))
-        {
-            const auto& style = ImGui::GetStyle();
-            const float available = ImGui::GetContentRegionAvail().x;
-            const auto choiceButton = [](const char* label, bool selected,
-                float width, const char* tooltip)
-            {
-                if (selected)
-                    ImGui::PushStyleColor(ImGuiCol_Button,
-                        ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
-                const bool pressed = ImGui::Button(label, ImVec2(width, 0.0f));
-                if (selected)
-                    ImGui::PopStyleColor();
-                ImGui::SetItemTooltip("%s", tooltip);
-                return pressed;
-            };
-
-            // Fall back to stacked buttons when the panel is too narrow.
-            const bool operationRow = available >=
-                3.0f * (ImGui::CalcTextSize("Rotate").x + 2.0f * style.FramePadding.x)
-                + 2.0f * style.ItemSpacing.x;
-            const float operationWidth = operationRow
-                ? (available - 2.0f * style.ItemSpacing.x) / 3.0f : -1.0f;
-
-            ImGui::SeparatorText("Operation");
-            // Keep operation and space stable throughout an active drag.
-            ImGui::BeginDisabled(editingActive);
-            if (choiceButton("Move", state.operation == GizmoOperation::Translate,
-                operationWidth, "Translate selection (W)"))
-                state.operation = GizmoOperation::Translate;
-            if (operationRow) ImGui::SameLine();
-            if (choiceButton("Rotate", state.operation == GizmoOperation::Rotate,
-                operationWidth, "Rotate selection (E)"))
-                state.operation = GizmoOperation::Rotate;
-            if (operationRow) ImGui::SameLine();
-            if (choiceButton("Scale", state.operation == GizmoOperation::Scale,
-                operationWidth, "Scale selection (R)"))
-                state.operation = GizmoOperation::Scale;
-
-            ImGui::Spacing();
-            ImGui::SeparatorText("Coordinate space");
-            const bool scaling = state.operation == GizmoOperation::Scale;
-            const bool spaceRow = available >=
-                2.0f * (ImGui::CalcTextSize("World").x + 2.0f * style.FramePadding.x)
-                + style.ItemSpacing.x;
-            const float spaceWidth = spaceRow
-                ? (available - style.ItemSpacing.x) / 2.0f : -1.0f;
-            ImGui::BeginDisabled(scaling);
-            if (choiceButton("World", !scaling && state.space == GizmoSpace::World,
-                spaceWidth, "Use world axes (X toggles space)"))
-                state.space = GizmoSpace::World;
-            if (spaceRow) ImGui::SameLine();
-            if (choiceButton("Local", scaling || state.space == GizmoSpace::Local,
-                spaceWidth, "Use local axes (X toggles space)"))
-                state.space = GizmoSpace::Local;
-            ImGui::EndDisabled();
-            ImGui::EndDisabled();
-
-            if (scaling)
-                ImGui::TextWrapped("Scale uses local axes.");
-        }
-		ImGui::End();
 
 		// Let active UI controls handle their own keyboard input.
 		if (!editingActive &&
@@ -202,6 +142,16 @@ namespace ForgeSim::Sandbox
 
 		return state;
 	}
+
+
+    TransformEditorUIState SandboxDebugUI::DrawTransformEditorToolbar(
+        SceneViewportState& viewport, bool disabled)
+    {
+        if (viewport.IsDrawable() && m_ViewportTools.Draw(m_TransformEditorState,
+            {viewport.position.x, viewport.position.y}, {viewport.size.x, viewport.size.y}, disabled))
+            viewport.hovered = false;
+        return m_TransformEditorState;
+    }
 
 	SandboxDebugUI::~SandboxDebugUI()
 	{

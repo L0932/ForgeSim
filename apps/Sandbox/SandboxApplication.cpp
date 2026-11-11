@@ -477,8 +477,8 @@ namespace ForgeSim::Sandbox
 
 			m_DebugUI.BeginWorkspace();
 
-			const TransformEditorUIState editorUI =
-				m_DebugUI.DrawTransformEditorControls(
+			TransformEditorUIState editorUI =
+				m_DebugUI.UpdateTransformEditorShortcuts(
 					transformEditor.IsActive(),
 					changePending||
 					input.GetMouseButtonState(
@@ -561,8 +561,7 @@ namespace ForgeSim::Sandbox
 					: 1.0f
 			};
 
-			const SceneViewportState& viewport =
-				sceneViewportPanel.Begin(framebufferScale);
+            SceneViewportState viewport = sceneViewportPanel.Begin(framebufferScale);
 
 			if (viewport.IsDrawable())
 			{
@@ -575,6 +574,10 @@ namespace ForgeSim::Sandbox
 				sceneViewportPanel.DrawImage(
 					m_Renderer.SceneColorTexture());
 			}
+
+            editorUI = m_DebugUI.DrawTransformEditorToolbar(viewport,
+                changePending || transformEditor.IsActive() ||
+                input.GetMouseButtonState(Platform::MouseButton::Right).held);
 
 			const bool leftMouseDown =
 				input.GetMouseButtonState(
