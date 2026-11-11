@@ -18,6 +18,8 @@ namespace ForgeSim::Sandbox
                 error->property + "': " + error->message);
         }
 
+        m_HiddenObjects.insert(document.hiddenObjectIds.begin(), document.hiddenObjectIds.end());
+        m_HiddenLights.insert(document.hiddenLightIds.begin(), document.hiddenLightIds.end());
         m_Name = document.name;
         m_SavedCamera = document.camera;
         m_CameraBookmarks = document.cameraBookmarks;
@@ -63,6 +65,11 @@ namespace ForgeSim::Sandbox
     {
         SceneDocument document;
         document.name = m_Name;
+        document.hiddenObjectIds.assign(m_HiddenObjects.begin(), m_HiddenObjects.end());
+        document.hiddenLightIds.assign(m_HiddenLights.begin(), m_HiddenLights.end());
+        // Canonical ordering keeps dirty tracking stable after hide/show cycles.
+        std::sort(document.hiddenObjectIds.begin(), document.hiddenObjectIds.end());
+        std::sort(document.hiddenLightIds.begin(), document.hiddenLightIds.end());
         document.camera = m_SavedCamera;
         document.cameraBookmarks = m_CameraBookmarks;
         document.rendering = m_RenderingSettings;

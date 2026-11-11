@@ -12,7 +12,7 @@
 
 namespace ForgeSim::Sandbox
 {
-    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 3;
+    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 4;
 
     struct SceneObjectData
     {
@@ -39,6 +39,10 @@ namespace ForgeSim::Sandbox
         SceneRenderingSettings rendering;
 
         std::vector<SceneObjectData> objects;
+
+        // Editor visibility is separate from authored light enabled settings.
+        std::vector<std::uint64_t> hiddenObjectIds;
+        std::vector<SceneLightId> hiddenLightIds;
 
         // Match the current runtime's single directional light.
         DirectionalLight directionalLight{

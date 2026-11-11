@@ -2007,22 +2007,26 @@ namespace ForgeSim::Sandbox
 				CalculateLightDebugLayout(
 					settings.lightDebugBounds.value_or(m_ObjectLocalBounds));
 
-			const glm::vec3 arrowColor =
-				debugLightColor(
-					light.id,
-					light.enabled,
-					glm::vec3{ 1.0f, 0.85f, 0.15f });
+            m_LightVertices.clear();
+            if (settings.showDirectionalLightGuide)
+            {
+                const glm::vec3 arrowColor =
+                    debugLightColor(
+                        light.id,
+                        light.enabled,
+                        glm::vec3{ 1.0f, 0.85f, 0.15f });
 
-			m_LightVertices =
-				Renderer::CreateDirectionalLightLines(
-					Renderer::DirectionArrowSpecification{
-						.origin = light.position,
-						.direction = -light.directionToLight,
-						.length = layout.directionalLength,
-						.color = arrowColor,
-						.showArrowheads = false,
-						.markerSize = layout.markerSize
-					});
+                m_LightVertices =
+                    Renderer::CreateDirectionalLightLines(
+                        Renderer::DirectionArrowSpecification{
+                            .origin = light.position,
+                            .direction = -light.directionToLight,
+                            .length = layout.directionalLength,
+                            .color = arrowColor,
+                            .showArrowheads = false,
+                            .markerSize = layout.markerSize
+                        });
+            }
 
 			for (const PointLight& pointLight : lighting.pointLights)
 			{

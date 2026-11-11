@@ -422,6 +422,42 @@ namespace
             rejected,
             "Scene construction accepted invalid rendering settings.");
     }
+    void TestEditorVisibilityCapture()
+    {
+        SceneDocument document;
+        document.objects.push_back(SceneObjectData{.id = 1, .name = "First",
+            .transform = {}, .modelPath = "assets/model.glb"});
+        document.objects.push_back(SceneObjectData{.id = 7, .name = "Second",
+            .transform = {}, .modelPath = "assets/model.glb"});
+        document.pointLights.push_back(PointLight{.id = 2, .enabled = false});
+        document.spotLights.push_back(SpotLight{.id = 3});
+        SandboxScene scene{document};
+        scene.SetObjectVisible(7, false);
+        scene.SetObjectVisible(1, false);
+        scene.SetLightVisible(3, false);
+        scene.SetLightVisible(1, false);
+        scene.SetLightVisible(2, false);
+        const auto captured = scene.ToDocument();
+        Require(captured.hiddenObjectIds == std::vector<std::uint64_t>{1,7} &&
+            captured.hiddenLightIds == std::vector<SceneLightId>{1,2,3},
+            "Visibility capture was not canonical.");
+        const SandboxScene restored{captured};
+        Require(!restored.IsObjectVisible(1) && !restored.IsObjectVisible(7) &&
+            !restored.IsLightVisible(1) && !restored.IsLightVisible(2) && !restored.IsLightVisible(3),
+            "Scene reconstruction did not restore hidden entries.");
+        scene.ShowAllLights();
+        Require(scene.HasHiddenObjects() && !scene.HasHiddenLights() &&
+            !scene.PointLights().front().enabled,
+            "Show all lights changed object visibility or enabled a disabled light.");
+        scene.ShowAllObjects();
+        Require(scene.ToDocument().hiddenObjectIds.empty() && scene.ToDocument().hiddenLightIds.empty(),
+            "Show all did not clear saved visibility.");
+        scene.SetObjectVisible(999, false);
+        scene.SetLightVisible(999, false);
+        Require(!scene.HasHiddenObjects() && !scene.HasHiddenLights(),
+            "Unknown runtime IDs were added to visibility settings.");
+    }
+
 }
 
 int main()
@@ -435,6 +471,7 @@ int main()
         TestIdExhaustion();
         TestSavedCameraEditing();
         TestRenderingSettingsEditing();
+        TestEditorVisibilityCapture();
 
         return EXIT_SUCCESS;
     }

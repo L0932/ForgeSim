@@ -10,6 +10,7 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 namespace ForgeSim::Sandbox
 {
@@ -82,8 +83,21 @@ namespace ForgeSim::Sandbox
 
 		void ClearSavedCamera() noexcept;
 
+        [[nodiscard]] bool IsObjectVisible(SandboxObjectId id) const noexcept
+        { return !m_HiddenObjects.contains(id); }
+        [[nodiscard]] bool IsLightVisible(SceneLightId id) const noexcept
+        { return !m_HiddenLights.contains(id); }
+        [[nodiscard]] bool HasHiddenObjects() const noexcept { return !m_HiddenObjects.empty(); }
+        [[nodiscard]] bool HasHiddenLights() const noexcept { return !m_HiddenLights.empty(); }
+        void SetObjectVisible(SandboxObjectId id, bool visible);
+        void SetLightVisible(SceneLightId id, bool visible);
+        void ShowAllObjects() noexcept { m_HiddenObjects.clear(); }
+        void ShowAllLights() noexcept { m_HiddenLights.clear(); }
+
 	private:
 		std::vector<SandboxObject> m_Objects;
+        std::unordered_set<SandboxObjectId> m_HiddenObjects;
+        std::unordered_set<SceneLightId> m_HiddenLights;
 		std::string m_Name = "Untitled";
 
 		DirectionalLight m_DirectionalLight{

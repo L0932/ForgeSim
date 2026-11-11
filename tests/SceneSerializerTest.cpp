@@ -658,6 +658,48 @@ namespace
         Require(rejected, "Non-finite object pivot was serialized.");
     }
 
+    void TestEditorVisibilityPersistence()
+    {
+        SceneDocument document;
+        constexpr std::uint64_t objectId = 9007199254740993ULL;
+        document.objects.push_back(SceneObjectData{.id = objectId, .name = "Model",
+            .transform = {}, .modelPath = "assets/model.glb"});
+        document.pointLights.push_back(PointLight{.id = 2, .enabled = false});
+        document.spotLights.push_back(SpotLight{.id = 3});
+        document.hiddenObjectIds = {objectId};
+        document.hiddenLightIds = {1,2,3};
+        const auto text = SerializeSceneDocument(document);
+        const auto restored = DeserializeSceneDocument(text);
+        Require(restored.hiddenObjectIds == document.hiddenObjectIds &&
+            restored.hiddenLightIds == document.hiddenLightIds,
+            "Editor visibility did not survive serialization.");
+        Require(!restored.pointLights.front().enabled && restored.spotLights.front().enabled,
+            "Visibility changed authored light enabled settings.");
+
+        for (int version = 1; version <= 3; ++version)
+        {
+            auto legacy = Json::parse(text);
+            legacy["version"] = version;
+            legacy.erase("editorVisibility");
+            const auto migrated = DeserializeSceneDocument(legacy.dump());
+            Require(migrated.version == CurrentSceneDocumentVersion &&
+                migrated.hiddenObjectIds.empty() && migrated.hiddenLightIds.empty(),
+                "A legacy scene did not default to visible objects and lights.");
+        }
+        auto invalid = Json::parse(text);
+        invalid["editorVisibility"]["hiddenObjectIds"] = {42};
+        ExpectReadError(invalid.dump(), "editorVisibility.hiddenObjectIds[0]");
+        invalid = Json::parse(text);
+        invalid["editorVisibility"]["hiddenLightIds"] = {1,1};
+        ExpectReadError(invalid.dump(), "editorVisibility.hiddenLightIds[1]");
+        invalid["editorVisibility"]["hiddenLightIds"] = {true};
+        ExpectReadError(invalid.dump(), "editorVisibility.hiddenLightIds[0]");
+        invalid["editorVisibility"]["hiddenLightIds"] = "invalid";
+        ExpectReadError(invalid.dump(), "editorVisibility.hiddenLightIds");
+        invalid["editorVisibility"] = Json::array();
+        ExpectReadError(invalid.dump(), "editorVisibility");
+    }
+
 }
 
 int main()
@@ -678,6 +720,7 @@ int main()
         TestMissingRenderingUsesDefaults();
         TestMalformedRendering();
         TestPivotPersistence();
+        TestEditorVisibilityPersistence();
 
         return EXIT_SUCCESS;
     }

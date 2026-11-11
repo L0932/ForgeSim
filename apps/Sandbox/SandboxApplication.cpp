@@ -367,6 +367,9 @@ namespace ForgeSim::Sandbox
 		bool exitRequested = false;
 		bool cameraFramingRequested = true;
         std::optional<SceneCameraData> cameraRestoreRequest;
+        std::vector<SandboxObject> visibleObjects;
+        std::vector<PointLight> visiblePointLights;
+        std::vector<SpotLight> visibleSpotLights;
 		bool viewportNavigationActive = false;
 
 		// Light guides and their picking radius follow the transformed
@@ -767,10 +770,17 @@ namespace ForgeSim::Sandbox
 				selection,
 				scene);
 
+            // Keep the Inspector selection when hiding an object, but omit its gizmo.
+            SceneSelection gizmoSelection = selection;
+            if (const auto id = selection.SelectedObjectId(); id && !scene.IsObjectVisible(*id))
+                gizmoSelection.Clear();
+            if (const auto id = selection.SelectedLightId(); id && !scene.IsLightVisible(*id))
+                gizmoSelection.Clear();
+
 			transformEditor.Update(
 				SceneTransformEditorContext{
 					.scene = scene,
-					.selection = selection,
+					.selection = gizmoSelection,
 					.view = view,
 					.projection = projection,
 					.viewportPosition = viewport.position,
@@ -797,6 +807,15 @@ namespace ForgeSim::Sandbox
 				viewportNavigationActive ||
 				transformEditor.SuppressesPicking();
 
+            // Feed the same visible subset to picking and all render passes,
+            // including object bounds, highlights, and shadows.
+            visibleObjects.clear();
+            for (const auto& object : scene.Objects())
+                if (scene.IsObjectVisible(object.id)) visibleObjects.push_back(object);
+
+            std::erase_if(lightPickTargets, [&](const LightPickTarget& target)
+                { return !scene.IsLightVisible(target.id); });
+
 			selectionController.Update(
 				input,
 				viewport.cursorPixels,
@@ -804,7 +823,7 @@ namespace ForgeSim::Sandbox
 				view,
 				projection,
 				m_Renderer.ObjectLocalBounds(),
-				scene.Objects(),
+				visibleObjects,
 				lightPickTargets,
 				selection,
 				pickingSuppressed);
@@ -835,6 +854,7 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.ShowObjectBounds(),
 
 				.showLights = m_DebugUI.ShowLights(),
+                .showDirectionalLightGuide = scene.IsLightVisible(scene.MainDirectionalLight().id),
 
 				.directionalShadows = scene.RenderingSettings().directionalShadows,
                 .fxaa = m_DebugUI.Fxaa(),
@@ -857,16 +877,25 @@ namespace ForgeSim::Sandbox
 				.renderToTexture = true
 			};
 
+            DirectionalLight visibleDirectional = scene.MainDirectionalLight();
+            visibleDirectional.enabled &= scene.IsLightVisible(visibleDirectional.id);
+            visiblePointLights.clear();
+            for (const auto& light : scene.PointLights())
+                if (scene.IsLightVisible(light.id)) visiblePointLights.push_back(light);
+            visibleSpotLights.clear();
+            for (const auto& light : scene.SpotLights())
+                if (scene.IsLightVisible(light.id)) visibleSpotLights.push_back(light);
+
 			m_Renderer.Render(
-				scene.Objects(),
+				visibleObjects,
 				selection.SelectedObjectId(),
 				view,
 				projection,
 				camera.Position(),
 				SceneLightingView{
-					.directionalLight = scene.MainDirectionalLight(),
-					.pointLights = scene.PointLights(),
-					.spotLights = scene.SpotLights()
+					.directionalLight = visibleDirectional,
+					.pointLights = visiblePointLights,
+					.spotLights = visibleSpotLights
 				},
 				renderSettings);
 
