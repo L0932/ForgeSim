@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EditorConsole.hpp"
+
 #include <string>
 #include <string_view>
 
@@ -63,6 +65,7 @@ namespace ForgeSim::Sandbox
             const SceneFilePanelContext& context);
 
     private:
+        EditorConsole m_Console;
         SceneFileAction m_MenuAction = SceneFileAction::None;
     };
 }

@@ -79,32 +79,7 @@ namespace ForgeSim::Sandbox
             request.action = menuAction;
         }
 
-        if (ImGui::Begin("Scene File"))
-        {
-            const std::string title =
-                std::string{ context.sceneName } +
-                (context.dirty ? " *" : "");
-
-            ImGui::TextUnformatted(title.c_str());
-
-            if (context.scenePath.empty())
-            {
-                ImGui::TextDisabled("Not saved to a file.");
-            }
-            else
-            {
-                const std::string path{ context.scenePath };
-                ImGui::TextWrapped("%s", path.c_str());
-            }
-
-            if (!context.message.empty())
-            {
-                const std::string message{ context.message };
-                ImGui::TextWrapped("%s", message.c_str());
-            }
-        }
-
-        ImGui::End();
+        m_Console.Draw(context.sceneName, context.scenePath, context.dirty);
 
         const ImGuiIO& io = ImGui::GetIO();
 

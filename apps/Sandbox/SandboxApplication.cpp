@@ -192,6 +192,7 @@ namespace ForgeSim::Sandbox
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
+        Core::LogInfo("Scene loaded: " + document.name);
 	}
 
 	void SandboxApplication::Run(std::optional<std::chrono::steady_clock::time_point> startupStart)
@@ -991,6 +992,7 @@ namespace ForgeSim::Sandbox
 						}
 
 						sceneFileMessage = "Scene saved.";
+                        Core::LogInfo("Scene saved: " + scene.Name());
 						break;
 					}
 
@@ -1011,6 +1013,7 @@ namespace ForgeSim::Sandbox
 
 						m_EditorSession->SaveAs(*path);
 						sceneFileMessage = "Scene saved.";
+                        Core::LogInfo("Scene saved: " + scene.Name());
 						break;
 					}
 
@@ -1047,6 +1050,7 @@ namespace ForgeSim::Sandbox
 							m_EditorSession->SaveAs(*path);
 						}
 
+                        Core::LogInfo("Scene saved: " + scene.Name());
 						completePendingAction = true;
 						break;
 					}
@@ -1108,6 +1112,7 @@ namespace ForgeSim::Sandbox
 
 							pendingAction = PendingSceneAction::None;
 							sceneFileMessage = "New scene created.";
+                            Core::LogInfo(sceneFileMessage);
 						}
 						else if (pendingAction == PendingSceneAction::Open)
 						{
@@ -1179,6 +1184,7 @@ namespace ForgeSim::Sandbox
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
 					sceneFileMessage = "Scene opened.";
+                    Core::LogInfo("Scene loaded: " + scene.Name());
 				}
 				catch (const std::exception& exception)
 				{

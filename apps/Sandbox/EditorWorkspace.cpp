@@ -74,6 +74,8 @@ namespace ForgeSim::Sandbox
             viewport->WorkSize);
 
         ImGuiID center = dockspaceId;
+        ImGuiID console = 0;
+        ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.22f, &console, &center);
         ImGuiID left = 0;
         ImGuiID right = 0;
 
@@ -103,7 +105,7 @@ namespace ForgeSim::Sandbox
 
         ImGui::DockBuilderDockWindow("Scene", center);
         ImGui::DockBuilderDockWindow("Hierarchy", leftTop);
-        ImGui::DockBuilderDockWindow("Scene File", leftTop);
+        ImGui::DockBuilderDockWindow("Console###Scene File", console);
         ImGui::DockBuilderDockWindow("ForgeSim Debug", leftBottom);
         ImGui::DockBuilderDockWindow("Inspector", right);
 
