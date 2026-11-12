@@ -1,5 +1,6 @@
 #include "FreeCameraController.hpp"
 #include "BundledSamples.hpp"
+#include "ExternalSample.hpp"
 #include "ConsoleProjectRoot.hpp"
 #include "ConsoleTextureFallback.hpp"
 #include "ConsoleImageCache.hpp"
@@ -407,6 +408,7 @@ namespace ForgeSim::Sandbox
 
 		std::filesystem::path pendingOpenPath;
 		bool pendingSample = false;
+		std::optional<std::filesystem::path> pendingProjectRoot;
 
 		// Committing a prepared session must not fail after the model changes.
 		static_assert(
@@ -1020,6 +1022,18 @@ namespace ForgeSim::Sandbox
 						}
 						break;
 
+					case SceneFileAction::BrowseExternalSample:
+					{
+						if (transformEditor.IsActive() || changePending)
+							break;
+						const auto path = ChooseScenePath(false);
+						static_cast<void>(timer.Restart());
+						if (path)
+							sceneFilePanel.SetExternalSamplePath(*path);
+						break;
+					}
+
+					case SceneFileAction::OpenExternalSample:
 					case SceneFileAction::OpenSample:
 					case SceneFileAction::Open:
 					{
@@ -1028,12 +1042,16 @@ namespace ForgeSim::Sandbox
 							break;
 						}
 
-						const bool sample = fileRequest.action == SceneFileAction::OpenSample;
-						if (sample && !IsBundledSample(fileRequest.path))
+						const bool bundledSample = fileRequest.action == SceneFileAction::OpenSample;
+						const bool externalSample = fileRequest.action == SceneFileAction::OpenExternalSample;
+						const bool sample = bundledSample || externalSample;
+						if (bundledSample && !IsBundledSample(fileRequest.path))
 							throw std::invalid_argument("Unknown bundled sample.");
-						const auto path = sample
+						const auto path = bundledSample
 							? std::optional<std::filesystem::path>{BundledAssetDirectory() / "scenes" / fileRequest.path}
-							: ChooseScenePath(false);
+							: externalSample
+								? std::optional<std::filesystem::path>{SamplePathFromUtf8(fileRequest.path)}
+								: ChooseScenePath(false);
 						static_cast<void>(timer.Restart());
 
 						if (!path)
@@ -1043,6 +1061,9 @@ namespace ForgeSim::Sandbox
 
 						pendingOpenPath = *path;
 						pendingSample = sample;
+						pendingProjectRoot = bundledSample
+							? BundledAssetDirectory().parent_path()
+							: externalSample ? SamplePathFromUtf8(fileRequest.projectRoot) : sceneOpenRoot.Path();
 						sceneFileMessage.clear();
 						pendingAction = PendingSceneAction::Open;
 
@@ -1155,6 +1176,7 @@ namespace ForgeSim::Sandbox
 					case SceneFileAction::CancelPending:
 						pendingAction = PendingSceneAction::None;
 						pendingOpenPath.clear();
+						pendingProjectRoot.reset();
 						pendingSample = false;
 						sceneFileMessage.clear();
 						break;
@@ -1257,8 +1279,8 @@ namespace ForgeSim::Sandbox
                     const auto documentStart = std::chrono::steady_clock::now();
 					EditorSession replacement =
 						pendingSample
-							? m_EditorSession->PrepareSample(pendingOpenPath, BundledAssetDirectory().parent_path())
-							: m_EditorSession->PrepareOpen(pendingOpenPath, sceneOpenRoot.Path());
+							? m_EditorSession->PrepareSample(pendingOpenPath, pendingProjectRoot.value_or(sceneOpenRoot.Path()))
+							: m_EditorSession->PrepareOpen(pendingOpenPath, pendingProjectRoot);
                     logTiming("Scene document loaded", documentStart);
                     const auto resourcesStart = std::chrono::steady_clock::now();
 
@@ -1288,6 +1310,7 @@ namespace ForgeSim::Sandbox
 
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
+					pendingProjectRoot.reset();
 					pendingSample = false;
 					sceneFileMessage = "Scene opened.";
                     Core::LogInfo("Scene loaded: " + scene.Name());
@@ -1297,6 +1320,7 @@ namespace ForgeSim::Sandbox
 				{
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
+					pendingProjectRoot.reset();
 					pendingSample = false;
 					sceneFileMessage = exception.what();
 					Core::LogError(sceneFileMessage);

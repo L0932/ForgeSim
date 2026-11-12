@@ -10,6 +10,10 @@ editor, choose **File > Open Sample**:
 | Starter: Directional Shadows | Select and transform cubes, toggle visibility, and inspect directional shadows on a floor. | `ShadowTestCube.gltf` |
 | Material Gallery | Compare metallic and nonmetallic materials across roughness values. | `PbrMaterialGallery.glb` |
 
+The cards use screenshots of the bundled scenes and preserve their aspect ratio.
+At narrower browser widths they stack vertically. A missing preview does not
+prevent opening the scene.
+
 Both use the bundled studio environment and require no separate downloads,
 texture fallback settings, project-root command, or scene JSON edits. The starter
 cube contains its own geometry and has no external textures. The application
@@ -35,6 +39,34 @@ project.root "C:/Path/To/ForgeSim"
 Then open your saved scene. The root is the folder containing `assets`, not the
 scene-file directory. Saved copies still depend on the application assets.
 Automatic root discovery and missing-asset recovery are separate follow-up work.
+
+## External samples in the browser
+
+Choose **File > Open Sample > Browse Samples...**. The Samples window shows
+screenshot cards for the bundled examples. Expand **Open a local scene** to use
+a scene and assets already on your computer. No additional third-party assets are downloaded or included.
+
+1. Select an existing ForgeSim scene JSON with **Browse scene...**, or paste its
+   path. A relative scene path is resolved against the root you enter below.
+2. Enter the absolute **Project root** folder. For a scene containing
+   `models/example.glb` and a model at
+   `D:/SamplePack/models/example.glb`, enter `D:/SamplePack`.
+3. Click **Open local scene**. Confirm any unsaved edits as usual.
+
+The scene opens as an editable copy and uses the selected root. Save asks for a
+user destination. The Console `project.root` setting is unchanged. The browser
+keeps its input fields during the current application session; it does not yet
+maintain a persistent external-sample catalog.
+
+This opens scene documents, not raw `.gltf`, `.glb`, or Blender files. To prepare
+an external sample, import its model through the existing launch workflow,
+configure lighting and a saved viewpoint, then save a ForgeSim scene JSON. The
+root must match the relative asset paths stored in that JSON. The browser does
+not convert models, rewrite asset paths, or grant redistribution rights.
+
+Local scenes require their own assets and any necessary acquisition or import
+steps. Existing runtime texture-fallback and
+cache settings continue to apply to sample loads.
 
 ## Source checkout
 
@@ -66,8 +98,7 @@ should include:
 
 For assets that cannot be redistributed, publish setup instructions and the
 original acquisition link instead. Do not include purchased or restricted assets
-in the repository, installer, or sample packs. Locally prepared showcases such as
-Cathedral are not part of the bundled samples.
+in the repository, installer, or sample packs. Locally prepared showcases are not part of the bundled samples.
 
 ## Asset provenance
 

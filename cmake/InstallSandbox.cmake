@@ -169,3 +169,11 @@ endif()
 install(FILES "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md"
     DESTINATION . COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
+# Explicit preview allowlist; never include arbitrary local screenshots.
+install(FILES
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/DirectionalShadows.png"
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/MaterialGallery.png"
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/README.md"
+    DESTINATION assets/previews COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)

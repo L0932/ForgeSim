@@ -45,7 +45,7 @@ namespace ForgeSim::Sandbox
             const std::filesystem::path& path,
             std::optional<std::filesystem::path> projectRoot = std::nullopt) const;
 
-        // Bundled samples open as copies: Save must ask for a user destination.
+        // Samples open as copies: Save must ask for a user destination.
         [[nodiscard]] EditorSession PrepareSample(
             const std::filesystem::path& path,
             const std::filesystem::path& bundledRoot) const;
