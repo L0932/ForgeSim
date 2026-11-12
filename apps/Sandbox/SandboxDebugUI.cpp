@@ -342,6 +342,35 @@ namespace ForgeSim::Sandbox
                 cameraForward.y,
                 cameraForward.z);
 
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+            float speed = context.cameraController.MovementSpeed();
+            if (ImGui::SliderFloat("Fly speed (units/s)", &speed, 0.0001f, 10000.0f,
+                "%.4f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp))
+                context.cameraController.SetMovementSpeed(speed);
+            ImGui::TextDisabled("RMB + WASD to fly. Hold Ctrl for 10x slower movement.");
+            ImGui::TextDisabled("Ctrl-click the speed slider to type a precise value.");
+            float nearPlane = camera.NearClippingPlane();
+            float farPlane = camera.FarClippingPlane();
+            const bool nearChanged = ImGui::InputFloat("Near clip", &nearPlane, 0.0f, 0.0f,
+                "%.6f", ImGuiInputTextFlags_EnterReturnsTrue);
+            const bool farChanged = ImGui::InputFloat("Far clip", &farPlane, 0.0f, 0.0f,
+                "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
+            if ((nearChanged || farChanged) && std::isfinite(nearPlane) && std::isfinite(farPlane) &&
+                nearPlane > 0.0f && farPlane > nearPlane)
+            {
+                auto changed = CaptureSceneCamera(camera, context.referenceViewport);
+                changed.nearClippingPlane = nearPlane;
+                changed.farClippingPlane = farPlane;
+                context.cameraRestoreRequest = changed;
+            }
+            ImGui::TextDisabled("Press Enter to apply clipping. Require 0 < near < far.");
+            if (ImGui::Button("Frame scene") && context.frameScene) context.frameScene();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!context.canFocusSelection);
+            if (ImGui::Button("Focus selected object") && context.focusSelection) context.focusSelection();
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
+
             if (ImGui::Button("Copy camera pose", ImVec2(-1.0f, 0.0f)))
             {
                 std::array<char, 512> cameraPose{};

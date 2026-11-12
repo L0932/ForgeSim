@@ -32,7 +32,7 @@ ForgeSim is currently in Phase 3: Textured Assets and PBR Scene Rendering.
 The current Sandbox demonstrates:
 
 - Fixed-timestep simulation scheduling with bounded catch-up
-- Interactive free-camera navigation
+- Interactive free-camera navigation with [scale-aware defaults and precision controls](docs/CameraNavigation.md)
 - Unified object and light selection through viewport picking and Debug UI controls
 - Viewport transform gizmos with local/world modes and keyboard shortcuts
 - Undo and redo for gizmo edits across objects and lights

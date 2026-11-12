@@ -1,6 +1,8 @@
 #include "FreeCameraController.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <stdexcept>
 
 #include <glm/geometric.hpp>
 #include <glm/vec3.hpp>
@@ -33,6 +35,13 @@ namespace ForgeSim::Sandbox
 
 		return std::nullopt;
 	}
+
+    void FreeCameraController::SetMovementSpeed(float speed)
+    {
+        if (!std::isfinite(speed) || speed < 0.0001f || speed > 10000.0f)
+            throw std::invalid_argument("Camera speed must be between 0.0001 and 10000 units per second.");
+        m_Specification.movementSpeed = speed;
+    }
 
 	void FreeCameraController::Update(
 		ForgeSim::Renderer::PerspectiveCamera& camera,
@@ -84,9 +93,10 @@ namespace ForgeSim::Sandbox
 			movementDirection,
 			movementDirection) > 0.0f)
 		{
+            const float slowFactor = input.GetKeyState(Platform::Key::LeftControl).held ? 0.1f : 1.0f;
 			camera.Translate(
 				glm::normalize(movementDirection) *
-				m_Specification.movementSpeed *
+				m_Specification.movementSpeed * slowFactor *
 				boundedDeltaSeconds);
 		}
 

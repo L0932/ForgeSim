@@ -9,6 +9,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Camera fly-speed and near/far clipping controls, Ctrl precision movement,
+  and scene/selected-object framing actions in the Camera panel.
+
 - Bundled directional-shadow starter and material-gallery scenes, available from
   **File > Open Sample** without project-root configuration.
 - Samples browser with screenshot previews and local scene opening using
@@ -26,6 +29,9 @@ contains the detailed implementation record.
   changing the global texture policy.
 
 ### Fixed
+
+- Automatic camera speed and near clipping are more conservative for large
+  imported environments, while retaining scale-aware defaults.
 
 - Direct external model imports discover their project manifest, or use the
   model folder when none exists, avoiding invalid scene references after GPU

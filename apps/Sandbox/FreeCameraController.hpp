@@ -25,6 +25,9 @@ namespace ForgeSim::Sandbox
 		std::optional<Platform::CursorMode> RequestedCursorMode(
 			const Platform::InputState& input) const noexcept;
 
+        [[nodiscard]] float MovementSpeed() const noexcept { return m_Specification.movementSpeed; }
+        void SetMovementSpeed(float speed);
+
 		void Update(
 			ForgeSim::Renderer::PerspectiveCamera& camera,
 			const ForgeSim::Platform::InputState& input,

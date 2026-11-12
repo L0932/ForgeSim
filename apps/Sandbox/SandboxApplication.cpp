@@ -977,6 +977,7 @@ namespace ForgeSim::Sandbox
 							? &*latestDiagnosticsSnapshot 
 							: nullptr,
 					.camera = camera,
+                    .cameraController = cameraController,
 				.scene = scene,
 				.cameraEditingDisabled =
                     changePending || transformEditor.IsActive() || rightMouseDown || !viewport.IsDrawable(),
@@ -986,6 +987,24 @@ namespace ForgeSim::Sandbox
                         static_cast<std::uint32_t>(viewport.framebufferExtent.height) } }
                     : std::nullopt,
                 .cameraRestoreRequest = cameraRestoreRequest,
+                .canFocusSelection = selection.SelectedObjectId().has_value(),
+                .focusSelection = [&]
+                {
+                    const auto id = selection.SelectedObjectId();
+                    const auto* object = id ? scene.FindObject(*id) : nullptr;
+                    if (!object) return;
+                    auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
+                        std::span<const SandboxObject>{object, 1}, m_Renderer.ObjectLocalBounds()), aspectRatio);
+                    cameraRestoreRequest = CaptureSceneCamera(framing.camera);
+                    cameraController = std::move(framing.controller);
+                },
+                .frameScene = [&]
+                {
+                    auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
+                        scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
+                    cameraRestoreRequest = CaptureSceneCamera(framing.camera);
+                    cameraController = std::move(framing.controller);
+                },
                 .applyEnvironment = [&](const SceneRenderingSettings& settings)
                 {
                     // Prepare authored state before touching GPU resources.

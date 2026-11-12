@@ -1468,3 +1468,13 @@ target_compile_features(ForgeSimModelImportTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimModelImportTests)
 set_target_properties(ForgeSimModelImportTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.ModelImport COMMAND ForgeSimModelImportTests)
+
+add_executable(ForgeSimCameraNavigationTests CameraNavigationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraFraming.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp)
+target_include_directories(ForgeSimCameraNavigationTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimCameraNavigationTests PRIVATE ForgeSim::Platform ForgeSim::Renderer)
+target_compile_features(ForgeSimCameraNavigationTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimCameraNavigationTests)
+set_target_properties(ForgeSimCameraNavigationTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.CameraNavigation COMMAND ForgeSimCameraNavigationTests)
