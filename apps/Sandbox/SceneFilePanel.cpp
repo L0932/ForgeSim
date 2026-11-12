@@ -1,4 +1,5 @@
 #include "SceneFilePanel.hpp"
+#include "BundledSamples.hpp"
 #include "EditorMainToolbar.hpp"
 
 #include <string>
@@ -29,6 +30,19 @@ namespace ForgeSim::Sandbox
             if (ImGui::MenuItem("Open Scene..."))
             {
                 m_MenuAction = SceneFileAction::Open;
+            }
+
+            if (ImGui::BeginMenu("Open Sample"))
+            {
+                for (const auto& sample : BundledSamples)
+                {
+                    if (ImGui::MenuItem(sample.label))
+                    {
+                        m_MenuAction = SceneFileAction::OpenSample;
+                        m_SampleFilename = sample.filename;
+                    }
+                }
+                ImGui::EndMenu();
             }
 
             ImGui::Separator();
@@ -77,6 +91,8 @@ namespace ForgeSim::Sandbox
         if (actionsAllowed)
         {
             request.action = menuAction;
+            if (menuAction == SceneFileAction::OpenSample)
+                request.path = m_SampleFilename;
         }
 
         m_Console.Draw(context.sceneName, context.scenePath, context.dirty);

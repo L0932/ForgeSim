@@ -7,10 +7,11 @@ install(
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
 )
 
-# Include only the original validation scene, not arbitrary user documents.
+# Explicitly select bundled samples, not arbitrary user documents.
 install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/DirectionalShadowTest.forgesim.json"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/MaterialGallery.scene.json"
     DESTINATION assets/scenes
     COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel
@@ -163,3 +164,8 @@ if(EXISTS "${FORGESIM_RELEASE_NOTES}")
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
     )
 endif()
+
+# Sample usage and distribution guidance accompany the installed application.
+install(FILES "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md"
+    DESTINATION . COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)

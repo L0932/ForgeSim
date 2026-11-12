@@ -1,0 +1,86 @@
+#include "BundledSamples.hpp"
+#include "EditorSession.hpp"
+#include "SceneDocumentIO.hpp"
+
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+
+namespace fs = std::filesystem;
+using namespace ForgeSim::Sandbox;
+namespace
+{
+    void Require(bool condition, const char* message)
+    {
+        if (!condition) throw std::runtime_error(message);
+    }
+
+    struct TemporaryDirectory
+    {
+        fs::path path = fs::temp_directory_path() / ("ForgeSimSamples-" +
+            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        TemporaryDirectory() { fs::create_directories(path); }
+        ~TemporaryDirectory() { std::error_code error; fs::remove_all(path, error); }
+    };
+}
+
+int main()
+{
+    try
+    {
+        TemporaryDirectory temp;
+        const auto bundle = temp.path / "relocated application";
+        const auto userDirectory = temp.path / "user scenes";
+        const auto externalRoot = temp.path / "external project";
+        fs::create_directories(bundle / "assets/scenes");
+        fs::create_directories(bundle / "assets/models");
+        fs::create_directories(userDirectory);
+        fs::create_directories(externalRoot);
+        const fs::path source = FORGESIM_SAMPLE_ASSET_DIRECTORY;
+        for (const auto& sample : BundledSamples)
+            fs::copy_file(source / "scenes" / sample.filename,
+                bundle / "assets/scenes" / sample.filename);
+        for (const auto* model : {"ShadowTestCube.gltf", "PbrMaterialGallery.glb"})
+            fs::copy_file(source / "models" / model, bundle / "assets/models" / model);
+
+        SceneDocument document;
+        document.name = "External scene";
+        EditorSession current(document, externalRoot, std::nullopt, userDirectory);
+        Require(!IsBundledSample("../other.scene.json"), "Catalog rejects arbitrary filenames");
+        for (const auto& entry : BundledSamples)
+        {
+            const auto sourcePath = bundle / "assets/scenes" / entry.filename;
+            const auto sourceSize = fs::file_size(sourcePath);
+            auto sample = current.PrepareSample(sourcePath, bundle);
+            Require(sample.ProjectRoot() == fs::canonical(bundle), "Sample uses bundled root");
+            Require(!sample.ScenePath(), "Sample opens as an editable copy");
+            Require(sample.DefaultSceneDirectory() == userDirectory, "Save dialog keeps user directory");
+            Require(sample.SharedModelPath() && fs::is_regular_file(*sample.SharedModelPath()),
+                "Sample model resolves after relocation");
+            bool failed = false;
+            try { sample.Save(); } catch (const std::logic_error&) { failed = true; }
+            Require(failed, "Save requires destination before writing sample");
+            const auto saved = userDirectory / entry.filename;
+            sample.SaveAs(saved);
+            Require(sample.ScenePath() == saved, "Save As adopts user file");
+            Require(LoadSceneDocument(saved, bundle).objects.size() == sample.Scene().Objects().size(),
+                "Saved sample reloads with bundled asset root");
+            Require(fs::file_size(sourcePath) == sourceSize, "Bundled source is untouched");
+        }
+        bool failed = false;
+        try { static_cast<void>(current.PrepareSample(bundle / "missing.json", bundle)); }
+        catch (const std::exception&) { failed = true; }
+        Require(failed && current.Scene().Name() == "External scene" &&
+            current.ProjectRoot() == fs::canonical(externalRoot) && !current.HasUnsavedChanges(),
+            "Failed sample open preserves active session");
+        std::cout << "Bundled sample relocation, root isolation, and Save As passed\n";
+        return 0;
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << error.what() << '\n';
+        return 1;
+    }
+}

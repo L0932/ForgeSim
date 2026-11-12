@@ -25,6 +25,7 @@ namespace ForgeSim::Sandbox
         None,
         New,
         Open,
+        OpenSample,
         Save,
         SaveAs,
         SaveAndContinue,
@@ -76,5 +77,6 @@ namespace ForgeSim::Sandbox
     private:
         EditorConsole m_Console;
         SceneFileAction m_MenuAction = SceneFileAction::None;
+        std::string m_SampleFilename;
     };
 }

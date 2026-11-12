@@ -306,6 +306,19 @@ namespace ForgeSim::Sandbox
             ImGui::Spacing();
         }
 
+        const auto reportAction = [&](auto&& action)
+        {
+            try
+            {
+                action();
+                m_PresentationMessage.clear();
+            }
+            catch (const std::exception& error)
+            {
+                m_PresentationMessage = error.what();
+            }
+        };
+
         if (EditorSectionHeader("Camera"))
         {
             const glm::vec3& cameraPosition =
@@ -350,142 +363,132 @@ namespace ForgeSim::Sandbox
             }
 
             ImGui::Spacing();
-        }
+            ImGui::Indent();
 
-        if (EditorSectionHeader("Saved viewpoint"))
-        {
-            ImGui::BeginDisabled(context.cameraEditingDisabled);
-
-            if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
+            if (EditorSectionHeader("Saved viewpoint"))
             {
-                const SceneCameraData saved = CaptureSceneCamera(
-                    context.camera, context.referenceViewport);
+                ImGui::BeginDisabled(context.cameraEditingDisabled);
 
-                if (const auto error = context.scene.TrySetSavedCamera(saved))
+                if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
                 {
-                    Core::LogError(
-                        std::string{ "Cannot save viewpoint at 'camera." } +
-                        std::string{ error->property } +
-                        "': " +
-                        std::string{ error->message });
-                }
-            }
+                    const SceneCameraData saved = CaptureSceneCamera(
+                        context.camera, context.referenceViewport);
 
-            ImGui::BeginDisabled(!context.scene.SavedCamera());
-
-            if (ImGui::Button("Clear saved viewpoint", ImVec2(-1.0f, 0.0f)))
-            {
-                context.scene.ClearSavedCamera();
-            }
-
-            ImGui::EndDisabled();
-            ImGui::EndDisabled();
-
-            ImGui::TextUnformatted(
-                context.scene.SavedCamera()
-                ? "Scene has a saved viewpoint."
-                : "Scene will use automatic framing.");
-
-            ImGui::TextWrapped(
-                "Save the scene file to keep viewpoint changes.");
-        }
-
-        const auto reportAction = [&](auto&& action)
-        {
-            try
-            {
-                action();
-                m_PresentationMessage.clear();
-            }
-            catch (const std::exception& error)
-            {
-                m_PresentationMessage = error.what();
-            }
-        };
-
-        if (EditorSectionHeader("Camera bookmarks"))
-        {
-            ImGui::BeginDisabled(context.cameraEditingDisabled);
-            ImGui::InputText("Bookmark name", m_BookmarkName.data(), m_BookmarkName.size());
-            if (ImGui::Button("Add bookmark"))
-            {
-                reportAction([&]
-                {
-                    context.scene.AddCameraBookmark(m_BookmarkName.data(),
-                        CaptureSceneCamera(context.camera, context.referenceViewport));
-                    m_SelectedBookmark = m_BookmarkName.data();
-                });
-            }
-
-            std::optional<std::size_t> requestedBookmark;
-            if (ImGui::BeginCombo("Bookmarks",
-                m_SelectedBookmark.empty() ? "Select a bookmark" : m_SelectedBookmark.c_str()))
-            {
-                const auto bookmarks = context.scene.CameraBookmarks();
-                for (std::size_t index = 0; index < bookmarks.size(); ++index)
-                {
-                    ImGui::PushID(static_cast<int>(index));
-                    if (ImGui::Selectable(bookmarks[index].name.c_str(),
-                        bookmarks[index].name == m_SelectedBookmark))
+                    if (const auto error = context.scene.TrySetSavedCamera(saved))
                     {
-                        requestedBookmark = index;
+                        Core::LogError(
+                            std::string{ "Cannot save viewpoint at 'camera." } +
+                            std::string{ error->property } +
+                            "': " +
+                            std::string{ error->message });
                     }
-                    ImGui::PopID();
                 }
-                ImGui::EndCombo();
-            }
-            if (requestedBookmark)
-            {
-                reportAction([&]
+
+                ImGui::BeginDisabled(!context.scene.SavedCamera());
+
+                if (ImGui::Button("Clear saved viewpoint", ImVec2(-1.0f, 0.0f)))
                 {
-                    const auto& bookmark = context.scene.CameraBookmarks()[*requestedBookmark];
-                    // Verify restoration before changing the active authored viewpoint.
-                    static_cast<void>(CreateSceneCamera(bookmark.camera));
-                    m_SelectedBookmark = bookmark.name;
-                    context.scene.SelectCameraBookmark(*requestedBookmark);
-                    context.cameraRestoreRequest = context.scene.SavedCamera();
-                });
+                    context.scene.ClearSavedCamera();
+                }
+
+                ImGui::EndDisabled();
+                ImGui::EndDisabled();
+
+                ImGui::TextUnformatted(
+                    context.scene.SavedCamera()
+                    ? "Scene has a saved viewpoint."
+                    : "Scene will use automatic framing.");
+
+                ImGui::TextWrapped(
+                    "Save the scene file to keep viewpoint changes.");
             }
 
-            const auto bookmarks = context.scene.CameraBookmarks();
-            const auto selected = std::find_if(bookmarks.begin(), bookmarks.end(), [&](const auto& bookmark)
+            if (EditorSectionHeader("Camera bookmarks"))
             {
-                return bookmark.name == m_SelectedBookmark;
-            });
-            ImGui::BeginDisabled(selected == bookmarks.end());
-            if (ImGui::Button("Update bookmark from current view"))
-            {
-                reportAction([&]
+                ImGui::BeginDisabled(context.cameraEditingDisabled);
+                ImGui::InputText("Bookmark name", m_BookmarkName.data(), m_BookmarkName.size());
+                if (ImGui::Button("Add bookmark"))
                 {
-                    context.scene.UpdateCameraBookmark(
-                        static_cast<std::size_t>(selected - bookmarks.begin()),
-                        CaptureSceneCamera(context.camera, context.referenceViewport));
-                });
-            }
-            if (ImGui::Button("Delete bookmark"))
-            {
-                reportAction([&]
+                    reportAction([&]
+                    {
+                        context.scene.AddCameraBookmark(m_BookmarkName.data(),
+                            CaptureSceneCamera(context.camera, context.referenceViewport));
+                        m_SelectedBookmark = m_BookmarkName.data();
+                    });
+                }
+
+                std::optional<std::size_t> requestedBookmark;
+                if (ImGui::BeginCombo("Bookmarks",
+                    m_SelectedBookmark.empty() ? "Select a bookmark" : m_SelectedBookmark.c_str()))
                 {
-                    context.scene.RemoveCameraBookmark(
-                        static_cast<std::size_t>(selected - bookmarks.begin()));
-                    m_SelectedBookmark.clear();
+                    const auto bookmarks = context.scene.CameraBookmarks();
+                    for (std::size_t index = 0; index < bookmarks.size(); ++index)
+                    {
+                        ImGui::PushID(static_cast<int>(index));
+                        if (ImGui::Selectable(bookmarks[index].name.c_str(),
+                            bookmarks[index].name == m_SelectedBookmark))
+                        {
+                            requestedBookmark = index;
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndCombo();
+                }
+                if (requestedBookmark)
+                {
+                    reportAction([&]
+                    {
+                        const auto& bookmark = context.scene.CameraBookmarks()[*requestedBookmark];
+                        // Verify restoration before changing the active authored viewpoint.
+                        static_cast<void>(CreateSceneCamera(bookmark.camera));
+                        m_SelectedBookmark = bookmark.name;
+                        context.scene.SelectCameraBookmark(*requestedBookmark);
+                        context.cameraRestoreRequest = context.scene.SavedCamera();
+                    });
+                }
+
+                const auto bookmarks = context.scene.CameraBookmarks();
+                const auto selected = std::find_if(bookmarks.begin(), bookmarks.end(), [&](const auto& bookmark)
+                {
+                    return bookmark.name == m_SelectedBookmark;
                 });
+                ImGui::BeginDisabled(selected == bookmarks.end());
+                if (ImGui::Button("Update bookmark from current view"))
+                {
+                    reportAction([&]
+                    {
+                        context.scene.UpdateCameraBookmark(
+                            static_cast<std::size_t>(selected - bookmarks.begin()),
+                            CaptureSceneCamera(context.camera, context.referenceViewport));
+                    });
+                }
+                if (ImGui::Button("Delete bookmark"))
+                {
+                    reportAction([&]
+                    {
+                        context.scene.RemoveCameraBookmark(
+                            static_cast<std::size_t>(selected - bookmarks.begin()));
+                        m_SelectedBookmark.clear();
+                    });
+                }
+                ImGui::EndDisabled();
+                ImGui::EndDisabled();
+                ImGui::TextWrapped("Selecting a bookmark also saves it as the active viewpoint. "
+                    "Updating a bookmark changes its stored view; select it to make that view active.");
+                if (const auto& saved = context.scene.SavedCamera(); saved && saved->referenceViewport)
+                {
+                    const auto extent = *saved->referenceViewport;
+                    ImGui::Text("Reference viewport: %u x %u (aspect %.4f)",
+                        extent.width, extent.height,
+                        static_cast<double>(extent.width) / extent.height);
+                    if (context.referenceViewport &&
+                        (context.referenceViewport->width != extent.width ||
+                            context.referenceViewport->height != extent.height))
+                        ImGui::TextWrapped("Current viewport dimensions differ from the reference capture.");
+                }
             }
-            ImGui::EndDisabled();
-            ImGui::EndDisabled();
-            ImGui::TextWrapped("Selecting a bookmark also saves it as the active viewpoint. "
-                "Updating a bookmark changes its stored view; select it to make that view active.");
-            if (const auto& saved = context.scene.SavedCamera(); saved && saved->referenceViewport)
-            {
-                const auto extent = *saved->referenceViewport;
-                ImGui::Text("Reference viewport: %u x %u (aspect %.4f)",
-                    extent.width, extent.height,
-                    static_cast<double>(extent.width) / extent.height);
-                if (context.referenceViewport &&
-                    (context.referenceViewport->width != extent.width ||
-                        context.referenceViewport->height != extent.height))
-                    ImGui::TextWrapped("Current viewport dimensions differ from the reference capture.");
-            }
+
+            ImGui::Unindent();
         }
 
         SceneRenderingSettings rendering = context.scene.RenderingSettings();

@@ -97,6 +97,7 @@ target_sources(
         ConsoleProjectRoot.hpp
         ConsoleCommands.hpp
         EditorConsole.hpp
+        BundledSamples.hpp
 		SceneFilePanel.hpp
         SceneFilePanel.cpp
 		SceneHierarchyPanel.hpp

@@ -1,43 +1,101 @@
 {
-  "version": 1,
+  "camera": {
+    "farClippingPlane": 62.58213424682617,
+    "forwardDirection": [
+      -0.04725087434053421,
+      -0.32593920826911926,
+      -0.9442092180252075
+    ],
+    "nearClippingPlane": 0.08612527698278427,
+    "position": [
+      1.6308772563934326,
+      6.164748668670654,
+      14.77444076538086
+    ],
+    "referenceViewport": {
+      "height": 885,
+      "width": 2312
+    },
+    "upDirection": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "verticalFieldOfViewRadians": 0.7853981852531433
+  },
+  "cameraBookmarks": [],
+  "directionalLight": {
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "directionToLight": [
+      -0.4866642653942108,
+      0.8111070990562439,
+      0.3244428336620331
+    ],
+    "enabled": true,
+    "id": 1,
+    "intensity": 3.0,
+    "position": [
+      -4.0,
+      6.0,
+      3.0
+    ]
+  },
+  "editorVisibility": {
+    "hiddenLightIds": [],
+    "hiddenObjectIds": []
+  },
   "name": "Directional Shadow Test",
   "objects": [
     {
       "id": 1,
-      "name": "Floor",
       "modelPath": "assets/models/ShadowTestCube.gltf",
+      "name": "Floor",
       "transform": {
+        "pivot": [
+          0.0,
+          0.0,
+          0.0
+        ],
         "position": [
-          0,
-          -0.1,
-          0
+          0.0,
+          -0.10000000149011612,
+          0.0
         ],
         "rotationRadians": [
-          0,
-          0,
-          0
+          0.0,
+          0.0,
+          0.0
         ],
         "scale": [
-          12,
-          0.2,
-          12
+          12.0,
+          0.20000000298023224,
+          12.0
         ]
       }
     },
     {
       "id": 2,
-      "name": "Resting Cube",
       "modelPath": "assets/models/ShadowTestCube.gltf",
+      "name": "Resting Cube",
       "transform": {
+        "pivot": [
+          0.0,
+          0.0,
+          0.0
+        ],
         "position": [
-          -2,
+          -2.0,
           0.75,
-          0
+          0.0
         ],
         "rotationRadians": [
-          0,
-          0,
-          0
+          0.0,
+          0.0,
+          0.0
         ],
         "scale": [
           1.5,
@@ -48,18 +106,23 @@
     },
     {
       "id": 3,
-      "name": "Floating Cube",
       "modelPath": "assets/models/ShadowTestCube.gltf",
+      "name": "Floating Cube",
       "transform": {
+        "pivot": [
+          0.0,
+          0.0,
+          0.0
+        ],
         "position": [
           1.5,
-          2,
-          0
+          2.0,
+          0.0
         ],
         "rotationRadians": [
-          0,
-          0,
-          0
+          0.0,
+          0.0,
+          0.0
         ],
         "scale": [
           1.5,
@@ -69,26 +132,27 @@
       }
     }
   ],
-  "directionalLight": {
-    "id": 1,
-    "enabled": true,
-    "position": [
-      -4,
-      6,
-      3
-    ],
-    "directionToLight": [
-      -0.4866642633922876,
-      0.8111071056538127,
-      0.3244428422615251
-    ],
-    "color": [
-      1,
-      1,
-      1
-    ],
-    "intensity": 3.0
-  },
   "pointLights": [],
-  "spotLights": []
+  "rendering": {
+    "backgroundColor": [
+      0.03200000151991844,
+      0.035999998450279236,
+      0.04399999976158142
+    ],
+    "directionalShadows": {
+      "enabled": true,
+      "filteringEnabled": true,
+      "minimumBias": 0.0005000000237487257,
+      "slopeBias": 0.0024999999441206455
+    },
+    "environment": {
+      "asset": null,
+      "source": "bundledStudio"
+    },
+    "environmentIntensity": 0.20000000298023224,
+    "exposure": 1.0,
+    "showEnvironmentBackground": false
+  },
+  "spotLights": [],
+  "version": 4
 }

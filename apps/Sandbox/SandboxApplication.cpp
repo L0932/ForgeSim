@@ -1,4 +1,5 @@
 #include "FreeCameraController.hpp"
+#include "BundledSamples.hpp"
 #include "ConsoleProjectRoot.hpp"
 #include "ConsoleTextureFallback.hpp"
 #include "ConsoleImageCache.hpp"
@@ -405,6 +406,7 @@ namespace ForgeSim::Sandbox
 			PendingSceneAction::None;
 
 		std::filesystem::path pendingOpenPath;
+		bool pendingSample = false;
 
 		// Committing a prepared session must not fail after the model changes.
 		static_assert(
@@ -1018,6 +1020,7 @@ namespace ForgeSim::Sandbox
 						}
 						break;
 
+					case SceneFileAction::OpenSample:
 					case SceneFileAction::Open:
 					{
 						if (transformEditor.IsActive() || changePending)
@@ -1025,7 +1028,12 @@ namespace ForgeSim::Sandbox
 							break;
 						}
 
-						const auto path = ChooseScenePath(false);
+						const bool sample = fileRequest.action == SceneFileAction::OpenSample;
+						if (sample && !IsBundledSample(fileRequest.path))
+							throw std::invalid_argument("Unknown bundled sample.");
+						const auto path = sample
+							? std::optional<std::filesystem::path>{BundledAssetDirectory() / "scenes" / fileRequest.path}
+							: ChooseScenePath(false);
 						static_cast<void>(timer.Restart());
 
 						if (!path)
@@ -1034,6 +1042,7 @@ namespace ForgeSim::Sandbox
 						}
 
 						pendingOpenPath = *path;
+						pendingSample = sample;
 						sceneFileMessage.clear();
 						pendingAction = PendingSceneAction::Open;
 
@@ -1146,6 +1155,7 @@ namespace ForgeSim::Sandbox
 					case SceneFileAction::CancelPending:
 						pendingAction = PendingSceneAction::None;
 						pendingOpenPath.clear();
+						pendingSample = false;
 						sceneFileMessage.clear();
 						break;
 
@@ -1246,7 +1256,9 @@ namespace ForgeSim::Sandbox
 					// file uses the version that was just saved.
                     const auto documentStart = std::chrono::steady_clock::now();
 					EditorSession replacement =
-						m_EditorSession->PrepareOpen(pendingOpenPath, sceneOpenRoot.Path());
+						pendingSample
+							? m_EditorSession->PrepareSample(pendingOpenPath, BundledAssetDirectory().parent_path())
+							: m_EditorSession->PrepareOpen(pendingOpenPath, sceneOpenRoot.Path());
                     logTiming("Scene document loaded", documentStart);
                     const auto resourcesStart = std::chrono::steady_clock::now();
 
@@ -1276,6 +1288,7 @@ namespace ForgeSim::Sandbox
 
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
+					pendingSample = false;
 					sceneFileMessage = "Scene opened.";
                     Core::LogInfo("Scene loaded: " + scene.Name());
                     logTiming("Scene open completed", loadStart);
@@ -1284,6 +1297,7 @@ namespace ForgeSim::Sandbox
 				{
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
+					pendingSample = false;
 					sceneFileMessage = exception.what();
 					Core::LogError(sceneFileMessage);
                     logTiming("Scene open failed after", loadStart);
