@@ -22,6 +22,8 @@ namespace ForgeSim::Sandbox
         bool navigationActive = false;
         bool confirmationPending = false;
         std::string_view pendingActionText;
+        std::string_view recoveryMessage;
+        bool canLocateModel = false;
     };
 
     enum class SceneFileAction
@@ -36,6 +38,9 @@ namespace ForgeSim::Sandbox
         SaveAs,
         SaveAndContinue,
         DiscardAndContinue,
+        LocateMissingAssets,
+        LocateMissingModel,
+        RetryMissingAssets,
         CancelPending
     };
 
@@ -43,7 +48,7 @@ namespace ForgeSim::Sandbox
     {
         SceneFileAction action = SceneFileAction::None;
         std::string path;
-        std::string projectRoot;
+        bool allowTextureFallbacks = true;
     };
 
     struct SceneToolbarContext
@@ -75,6 +80,7 @@ namespace ForgeSim::Sandbox
         }
 
         void DrawMenu(bool actionsAllowed, bool hasScenePath);
+        void ResetSampleBrowserLayout();
         void SetExternalSamplePath(const std::filesystem::path& path);
         // Draw before creating the workspace dockspace.
         [[nodiscard]] SceneToolbarRequest DrawToolbar(const SceneToolbarContext& context);
@@ -91,8 +97,9 @@ namespace ForgeSim::Sandbox
         std::array<SamplePreview, BundledSamples.size()> m_SamplePreviews;
         bool m_SampleBrowserOpen = false;
         bool m_SampleBrowserFocused = false;
+        bool m_ResetSampleBrowserLayout = false;
+        bool m_AllowSampleTextureFallbacks = true;
         std::array<char, 4096> m_ExternalSamplePath{};
-        std::array<char, 4096> m_ExternalSampleRoot{};
         std::string m_SampleBrowserMessage;
     };
 }

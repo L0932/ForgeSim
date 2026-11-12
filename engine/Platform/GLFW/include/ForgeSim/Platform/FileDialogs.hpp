@@ -11,6 +11,7 @@ namespace ForgeSim::Platform
 	enum class FileDialogMode
 	{
 		Open,
+        SelectFolder,
 		Save
 	};
 

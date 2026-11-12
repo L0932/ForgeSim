@@ -190,3 +190,12 @@ install(FILES
     "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/README.md"
     DESTINATION assets/previews COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
+# One manifest covers all bundled scenes and their portable asset references.
+install(FILES "${PROJECT_SOURCE_DIR}/apps/Sandbox/ForgeSim.project.json"
+    DESTINATION . COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
+install(FILES "${PROJECT_SOURCE_DIR}/docs/ProjectAssetRoots.md"
+    DESTINATION . COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)

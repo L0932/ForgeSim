@@ -26,7 +26,12 @@ add_custom_target(
 		${CMAKE_COMMAND} -E copy_directory
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets"
 		"$<TARGET_FILE_DIR:ForgeSimSandbox>/assets"
+    COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/ForgeSim.project.json"
+        "$<TARGET_FILE_DIR:ForgeSimSandbox>/ForgeSim.project.json"
 	DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/ForgeSim.project.json"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Grid.vert"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Grid.frag"
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/Object.vert"
@@ -98,6 +103,9 @@ target_sources(
         ConsoleCommands.hpp
         EditorConsole.hpp
         SamplePreview.hpp
+        SceneAssetRecovery.hpp
+        SceneAssetRoot.hpp
+        SceneAssetRoot.cpp
         ExternalSample.hpp
         BundledSamples.hpp
 		SceneFilePanel.hpp

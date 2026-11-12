@@ -1,6 +1,8 @@
 #include "FreeCameraController.hpp"
 #include "BundledSamples.hpp"
 #include "ExternalSample.hpp"
+#include "SceneAssetRoot.hpp"
+#include "SceneAssetRecovery.hpp"
 #include "ConsoleProjectRoot.hpp"
 #include "ConsoleTextureFallback.hpp"
 #include "ConsoleImageCache.hpp"
@@ -141,6 +143,7 @@ namespace ForgeSim::Sandbox
 		, m_DebugUI(m_Window)
 		, m_Renderer(CreateInitialRenderer(spec, m_Window, m_DebugUI))
 		, m_LoadedScene(spec.initialScene.has_value())
+        , m_ExplicitSceneRoot(spec.explicitSceneRoot)
 	{
 		const std::filesystem::path projectRoot =
 			std::filesystem::weakly_canonical(
@@ -347,13 +350,21 @@ namespace ForgeSim::Sandbox
 
 		std::vector<LightPickTarget> lightPickTargets;
 
-        ConsoleProjectRoot sceneOpenRoot{m_EditorSession->ProjectRoot()};
+        ConsoleProjectRoot sceneOpenRoot{BundledAssetDirectory().parent_path(), m_ExplicitSceneRoot};
         SceneFilePanel sceneFilePanel;
         sceneFilePanel.RegisterConsoleCommand("project.root",
             "Show or set the project root for subsequent scene opens.",
             "project.root [directory]", 0, 1,
             [&sceneOpenRoot](auto arguments, const auto&)
             { return sceneOpenRoot.Execute(arguments); });
+        sceneFilePanel.RegisterConsoleCommand("project.root.auto",
+            "Clear the explicit root override and discover roots for subsequent opens.",
+            "project.root.auto", 0, 0,
+            [&sceneOpenRoot](auto, const auto&)
+            {
+                sceneOpenRoot.UseAutomaticDiscovery();
+                return ConsoleCommandResult{"Automatic project-root discovery enabled for subsequent opens."};
+            });
         sceneFilePanel.RegisterConsoleCommand("textures.fallback",
             "Show or set texture fallbacks for subsequent model loads.",
             "textures.fallback [on|off]", 0, 1,
@@ -408,6 +419,10 @@ namespace ForgeSim::Sandbox
 
 		std::filesystem::path pendingOpenPath;
 		bool pendingSample = false;
+        std::optional<Assets::GltfTexturePolicy> pendingTexturePolicy;
+        bool recoveringAssets = false;
+        std::string assetRecoveryMessage;
+        std::string missingModelReference;
 		std::optional<std::filesystem::path> pendingProjectRoot;
 
 		// Committing a prepared session must not fail after the model changes.
@@ -530,7 +545,7 @@ namespace ForgeSim::Sandbox
 				m_EditorSession->ScenePath().has_value());
 
             SceneToolbarRequest toolbarRequest;
-            m_DebugUI.BeginWorkspace([&]
+            const bool layoutReset = m_DebugUI.BeginWorkspace([&]
             {
                 toolbarRequest = sceneFilePanel.DrawToolbar(SceneToolbarContext{
                     .actionsAllowed = !changePending && !transformEditor.IsActive() &&
@@ -542,8 +557,7 @@ namespace ForgeSim::Sandbox
                     .dirty = m_EditorSession->HasUnsavedChanges()
                 });
             });
-
-
+            if (layoutReset) sceneFilePanel.ResetSampleBrowserLayout();
 
 			runtimeDiagnostics.SetEnabled(
 				m_DebugUI.RuntimeDiagnosticsEnabled());
@@ -587,13 +601,15 @@ namespace ForgeSim::Sandbox
 						.navigationActive =
 							input.GetMouseButtonState(
 								Platform::MouseButton::Right).held,
-						.confirmationPending = changePending,
+						.confirmationPending = changePending && !recoveringAssets,
 						.pendingActionText =
 							pendingAction == PendingSceneAction::New
 								? "creating a new scene"
 								: pendingAction == PendingSceneAction::Open
 									? "opening another scene"
-									: "closing"
+									: "closing",
+                        .recoveryMessage = assetRecoveryMessage,
+                        .canLocateModel = !missingModelReference.empty()
 					});
 
 			TransformEditorUIState editorUI =
@@ -1061,9 +1077,15 @@ namespace ForgeSim::Sandbox
 
 						pendingOpenPath = *path;
 						pendingSample = sample;
+                        pendingTexturePolicy = externalSample
+                            ? std::optional{fileRequest.allowTextureFallbacks
+                                ? Assets::GltfTexturePolicy::SkipUnusableTextures
+                                : Assets::GltfTexturePolicy::Strict}
+                            : std::nullopt;
 						pendingProjectRoot = bundledSample
 							? BundledAssetDirectory().parent_path()
-							: externalSample ? SamplePathFromUtf8(fileRequest.projectRoot) : sceneOpenRoot.Path();
+							: ResolveSceneAssetRoot(*path, sceneOpenRoot.Override(),
+                                    BundledAssetDirectory().parent_path()).root;
 						sceneFileMessage.clear();
 						pendingAction = PendingSceneAction::Open;
 
@@ -1173,11 +1195,69 @@ namespace ForgeSim::Sandbox
 							pendingAction != PendingSceneAction::None;
 						break;
 
+                    case SceneFileAction::LocateMissingModel:
+                    {
+                        if (!recoveringAssets || missingModelReference.empty()) break;
+                        const auto model = Platform::ShowFileDialog(m_Window,
+                            Platform::FileDialogMode::Open,
+                            Platform::FileDialogSpecification{
+                                .defaultDirectory = pendingOpenPath.parent_path(),
+                                .suggestedFileName = {},
+                                .title = L"Locate missing model",
+                                .filterName = L"glTF model",
+                                .filterPattern = L"*.glb;*.gltf"
+                            });
+                        static_cast<void>(timer.Restart());
+                        if (!model) break;
+                        const auto root = InferSceneAssetRoot(*model, missingModelReference);
+                        if (!root)
+                        {
+                            assetRecoveryMessage += "\n\nThe selected file does not match the scene's model path: " +
+                                missingModelReference +
+                                "\nRestore the original folder names, or update the scene's model reference. Selecting a file does not rename or remap assets.";
+                            break;
+                        }
+                        pendingProjectRoot = *root;
+                        recoveringAssets = false;
+                        assetRecoveryMessage.clear();
+                        completePendingAction = true;
+                        break;
+                    }
+                    case SceneFileAction::LocateMissingAssets:
+                    {
+                        if (!recoveringAssets) break;
+                        const auto folder = Platform::ShowFileDialog(m_Window,
+                            Platform::FileDialogMode::SelectFolder,
+                            Platform::FileDialogSpecification{
+                                .defaultDirectory = pendingOpenPath.parent_path(),
+                                .suggestedFileName = {},
+                                .title = L"Choose asset folder (contains the referenced paths)"
+                            });
+                        static_cast<void>(timer.Restart());
+                        if (!folder) break;
+                        pendingProjectRoot = *folder;
+                        recoveringAssets = false;
+                        assetRecoveryMessage.clear();
+                        completePendingAction = true;
+                        break;
+                    }
+                    case SceneFileAction::RetryMissingAssets:
+                        if (recoveringAssets)
+                        {
+                            recoveringAssets = false;
+                            assetRecoveryMessage.clear();
+                            completePendingAction = true;
+                        }
+                        break;
+
 					case SceneFileAction::CancelPending:
+                        recoveringAssets = false;
+                        assetRecoveryMessage.clear();
 						pendingAction = PendingSceneAction::None;
 						pendingOpenPath.clear();
 						pendingProjectRoot.reset();
 						pendingSample = false;
+                    pendingTexturePolicy.reset();
 						sceneFileMessage.clear();
 						break;
 
@@ -1289,7 +1369,7 @@ namespace ForgeSim::Sandbox
 
 					m_Renderer.LoadSceneResources(modelPath,
 						ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
-							replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), drawProgress);
+							replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), drawProgress, pendingTexturePolicy);
                     logTiming("Scene resources ready", resourcesStart);
 
 					// Empty scenes render no objects and can retain
@@ -1312,16 +1392,34 @@ namespace ForgeSim::Sandbox
 					pendingOpenPath.clear();
 					pendingProjectRoot.reset();
 					pendingSample = false;
+                    pendingTexturePolicy.reset();
 					sceneFileMessage = "Scene opened.";
                     Core::LogInfo("Scene loaded: " + scene.Name());
                     logTiming("Scene open completed", loadStart);
 				}
+                catch (const MissingSceneAssets& missing)
+                {
+                    // Retain the requested scene/root and load options for retry.
+                    // No replacement session or renderer resources were committed.
+                    recoveringAssets = true;
+                    assetRecoveryMessage = DescribeMissingSceneAssets(pendingOpenPath, missing);
+                    missingModelReference.clear();
+                    for (const auto& asset : missing.assets)
+                        if (asset.field != "rendering.environment.asset")
+                        {
+                            missingModelReference = asset.reference;
+                            break;
+                        }
+                    sceneFileMessage = "Scene assets are missing. Locate their folder or cancel.";
+                    Core::LogWarning(sceneFileMessage);
+                }
 				catch (const std::exception& exception)
 				{
 					pendingAction = PendingSceneAction::None;
 					pendingOpenPath.clear();
 					pendingProjectRoot.reset();
 					pendingSample = false;
+                    pendingTexturePolicy.reset();
 					sceneFileMessage = exception.what();
 					Core::LogError(sceneFileMessage);
                     logTiming("Scene open failed after", loadStart);

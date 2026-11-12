@@ -157,7 +157,10 @@ Save asks for your own destination. No separate asset download or project-root
 configuration is needed for this menu.
 
 Use **File > Open Sample > Browse Samples...** for descriptions and to open an
-external scene with its project-root folder. External assets are obtained separately.
+external scene using automatic project-root discovery. External assets are
+obtained separately. Projects and packs define their layout in
+[`ForgeSim.project.json`](docs/ProjectAssetRoots.md); the browser requires only
+the scene file.
 
 See [Sample scenes and distribution](docs/SampleScenes.md) for saved-copy asset
 roots, source locations, credits, and the plan for optional larger showcases.

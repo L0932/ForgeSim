@@ -68,6 +68,11 @@ namespace ForgeSim::Platform
             { 0x9a, 0x31, 0x29, 0x68, 0xf5, 0xc7, 0x28, 0x41 }
         };
 
+        constexpr GUID folderDialogId{
+            0xa42d21c8, 0x81da, 0x4dd3,
+            { 0xa5, 0xef, 0x5e, 0x76, 0x69, 0x54, 0x0d, 0x38 }
+        };
+
         constexpr GUID saveDialogId{
             0xcb5e901f, 0x6832, 0x4455,
             { 0x8e, 0xd9, 0x71, 0x0d, 0x54, 0xb2, 0x16, 0x93 }
@@ -96,6 +101,7 @@ namespace ForgeSim::Platform
         Microsoft::WRL::ComPtr<IFileDialog> dialog;
 
         const bool saving = mode == FileDialogMode::Save;
+        const bool folder = mode == FileDialogMode::SelectFolder;
 
         CheckResult(
             CoCreateInstance(
@@ -107,7 +113,7 @@ namespace ForgeSim::Platform
 
         CheckResult(
             dialog->SetClientGuid(
-                saving ? saveDialogId : openDialogId),
+                saving ? saveDialogId : folder ? folderDialogId : openDialogId),
             "Set file dialog history");
 
         FILEOPENDIALOGOPTIONS options{};
@@ -120,6 +126,8 @@ namespace ForgeSim::Platform
             FOS_FORCEFILESYSTEM |
             FOS_PATHMUSTEXIST |
             FOS_NOCHANGEDIR;
+
+        if (folder) options |= FOS_PICKFOLDERS;
 
         options |= saving
             ? FOS_OVERWRITEPROMPT
@@ -137,6 +145,8 @@ namespace ForgeSim::Platform
             { L"All files", L"*.*" }
         };
 
+        if (!folder)
+        {
         CheckResult(
             dialog->SetFileTypes(2, filters),
             "Set file dialog filters");
@@ -144,6 +154,8 @@ namespace ForgeSim::Platform
         CheckResult(
             dialog->SetFileTypeIndex(1),
             "Select file dialog filter");
+
+        }
 
         if (!specification.title.empty())
         {

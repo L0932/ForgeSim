@@ -29,6 +29,7 @@ namespace ForgeSim::Sandbox
 		std::optional<SceneDocument> initialScene;
 		std::optional<std::filesystem::path> projectRoot;
 		std::optional<std::filesystem::path> scenePath;
+        std::optional<std::filesystem::path> explicitSceneRoot;
 	};
 
 	class SandboxApplication final
@@ -66,6 +67,7 @@ namespace ForgeSim::Sandbox
 		std::unique_ptr<EditorSession> m_EditorSession;
 
 		bool m_LoadedScene = false;
+        std::optional<std::filesystem::path> m_ExplicitSceneRoot;
 		bool m_RunAttempted = false;
 		bool m_SaveOnExit = true;
 	};

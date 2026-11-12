@@ -38,7 +38,9 @@ project.root "C:/Path/To/ForgeSim"
 
 Then open your saved scene. The root is the folder containing `assets`, not the
 scene-file directory. Saved copies still depend on the application assets.
-Automatic root discovery and missing-asset recovery are separate follow-up work.
+Scenes stored inside a project discover their manifest automatically. Saved
+copies outside the project still require an explicit root. Missing model or project-environment files during editor opens offer a folder
+picker, retry, and cancel; cancel preserves the active scene.
 
 ## External samples in the browser
 
@@ -47,13 +49,21 @@ screenshot cards for the bundled examples. Expand **Open a local scene** to use
 a scene and assets already on your computer. No additional third-party assets are downloaded or included.
 
 1. Select an existing ForgeSim scene JSON with **Browse scene...**, or paste its
-   path. A relative scene path is resolved against the root you enter below.
-2. Enter the absolute **Project root** folder. For a scene containing
-   `models/example.glb` and a model at
-   `D:/SamplePack/models/example.glb`, enter `D:/SamplePack`.
-3. Click **Open local scene**. Confirm any unsaved edits as usual.
+   absolute path.
+2. **Allow texture fallbacks** is checked by default. Uncheck it for strict
+   texture validation. This choice applies only to this local scene open and
+   does not change the global Console texture policy.
+3. Click **Open local scene**. ForgeSim discovers the nearest
+   `ForgeSim.project.json` above the scene and resolves assets relative to its
+   declared root. Confirm any unsaved edits as usual.
 
-The scene opens as an editable copy and uses the selected root. Save asks for a
+Projects and sample packs should include a manifest; see
+[Project asset roots](ProjectAssetRoots.md)
+for its format. Explicit CLI and Console overrides still take precedence. Without
+an override or manifest, the application directory remains the legacy fallback.
+Use `project.root.auto` to clear an explicit override.
+
+The scene opens as an editable copy and uses the resolved root. Save asks for a
 user destination. The Console `project.root` setting is unchanged. The browser
 keeps its input fields during the current application session; it does not yet
 maintain a persistent external-sample catalog.
@@ -61,12 +71,16 @@ maintain a persistent external-sample catalog.
 This opens scene documents, not raw `.gltf`, `.glb`, or Blender files. To prepare
 an external sample, import its model through the existing launch workflow,
 configure lighting and a saved viewpoint, then save a ForgeSim scene JSON. The
-root must match the relative asset paths stored in that JSON. The browser does
+manifest root must match the relative asset paths stored in that JSON. The browser does
 not convert models, rewrite asset paths, or grant redistribution rights.
 
 Local scenes require their own assets and any necessary acquisition or import
-steps. Existing runtime texture-fallback and
-cache settings continue to apply to sample loads.
+steps. The checkbox controls local-scene texture fallback; bundled samples and ordinary
+scene opens retain the global texture policy. Runtime cache settings still apply.
+
+**View > Reset Layout** also restores the floating Samples window to its default
+size and centered position. Ordinary window placement remains saved between
+sessions until reset.
 
 ## Source checkout
 
@@ -94,9 +108,10 @@ release, with download links from the repository and site. This is the planned
 channel; no additional downloadable pack is published by this change. Each pack
 should include:
 
+- A `ForgeSim.project.json` manifest defining the pack asset root.
 - Scene documents and all assets whose redistribution is permitted, with portable
   paths relative to one documented pack root.
-- A README covering minimum ForgeSim version, unpacking, project-root selection,
+- A README covering minimum ForgeSim version, unpacking, manifest setup,
   opening, expected features, and any required import options.
 - Credits and license terms for every included asset, plus source links and any
   modifications. Do not assume a model's license covers every dependency.

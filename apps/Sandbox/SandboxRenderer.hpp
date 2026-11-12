@@ -152,12 +152,14 @@ namespace ForgeSim::Sandbox
         void LoadSceneResources(
             const std::optional<std::filesystem::path>& modelPath,
             const std::optional<std::filesystem::path>& environmentPath,
-            const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
+            const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {},
+            std::optional<Assets::GltfTexturePolicy> texturePolicy = std::nullopt);
 
 		// Replace the shared model only after all replacement resources are ready.
 		void LoadObjectModel(
 			const std::filesystem::path& path,
-			const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {});
+			const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {},
+            std::optional<Assets::GltfTexturePolicy> texturePolicy = std::nullopt);
 
 		// Returns zero until a frame has been rendered to the color target.
 		[[nodiscard]]

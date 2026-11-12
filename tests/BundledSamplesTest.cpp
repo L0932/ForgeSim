@@ -1,6 +1,8 @@
 #include "BundledSamples.hpp"
 #include "EditorSession.hpp"
 #include "SceneDocumentIO.hpp"
+#include "SceneSerializer.hpp"
+#include "SceneAssetRecovery.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -75,6 +77,68 @@ int main()
         Require(failed && current.Scene().Name() == "External scene" &&
             current.ProjectRoot() == fs::canonical(externalRoot) && !current.HasUnsavedChanges(),
             "Failed sample open preserves active session");
+        // A recovery attempt must validate every model and project environment
+        // before replacement, preserving the current session and its dirty edits.
+        SceneDocument recoveryDocument;
+        recoveryDocument.name = "Recovery target";
+        recoveryDocument.objects.push_back({.id=1, .name="Model", .transform={}, .modelPath="models/model.glb"});
+        recoveryDocument.rendering.environmentSource = SceneEnvironmentSource::ProjectAsset;
+        recoveryDocument.rendering.environmentAsset = "environments/interior.hdr";
+        const auto recoveryPath = userDirectory / "recovery.scene.json";
+        std::ofstream(recoveryPath) << SerializeSceneDocument(recoveryDocument);
+        SceneDocument activeDocument;
+        activeDocument.objects.push_back({.id=1, .name="Active object", .transform={}, .modelPath="old.glb"});
+        EditorSession active(activeDocument, externalRoot, std::nullopt, userDirectory);
+        active.Scene().SetObjectVisible(1, false);
+        const auto original = SerializeSceneDocument(active.Scene().ToDocument());
+        try
+        {
+            static_cast<void>(active.PrepareOpen(recoveryPath, externalRoot));
+            throw std::runtime_error("Missing assets should fail");
+        }
+        catch (const MissingSceneAssets& missing)
+        {
+            Require(missing.root == fs::canonical(externalRoot), "Recovery reports attempted root");
+            const auto description = DescribeMissingSceneAssets(recoveryPath, missing);
+            Require(description.find("objects[0]") == std::string::npos &&
+                description.find("Missing model: models/model.glb") != std::string::npos &&
+                description.find("Missing environment: environments/interior.hdr") != std::string::npos,
+                "Recovery uses user-facing labels instead of serialized field names");
+            Require(missing.assets.size() == 2, "Recovery includes model and environment failures");
+            Require(missing.assets[0].reference == "models/model.glb" &&
+                missing.assets[1].field == "rendering.environment.asset", "Recovery has structured references");
+        }
+        const auto locatedRoot = temp.path / "located assets";
+        fs::create_directories(locatedRoot / "models");
+        fs::create_directories(locatedRoot / "environments");
+        std::ofstream(locatedRoot / "models/model.glb") << "placeholder";
+        try
+        {
+            static_cast<void>(active.PrepareOpen(recoveryPath, locatedRoot));
+            throw std::runtime_error("Missing environment should still fail");
+        }
+        catch (const MissingSceneAssets& missing)
+        {
+            Require(missing.assets.size() == 1 &&
+                missing.assets[0].reference == "environments/interior.hdr",
+                "Retry validates environment after model is found");
+        }
+        Require(active.HasUnsavedChanges() && SerializeSceneDocument(active.Scene().ToDocument()) == original,
+            "Failed retries and cancellation preserve dirty active scene");
+        std::ofstream(locatedRoot / "environments/interior.hdr") << "placeholder";
+        Require(InferSceneAssetRoot(locatedRoot / "models/model.glb", "models/model.glb") ==
+            fs::canonical(locatedRoot), "Selecting a model infers the matching root");
+        fs::create_directories(locatedRoot / "renamed models");
+        std::ofstream(locatedRoot / "renamed models/model.glb") << "placeholder";
+        Require(!InferSceneAssetRoot(locatedRoot / "renamed models/model.glb", "models/model.glb"),
+            "Renamed subfolders must not silently remap authored references");
+        Require(!InferSceneAssetRoot(locatedRoot / "models/model.glb", "../model.glb"),
+            "Invalid authored paths cannot establish a root");
+        const auto recovered = active.PrepareOpen(recoveryPath, locatedRoot);
+        Require(recovered.Scene().Name() == "Recovery target" &&
+            recovered.ProjectRoot() == fs::canonical(locatedRoot), "Valid located root prepares replacement");
+        Require(SerializeSceneDocument(active.Scene().ToDocument()) == original,
+            "Successful preparation does not replace active scene before resource loading");
         std::cout << "Bundled sample relocation, root isolation, and Save As passed\n";
         return 0;
     }

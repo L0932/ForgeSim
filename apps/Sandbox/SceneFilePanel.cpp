@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace ForgeSim::Sandbox
 {
@@ -87,6 +88,14 @@ namespace ForgeSim::Sandbox
         m_SampleBrowserMessage.clear();
     }
 
+    void SceneFilePanel::ResetSampleBrowserLayout()
+    {
+        // Remove the stored entry even when the browser is currently closed.
+        ImGui::ClearWindowSettings("Samples");
+        ImGui::MarkIniSettingsDirty();
+        m_ResetSampleBrowserLayout = true;
+    }
+
     void SceneFilePanel::DrawSampleBrowser(bool actionsAllowed, SceneFileRequest& request)
     {
         m_SampleBrowserFocused = false;
@@ -94,7 +103,13 @@ namespace ForgeSim::Sandbox
             return;
 
         const auto* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowSize(ImVec2(760.0f, 560.0f), ImGuiCond_FirstUseEver);
+        const auto condition = m_ResetSampleBrowserLayout ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+        ImGui::SetNextWindowSize(ImVec2(760.0f, 560.0f), condition);
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
+            viewport->WorkPos.y + viewport->WorkSize.y * 0.5f), condition, ImVec2(0.5f, 0.5f));
+        if (m_ResetSampleBrowserLayout)
+            ImGui::SetNextWindowDockID(0, ImGuiCond_Always);
+        m_ResetSampleBrowserLayout = false;
         ImGui::SetNextWindowSizeConstraints(ImVec2(320.0f, 240.0f), viewport->WorkSize);
         if (ImGui::Begin("Samples", &m_SampleBrowserOpen))
         {
@@ -150,27 +165,23 @@ namespace ForgeSim::Sandbox
             ImGui::Spacing();
             if (ImGui::CollapsingHeader("Open a local scene"))
             {
-                ImGui::TextWrapped("Choose a ForgeSim scene file and its asset folder.");
+                ImGui::TextWrapped("Choose a ForgeSim scene file. Its project manifest locates the assets automatically.");
                 ImGui::TextUnformatted("Scene file (.json)");
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputText("##SampleScene", m_ExternalSamplePath.data(), m_ExternalSamplePath.size());
                 if (ImGui::Button("Browse scene..."))
                     request.action = SceneFileAction::BrowseExternalSample;
-                ImGui::TextUnformatted("Project root");
-                ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputText("##SampleRoot", m_ExternalSampleRoot.data(), m_ExternalSampleRoot.size());
-                ImGui::TextWrapped("The project root is the folder used to resolve relative asset paths in the scene.");
-                ImGui::BeginDisabled(m_ExternalSamplePath.front() == '\0' || m_ExternalSampleRoot.front() == '\0');
+                ImGui::Checkbox("Allow texture fallbacks", &m_AllowSampleTextureFallbacks);
+                ImGui::TextWrapped("Unusable texture references may be skipped. Affected surfaces may appear without textures.");
+                ImGui::BeginDisabled(m_ExternalSamplePath.front() == '\0');
                 if (ImGui::Button("Open local scene"))
                 {
                     try
                     {
-                        const auto location = ResolveExternalSample(m_ExternalSamplePath.data(), m_ExternalSampleRoot.data());
-                        const auto scene = location.scene.generic_u8string();
-                        const auto root = location.root.generic_u8string();
+                        const auto scene = ResolveExternalSample(m_ExternalSamplePath.data()).generic_u8string();
                         request.action = SceneFileAction::OpenExternalSample;
+                        request.allowTextureFallbacks = m_AllowSampleTextureFallbacks;
                         request.path.assign(scene.begin(), scene.end());
-                        request.projectRoot.assign(root.begin(), root.end());
                         m_SampleBrowserMessage.clear();
                         m_SampleBrowserOpen = false;
                     }
@@ -205,7 +216,7 @@ namespace ForgeSim::Sandbox
         const bool actionsAllowed =
             !context.editingActive &&
             !context.navigationActive &&
-            !context.confirmationPending;
+            !context.confirmationPending && context.recoveryMessage.empty();
 
         const SceneFileAction menuAction =
             std::exchange(m_MenuAction, SceneFileAction::None);
@@ -236,6 +247,38 @@ namespace ForgeSim::Sandbox
             ImGui::IsKeyPressed(ImGuiKey_S, false))
         {
             request.action = SceneFileAction::Save;
+        }
+
+        constexpr const char* recoveryPopup = "Missing scene assets###SceneAssetRecovery";
+        if (!context.recoveryMessage.empty() && !ImGui::IsPopupOpen(recoveryPopup))
+            ImGui::OpenPopup(recoveryPopup);
+        ImGui::SetNextWindowSize(ImVec2(660.0f, 440.0f), ImGuiCond_FirstUseEver);
+        if (ImGui::BeginPopupModal(recoveryPopup, nullptr))
+        {
+            ImGui::TextWrapped("Locate the missing model file, or choose the folder containing the scene's assets. All references will be checked before opening.");
+            ImGui::BeginChild("RecoveryDetails", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f));
+            const std::string details{context.recoveryMessage};
+            ImGui::TextWrapped("%s", details.c_str());
+            ImGui::EndChild();
+            ImGui::BeginDisabled(!context.canLocateModel);
+            if (ImGui::Button("Locate model..."))
+                request.action = SceneFileAction::LocateMissingModel;
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Choose asset folder..."))
+                request.action = SceneFileAction::LocateMissingAssets;
+            ImGui::SameLine();
+            if (ImGui::Button("Retry"))
+                request.action = SceneFileAction::RetryMissingAssets;
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+                request.action = SceneFileAction::CancelPending;
+            if (request.action == SceneFileAction::LocateMissingModel ||
+                request.action == SceneFileAction::LocateMissingAssets ||
+                request.action == SceneFileAction::RetryMissingAssets ||
+                request.action == SceneFileAction::CancelPending)
+                ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
         }
 
         constexpr const char* popupName =

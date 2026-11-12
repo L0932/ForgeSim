@@ -1,4 +1,5 @@
 #include "ExternalSample.hpp"
+#include "SceneAssetRoot.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -37,24 +38,30 @@ int main()
         fs::create_directories(root / "scenes");
         const auto scene = root / "scenes/cathedral.scene.json";
         std::ofstream(scene) << "{}";
-        const auto result = ResolveExternalSample("scenes/cathedral.scene.json", Utf8(root));
-        Require(result.scene == fs::canonical(scene) && result.root == fs::canonical(root),
-            "Relative scene path resolves against chosen root, independently of cwd");
-        Require(ResolveExternalSample(Utf8(scene), Utf8(root)).scene == result.scene,
-            "Absolute scene paths remain supported");
-        const auto rejects = [](std::string_view sceneText, std::string_view rootText)
+        std::ofstream(root / "ForgeSim.project.json") << R"({"version":1,"assetRoot":"."})";
+        const auto selected = ResolveExternalSample(Utf8(scene));
+        Require(selected == fs::canonical(scene), "Browser selection preserves UTF-8 and spaces");
+        const auto fallback = temp.path / "application";
+        fs::create_directories(fallback);
+        Require(ResolveSceneAssetRoot(selected, std::nullopt, fallback).root == fs::canonical(root),
+            "Browser scene discovers its pack root without a root field");
+        const auto moved = temp.path / "relocated pack";
+        fs::rename(root, moved);
+        const auto movedScene = ResolveExternalSample(Utf8(moved / "scenes/cathedral.scene.json"));
+        Require(ResolveSceneAssetRoot(movedScene, std::nullopt, fallback).root == fs::canonical(moved),
+            "Browser scene continues to resolve after moving the pack");
+        const auto rejects = [](std::string_view sceneText)
         {
-            try { static_cast<void>(ResolveExternalSample(sceneText, rootText)); }
+            try { static_cast<void>(ResolveExternalSample(sceneText)); }
             catch (const std::exception&) { return true; }
             return false;
         };
-        Require(rejects("", Utf8(root)), "Missing scene rejected");
-        Require(rejects(Utf8(scene), "relative root"), "Ambiguous relative root rejected");
-        Require(rejects("missing.json", Utf8(root)), "Missing scene rejected");
-        Require(rejects(Utf8(scene), Utf8(scene)), "File cannot be a project root");
-        Require(rejects("scenes", Utf8(root)), "Directory cannot be a scene");
-        std::ofstream(root / "cathedral.glb") << "test";
-        Require(rejects("cathedral.glb", Utf8(root)), "Model file needs a scene document");
+        Require(rejects(""), "Missing scene rejected");
+        Require(rejects("scenes/cathedral.scene.json"), "Relative scene requires an absolute selection");
+        Require(rejects(Utf8(moved / "missing.json")), "Missing scene rejected");
+        Require(rejects(Utf8(moved / "scenes")), "Directory cannot be a scene");
+        std::ofstream(moved / "cathedral.glb") << "test";
+        Require(rejects(Utf8(moved / "cathedral.glb")), "Model file needs a scene document");
         std::cout << "External sample root resolution and UTF-8 paths passed\n";
         return 0;
     }
