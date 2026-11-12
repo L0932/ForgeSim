@@ -27,6 +27,13 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Direct external model imports discover their project manifest, or use the
+  model folder when none exists, avoiding invalid scene references after GPU
+  loading. Incompatible explicit roots are rejected before loading.
+
+- Unused source materials no longer cause GPU upload failures after texture
+  fallback creates compatible material variants for the actual mesh primitives.
+
 - Reset Layout now restores the Samples window's default size and position,
   including clearing saved placement when the window is closed.
 

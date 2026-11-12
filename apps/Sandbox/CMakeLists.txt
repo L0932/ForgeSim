@@ -102,6 +102,8 @@ target_sources(
         ConsoleProjectRoot.hpp
         ConsoleCommands.hpp
         EditorConsole.hpp
+        ModelImportLocation.hpp
+        MaterialUsage.hpp
         SamplePreview.hpp
         SceneAssetRecovery.hpp
         SceneAssetRoot.hpp

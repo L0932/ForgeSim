@@ -99,3 +99,12 @@ editor workflows as well:
 - Confirm cancellation preserves unsaved edits, selection, and undo history.
 - Check the local-scene texture-fallback checkbox with strict and fallback loads.
 - Move/resize the Samples window and reset the layout, including while it is closed.
+
+## Direct model imports
+
+An explicit model filename also discovers the nearest project manifest. Without
+a manifest or override, its containing folder becomes the asset root. A root
+that does not contain the model is rejected before image decoding or GPU upload.
+The default bundled startup model retains the application root. Relative model
+arguments retain the existing bundled `assets/models` lookup; use an absolute
+path for external models. This change does not create a manifest or copy assets.

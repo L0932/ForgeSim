@@ -2,6 +2,7 @@
 #include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneAssetRoot.hpp"
+#include "ModelImportLocation.hpp"
 
 #include <charconv>
 #include <chrono>
@@ -201,7 +202,8 @@ namespace
             "  --serial-image-decode   Decode glTF images one at a time.\n"
             "  --help               Show this help.\n"
             "\n"
-            "The default project root contains the copied assets folder.\n"
+            "Scene files and model imports discover project manifests automatically.\n"
+            "Standalone model imports use their containing folder without a manifest.\n"
             "Relative scene-file paths use the working directory.\n"
             "The save destination directory must already exist.\n";
     }
@@ -334,6 +336,18 @@ int main(int argumentCount, char* arguments[])
                 ForgeSim::Sandbox::SandboxApplication::ShowStartupError(windowSpec, exception.what());
                 return EXIT_FAILURE;
             }
+        }
+
+        if (!commandLine.scenePath && commandLine.modelSpecified)
+        {
+            // Establish a portable root before spending time on import/upload.
+            const auto resolvedModel = modelFilename.is_absolute()
+                ? modelFilename
+                : ForgeSim::Sandbox::BundledAssetDirectory() / "models" / modelFilename;
+            const auto location = ForgeSim::Sandbox::ResolveModelImportLocation(
+                resolvedModel, commandLine.projectRoot);
+            modelFilename = location.model;
+            projectRoot = location.root;
         }
 
         ForgeSim::Sandbox::SandboxApplication app{

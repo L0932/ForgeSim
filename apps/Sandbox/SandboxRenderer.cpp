@@ -4,6 +4,7 @@
 #include "SandboxRenderer.hpp"
 #include "SceneBounds.hpp"
 #include "SceneNodeTransform.hpp"
+#include "MaterialUsage.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1347,9 +1348,19 @@ namespace ForgeSim::Sandbox
 		materials.reserve(
 			sceneAsset.materials.size());
 
-		for (const Assets::MaterialData& material :
-			sceneAsset.materials)
-		{
+        const auto usedMaterials = ReferencedMaterials(sceneAsset);
+        for (std::size_t materialIndex = 0; materialIndex < sceneAsset.materials.size(); ++materialIndex)
+        {
+            if (!usedMaterials[materialIndex])
+            {
+                // Preserve index alignment; this placeholder is never drawn.
+                // An unused original may still name unsupported UV sets even
+                // though every primitive now uses a compatible fallback variant.
+                materials.emplace_back();
+                reportCompletedItem();
+                continue;
+            }
+            const auto& material = sceneAsset.materials[materialIndex];
 			const auto& metallicRoughness =
 				material.metallicRoughness;
 

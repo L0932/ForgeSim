@@ -1449,3 +1449,22 @@ target_compile_features(ForgeSimSceneAssetRootTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimSceneAssetRootTests)
 set_target_properties(ForgeSimSceneAssetRootTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SceneAssetRoot COMMAND ForgeSimSceneAssetRootTests)
+
+add_executable(ForgeSimMaterialUsageTests MaterialUsageTest.cpp)
+target_include_directories(ForgeSimMaterialUsageTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox"
+    "${PROJECT_SOURCE_DIR}/engine/Assets/include")
+target_link_libraries(ForgeSimMaterialUsageTests PRIVATE glm::glm-header-only)
+target_compile_features(ForgeSimMaterialUsageTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimMaterialUsageTests)
+set_target_properties(ForgeSimMaterialUsageTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.MaterialUsage COMMAND ForgeSimMaterialUsageTests)
+
+add_executable(ForgeSimModelImportTests ModelImportTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp)
+target_include_directories(ForgeSimModelImportTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimModelImportTests PRIVATE nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimModelImportTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimModelImportTests)
+set_target_properties(ForgeSimModelImportTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ModelImport COMMAND ForgeSimModelImportTests)
