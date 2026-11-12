@@ -7,6 +7,17 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Added
+
+- Bundled directional-shadow starter and material-gallery scenes, available from
+  **File > Open Sample** without project-root configuration.
+- Samples browser with screenshot previews and local scene opening using an
+  explicit asset root.
+- Editable sample copies that ask for a save destination and preserve bundled
+  scene documents.
+- Sample setup, asset provenance, and distribution guidance included in the
+  application package, with package-relative credit links and its build version.
+
 ## [0.1.0-preview.2] - 2026-10-26
 
 ### Added

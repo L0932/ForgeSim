@@ -70,6 +70,12 @@ cache settings continue to apply to sample loads.
 
 ## Source checkout
 
+Use the bundled scenes with the executable and assets from the same build or
+release package. The installed copy of this guide identifies its ForgeSim
+version. The scene browser is development work after `0.1.0-preview.2`; that
+release and earlier do not include it. No standalone external sample pack has
+been released yet, so there is no separate pack minimum-version claim.
+
 The scene documents live in `apps/Sandbox/assets/scenes`. Building the Sandbox
 copies them and their model dependencies next to the executable. Official install
 rules explicitly include both scenes. Use a build containing **File > Open Sample**;

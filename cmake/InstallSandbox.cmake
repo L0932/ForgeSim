@@ -166,7 +166,20 @@ if(EXISTS "${FORGESIM_RELEASE_NOTES}")
 endif()
 
 # Sample usage and distribution guidance accompany the installed application.
-install(FILES "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md"
+# Source-checkout links differ from paths inside the application package.
+file(READ "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md" FORGESIM_SAMPLE_GUIDE)
+string(REPLACE "../apps/Sandbox/assets/" "assets/"
+    FORGESIM_SAMPLE_GUIDE "${FORGESIM_SAMPLE_GUIDE}")
+string(REPLACE "# ForgeSim Sample Scenes\n"
+    "# ForgeSim Sample Scenes\n\nBundled with ForgeSim ${FORGESIM_VERSION_STRING}. Use the executable and assets from this same package.\n"
+    FORGESIM_SAMPLE_GUIDE "${FORGESIM_SAMPLE_GUIDE}")
+set(FORGESIM_INSTALLED_SAMPLE_GUIDE "${CMAKE_CURRENT_BINARY_DIR}/SampleScenes.md")
+file(CONFIGURE OUTPUT "${FORGESIM_INSTALLED_SAMPLE_GUIDE}"
+    CONTENT "${FORGESIM_SAMPLE_GUIDE}" @ONLY)
+# Refresh the generated guide when its source changes without a CMake edit.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md")
+install(FILES "${FORGESIM_INSTALLED_SAMPLE_GUIDE}"
     DESTINATION . COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
 
