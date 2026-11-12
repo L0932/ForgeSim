@@ -1,6 +1,7 @@
 #include <ForgeSim/Platform/InputState.hpp>
 
 #include <cassert>
+#include <cmath>
 
 namespace ForgeSim::Platform
 {
@@ -60,6 +61,7 @@ namespace ForgeSim::Platform
 		}
 
 		m_CursorDelta = {};
+        m_ScrollDelta = 0.0;
 	}
 
 	void InputState::ResetCursorTracking() noexcept
@@ -115,6 +117,12 @@ namespace ForgeSim::Platform
 		m_CursorPosition = position;
 	}
 
+    void InputState::AddScrollDelta(double verticalOffset) noexcept
+    {
+        const double combined = m_ScrollDelta + verticalOffset;
+        if (std::isfinite(verticalOffset) && std::isfinite(combined)) m_ScrollDelta = combined;
+    }
+
 	void InputState::Clear() noexcept
 	{
 		for (ButtonState& state : m_KeyStates)
@@ -128,6 +136,7 @@ namespace ForgeSim::Platform
 		}
 
 		ResetCursorTracking();
+        m_ScrollDelta = 0.0;
 	}
 
 	ButtonState InputState::GetKeyState(

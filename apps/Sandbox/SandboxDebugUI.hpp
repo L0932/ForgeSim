@@ -69,6 +69,7 @@ namespace ForgeSim::Sandbox
         bool canFocusSelection = false;
         std::function<void()> focusSelection;
         std::function<void()> frameScene;
+        std::function<void()> automaticCameraSpeed;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
 

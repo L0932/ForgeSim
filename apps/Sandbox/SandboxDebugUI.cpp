@@ -343,11 +343,22 @@ namespace ForgeSim::Sandbox
                 cameraForward.z);
 
             ImGui::BeginDisabled(context.cameraEditingDisabled);
+            bool automaticSpeed = !context.scene.CameraMovementSpeed();
+            if (ImGui::Checkbox("Automatic fly speed", &automaticSpeed))
+            {
+                static_cast<void>(context.scene.TrySetCameraMovementSpeed(automaticSpeed
+                    ? std::nullopt : std::optional{context.cameraController.MovementSpeed()}));
+                if (automaticSpeed && context.automaticCameraSpeed) context.automaticCameraSpeed();
+            }
             float speed = context.cameraController.MovementSpeed();
             if (ImGui::SliderFloat("Fly speed (units/s)", &speed, 0.0001f, 10000.0f,
                 "%.4f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp))
-                context.cameraController.SetMovementSpeed(speed);
-            ImGui::TextDisabled("RMB + WASD to fly. Hold Ctrl for 10x slower movement.");
+            {
+                if (!context.scene.TrySetCameraMovementSpeed(speed))
+                    context.cameraController.SetMovementSpeed(speed);
+            }
+            ImGui::TextWrapped("Fly speed is saved with the scene. Capture the viewpoint separately to save position and clipping.");
+            ImGui::TextDisabled("RMB + WASD to fly; wheel adjusts speed. Ctrl moves 10x slower.");
             ImGui::TextDisabled("Ctrl-click the speed slider to type a precise value.");
             float nearPlane = camera.NearClippingPlane();
             float farPlane = camera.FarClippingPlane();
@@ -398,7 +409,7 @@ namespace ForgeSim::Sandbox
             {
                 ImGui::BeginDisabled(context.cameraEditingDisabled);
 
-                if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
+                if (ImGui::Button("Capture current viewpoint", ImVec2(-1.0f, 0.0f)))
                 {
                     const SceneCameraData saved = CaptureSceneCamera(
                         context.camera, context.referenceViewport);
@@ -429,7 +440,7 @@ namespace ForgeSim::Sandbox
                     : "Scene will use automatic framing.");
 
                 ImGui::TextWrapped(
-                    "Save the scene file to keep viewpoint changes.");
+                    "Capture stores the current position, direction, and clipping. Then save the scene file.\nNormal scene saving retains the captured viewpoint; it does not capture your current view.");
             }
 
             if (EditorSectionHeader("Camera bookmarks"))

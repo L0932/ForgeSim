@@ -81,6 +81,11 @@ namespace ForgeSim::Sandbox
         void SelectCameraBookmark(std::size_t index);
         void RemoveCameraBookmark(std::size_t index);
 
+        [[nodiscard]] const std::optional<float>& CameraMovementSpeed() const noexcept
+        { return m_CameraMovementSpeed; }
+        [[nodiscard]] std::optional<CameraValidationError>
+        TrySetCameraMovementSpeed(std::optional<float> speed) noexcept;
+
 		void ClearSavedCamera() noexcept;
 
         [[nodiscard]] bool IsObjectVisible(SandboxObjectId id) const noexcept
@@ -122,6 +127,7 @@ namespace ForgeSim::Sandbox
 		SceneLightId m_NextLightId = 2;
 
 		std::optional<SceneCameraData> m_SavedCamera;
+        std::optional<float> m_CameraMovementSpeed;
         std::vector<SceneCameraBookmark> m_CameraBookmarks;
 
 		SceneRenderingSettings m_RenderingSettings;

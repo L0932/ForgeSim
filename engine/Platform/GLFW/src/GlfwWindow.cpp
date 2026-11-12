@@ -212,6 +212,13 @@ namespace ForgeSim::Platform
 					});
 			});
 
+        glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double, double verticalOffset)
+        {
+            auto* owner = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(window));
+            if (owner && glfwGetWindowAttrib(window, GLFW_FOCUSED))
+                owner->m_InputState.AddScrollDelta(verticalOffset);
+        });
+
 		glfwMakeContextCurrent(m_Window);
 
 		const int loadedVersion =

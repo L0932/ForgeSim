@@ -9,6 +9,11 @@ contains the detailed implementation record.
 
 ### Added
 
+- Mouse-wheel fly-speed adjustment during right-mouse camera navigation.
+
+- Per-scene fly-speed persistence with an Automatic fly speed option, independent
+  of explicit viewpoint capture.
+
 - Camera fly-speed and near/far clipping controls, Ctrl precision movement,
   and scene/selected-object framing actions in the Camera panel.
 

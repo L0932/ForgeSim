@@ -742,6 +742,8 @@ namespace ForgeSim::Sandbox
 
 					camera = std::move(framing.camera);
 					cameraController = std::move(framing.controller);
+                    if (scene.CameraMovementSpeed())
+                        cameraController.SetMovementSpeed(*scene.CameraMovementSpeed());
 
 					viewportNavigationActive = false;
 
@@ -823,6 +825,8 @@ namespace ForgeSim::Sandbox
 				!transformEditor.IsActive() &&
 				!leftMouseDown)
 			{
+                if (cameraController.AdjustMovementSpeed(input.GetScrollDelta()))
+                    static_cast<void>(scene.TrySetCameraMovementSpeed(cameraController.MovementSpeed()));
 				cameraController.Update(
 					camera,
 					input,
@@ -997,6 +1001,8 @@ namespace ForgeSim::Sandbox
                         std::span<const SandboxObject>{object, 1}, m_Renderer.ObjectLocalBounds()), aspectRatio);
                     cameraRestoreRequest = CaptureSceneCamera(framing.camera);
                     cameraController = std::move(framing.controller);
+                    if (scene.CameraMovementSpeed())
+                        cameraController.SetMovementSpeed(*scene.CameraMovementSpeed());
                 },
                 .frameScene = [&]
                 {
@@ -1004,6 +1010,14 @@ namespace ForgeSim::Sandbox
                         scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
                     cameraRestoreRequest = CaptureSceneCamera(framing.camera);
                     cameraController = std::move(framing.controller);
+                    if (scene.CameraMovementSpeed())
+                        cameraController.SetMovementSpeed(*scene.CameraMovementSpeed());
+                },
+                .automaticCameraSpeed = [&]
+                {
+                    const auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
+                        scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
+                    cameraController.SetMovementSpeed(framing.controller.MovementSpeed());
                 },
                 .applyEnvironment = [&](const SceneRenderingSettings& settings)
                 {

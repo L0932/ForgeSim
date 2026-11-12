@@ -615,6 +615,7 @@ namespace ForgeSim::Sandbox
             },
             { "rendering", WriteRendering(document.rendering) },
             { "cameraBookmarks", bookmarks },
+            { "cameraMovementSpeed", document.cameraMovementSpeed ? Json(*document.cameraMovementSpeed) : Json(nullptr) },
             { "objects", objects },
             { "editorVisibility", {
                 { "hiddenObjectIds", document.hiddenObjectIds },
@@ -682,6 +683,10 @@ namespace ForgeSim::Sandbox
                 document.camera = ReadCamera(camera, "camera");
             }
         }
+
+        const auto speed = root.find("cameraMovementSpeed");
+        if (speed != root.end() && !speed->is_null())
+            document.cameraMovementSpeed = ReadFloat(*speed, "cameraMovementSpeed");
 
         const auto bookmarks = root.find("cameraBookmarks");
         if (bookmarks != root.end())

@@ -22,6 +22,7 @@ namespace ForgeSim::Sandbox
         m_HiddenLights.insert(document.hiddenLightIds.begin(), document.hiddenLightIds.end());
         m_Name = document.name;
         m_SavedCamera = document.camera;
+        m_CameraMovementSpeed = document.cameraMovementSpeed;
         m_CameraBookmarks = document.cameraBookmarks;
         m_RenderingSettings = document.rendering;
 
@@ -71,6 +72,7 @@ namespace ForgeSim::Sandbox
         std::sort(document.hiddenObjectIds.begin(), document.hiddenObjectIds.end());
         std::sort(document.hiddenLightIds.begin(), document.hiddenLightIds.end());
         document.camera = m_SavedCamera;
+        document.cameraMovementSpeed = m_CameraMovementSpeed;
         document.cameraBookmarks = m_CameraBookmarks;
         document.rendering = m_RenderingSettings;
 

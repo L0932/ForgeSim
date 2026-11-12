@@ -27,6 +27,8 @@ namespace ForgeSim::Sandbox
 
         [[nodiscard]] float MovementSpeed() const noexcept { return m_Specification.movementSpeed; }
         void SetMovementSpeed(float speed);
+        // Returns true only when a finite, nonzero wheel delta changes speed.
+        [[nodiscard]] bool AdjustMovementSpeed(double wheelDelta) noexcept;
 
 		void Update(
 			ForgeSim::Renderer::PerspectiveCamera& camera,

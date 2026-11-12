@@ -185,6 +185,14 @@ namespace ForgeSim::Sandbox
 		return std::nullopt;
 	}
 
+    std::optional<CameraValidationError> SandboxScene::TrySetCameraMovementSpeed(std::optional<float> speed) noexcept
+    {
+        if (speed)
+            if (const auto error = ValidateCameraMovementSpeed(*speed)) return error;
+        m_CameraMovementSpeed = speed;
+        return std::nullopt;
+    }
+
 	void SandboxScene::ClearSavedCamera() noexcept
 	{
 		m_SavedCamera.reset();

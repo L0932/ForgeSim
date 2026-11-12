@@ -3,6 +3,8 @@
 #include "SceneSerializer.hpp"
 
 #include <chrono>
+#include <limits>
+#include <nlohmann/json.hpp>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -683,6 +685,56 @@ namespace
     }
 }
 
+namespace
+{
+    void TestCameraSettingsPersistence()
+    {
+        TemporaryDirectory temporary;
+        const auto root = temporary.Path();
+        EditorSession session(SceneDocument{}, root);
+        Require(!session.Scene().CameraMovementSpeed(), "Old scenes start with automatic fly speed");
+        Require(!session.Scene().TrySetCameraMovementSpeed(0.125f), "Manual speed accepted");
+        Require(session.HasUnsavedChanges(), "Changing fly speed marks scene modified");
+        SceneCameraData viewpoint;
+        viewpoint.position = {1.0f, 2.0f, 3.0f};
+        viewpoint.nearClippingPlane = 0.002f;
+        viewpoint.farClippingPlane = 750.0f;
+        Require(!session.Scene().TrySetSavedCamera(viewpoint), "Captured viewpoint accepted");
+        const auto path = root / "camera.scene.json";
+        session.SaveAs(path);
+        auto reopened = session.PrepareOpen(path);
+        Require(reopened.Scene().CameraMovementSpeed() == 0.125f && !reopened.HasUnsavedChanges(),
+            "Saved fly speed survives scene-file reopen without dirtying scene");
+        Require(reopened.Scene().SavedCamera()->nearClippingPlane == 0.002f &&
+            reopened.Scene().SavedCamera()->farClippingPlane == 750.0f &&
+            reopened.Scene().SavedCamera()->position == viewpoint.position,
+            "Captured pose and clipping survive reopen");
+        for (float invalid : {0.0f, -1.0f, 10001.0f,
+            std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()})
+        {
+            Require(reopened.Scene().TrySetCameraMovementSpeed(invalid).has_value() &&
+                reopened.Scene().CameraMovementSpeed() == 0.125f,
+                "Invalid speed does not alter authored scene setting");
+        }
+        Require(!reopened.Scene().TrySetCameraMovementSpeed(std::nullopt), "Automatic speed restored");
+        Require(reopened.HasUnsavedChanges(), "Restoring automatic speed marks scene modified");
+        reopened.Save();
+        const auto automatic = LoadSceneDocument(path, root);
+        Require(!automatic.cameraMovementSpeed, "Automatic speed survives save and load");
+        auto json = nlohmann::json::parse(SerializeSceneDocument(automatic));
+        json.erase("cameraMovementSpeed");
+        Require(!DeserializeSceneDocument(json.dump()).cameraMovementSpeed,
+            "Files written before navigation persistence retain automatic defaults");
+        json["cameraMovementSpeed"] = -2.0;
+        bool failed = false;
+        try { static_cast<void>(DeserializeSceneDocument(json.dump())); }
+        catch (const std::invalid_argument&) { failed = true; }
+        Require(failed, "Invalid serialized speed rejected");
+        Require(!reopened.PrepareNew().Scene().CameraMovementSpeed(),
+            "New scene does not inherit previous manual speed");
+    }
+}
+
 int main()
 {
     try
@@ -692,6 +744,7 @@ int main()
         TestEditorSession();
         TestPreparedSceneChanges();
         TestRenderingSettingsPersistence();
+        TestCameraSettingsPersistence();
         return EXIT_SUCCESS;
     }
     catch (const std::exception& exception)

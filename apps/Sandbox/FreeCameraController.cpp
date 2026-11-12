@@ -43,6 +43,17 @@ namespace ForgeSim::Sandbox
         m_Specification.movementSpeed = speed;
     }
 
+    bool FreeCameraController::AdjustMovementSpeed(double wheelDelta) noexcept
+    {
+        if (!std::isfinite(wheelDelta) || wheelDelta == 0.0) return false;
+        const double factor = std::pow(1.25, std::clamp(wheelDelta, -128.0, 128.0));
+        const float speed = static_cast<float>(std::clamp(
+            static_cast<double>(m_Specification.movementSpeed) * factor, 0.0001, 10000.0));
+        if (speed == m_Specification.movementSpeed) return false;
+        m_Specification.movementSpeed = speed;
+        return true;
+    }
+
 	void FreeCameraController::Update(
 		ForgeSim::Renderer::PerspectiveCamera& camera,
 		const ForgeSim::Platform::InputState& input,
