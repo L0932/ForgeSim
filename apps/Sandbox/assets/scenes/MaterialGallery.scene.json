@@ -1,0 +1,104 @@
+{
+  "camera": {
+    "farClippingPlane": 10.0,
+    "forwardDirection": [
+      0.0929437130689621,
+      -0.13954369723796844,
+      -0.9858443140983582
+    ],
+    "nearClippingPlane": 0.0010000000474974513,
+    "position": [
+      0.001766777248121798,
+      0.004688486456871033,
+      0.024651862680912018
+    ],
+    "referenceViewport": {
+      "height": 885,
+      "width": 2312
+    },
+    "upDirection": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "verticalFieldOfViewRadians": 0.7853981852531433
+  },
+  "cameraBookmarks": [],
+  "directionalLight": {
+    "color": [
+      1.0,
+      0.949999988079071,
+      0.8999999761581421
+    ],
+    "directionToLight": [
+      -0.5,
+      1.0,
+      0.30000001192092896
+    ],
+    "enabled": true,
+    "id": 1,
+    "intensity": 3.0,
+    "position": [
+      -0.005017547402530909,
+      0.008648855611681938,
+      0.0
+    ]
+  },
+  "editorVisibility": {
+    "hiddenLightIds": [],
+    "hiddenObjectIds": []
+  },
+  "name": "Material Gallery",
+  "objects": [
+    {
+      "id": 1,
+      "modelPath": "assets/models/PbrMaterialGallery.glb",
+      "name": "PbrMaterialGallery",
+      "transform": {
+        "pivot": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "pointLights": [],
+  "rendering": {
+    "backgroundColor": [
+      0.03200000151991844,
+      0.035999998450279236,
+      0.04399999976158142
+    ],
+    "directionalShadows": {
+      "enabled": true,
+      "filteringEnabled": true,
+      "minimumBias": 0.0005000000237487257,
+      "slopeBias": 0.0024999999441206455
+    },
+    "environment": {
+      "asset": null,
+      "source": "bundledStudio"
+    },
+    "environmentIntensity": 0.20000000298023224,
+    "exposure": 1.0,
+    "showEnvironmentBackground": false
+  },
+  "spotLights": [],
+  "version": 4
+}

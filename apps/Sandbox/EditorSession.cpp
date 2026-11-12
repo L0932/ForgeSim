@@ -133,6 +133,15 @@ namespace ForgeSim::Sandbox
         };
     }
 
+    EditorSession EditorSession::PrepareSample(
+        const std::filesystem::path& path,
+        const std::filesystem::path& bundledRoot) const
+    {
+        auto sample = PrepareOpen(path, bundledRoot);
+        sample.m_ScenePath.reset();
+        return sample;
+    }
+
     void EditorSession::Save()
     {
         if (!m_ScenePath)

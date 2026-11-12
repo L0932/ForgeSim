@@ -1405,3 +1405,34 @@ target_compile_features(ForgeSimConsoleProjectRootTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimConsoleProjectRootTests)
 set_target_properties(ForgeSimConsoleProjectRootTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.ConsoleProjectRoot COMMAND ForgeSimConsoleProjectRootTests)
+
+add_executable(ForgeSimBundledSamplesTests
+    BundledSamplesTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+target_include_directories(ForgeSimBundledSamplesTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimBundledSamplesTests PRIVATE
+    glm::glm-header-only nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimBundledSamplesTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimBundledSamplesTests)
+set_target_properties(ForgeSimBundledSamplesTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.BundledSamples COMMAND ForgeSimBundledSamplesTests)
+
+target_compile_definitions(ForgeSimBundledSamplesTests PRIVATE
+    FORGESIM_SAMPLE_ASSET_DIRECTORY="${PROJECT_SOURCE_DIR}/apps/Sandbox/assets")
+
+add_executable(ForgeSimExternalSampleTests ExternalSampleTest.cpp)
+target_include_directories(ForgeSimExternalSampleTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_compile_features(ForgeSimExternalSampleTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimExternalSampleTests)
+set_target_properties(ForgeSimExternalSampleTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ExternalSample COMMAND ForgeSimExternalSampleTests)

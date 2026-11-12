@@ -1,7 +1,11 @@
 #pragma once
 
 #include "EditorConsole.hpp"
+#include "BundledSamples.hpp"
+#include "SamplePreview.hpp"
 
+#include <array>
+#include <filesystem>
 #include <string>
 #include <string_view>
 
@@ -25,6 +29,9 @@ namespace ForgeSim::Sandbox
         None,
         New,
         Open,
+        OpenSample,
+        BrowseExternalSample,
+        OpenExternalSample,
         Save,
         SaveAs,
         SaveAndContinue,
@@ -36,6 +43,7 @@ namespace ForgeSim::Sandbox
     {
         SceneFileAction action = SceneFileAction::None;
         std::string path;
+        std::string projectRoot;
     };
 
     struct SceneToolbarContext
@@ -57,7 +65,7 @@ namespace ForgeSim::Sandbox
     class SceneFilePanel final
     {
     public:
-        [[nodiscard]] bool ConsoleWantsKeyboard() const noexcept { return m_Console.WantsKeyboard(); }
+        [[nodiscard]] bool ConsoleWantsKeyboard() const noexcept { return m_Console.WantsKeyboard() || m_SampleBrowserFocused; }
 
         void RegisterConsoleCommand(std::string name, std::string description, std::string usage,
             std::size_t minimumArguments, std::size_t maximumArguments, ConsoleCommands::Handler handler)
@@ -67,6 +75,7 @@ namespace ForgeSim::Sandbox
         }
 
         void DrawMenu(bool actionsAllowed, bool hasScenePath);
+        void SetExternalSamplePath(const std::filesystem::path& path);
         // Draw before creating the workspace dockspace.
         [[nodiscard]] SceneToolbarRequest DrawToolbar(const SceneToolbarContext& context);
 
@@ -74,7 +83,16 @@ namespace ForgeSim::Sandbox
             const SceneFilePanelContext& context);
 
     private:
+        void DrawSampleBrowser(bool actionsAllowed, SceneFileRequest& request);
+
         EditorConsole m_Console;
         SceneFileAction m_MenuAction = SceneFileAction::None;
+        std::string m_SampleFilename;
+        std::array<SamplePreview, BundledSamples.size()> m_SamplePreviews;
+        bool m_SampleBrowserOpen = false;
+        bool m_SampleBrowserFocused = false;
+        std::array<char, 4096> m_ExternalSamplePath{};
+        std::array<char, 4096> m_ExternalSampleRoot{};
+        std::string m_SampleBrowserMessage;
     };
 }

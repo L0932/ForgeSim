@@ -7,10 +7,11 @@ install(
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
 )
 
-# Include only the original validation scene, not arbitrary user documents.
+# Explicitly select bundled samples, not arbitrary user documents.
 install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/DirectionalShadowTest.forgesim.json"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/MaterialGallery.scene.json"
     DESTINATION assets/scenes
     COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel
@@ -163,3 +164,29 @@ if(EXISTS "${FORGESIM_RELEASE_NOTES}")
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
     )
 endif()
+
+# Sample usage and distribution guidance accompany the installed application.
+# Source-checkout links differ from paths inside the application package.
+file(READ "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md" FORGESIM_SAMPLE_GUIDE)
+string(REPLACE "../apps/Sandbox/assets/" "assets/"
+    FORGESIM_SAMPLE_GUIDE "${FORGESIM_SAMPLE_GUIDE}")
+string(REPLACE "# ForgeSim Sample Scenes\n"
+    "# ForgeSim Sample Scenes\n\nBundled with ForgeSim ${FORGESIM_VERSION_STRING}. Use the executable and assets from this same package.\n"
+    FORGESIM_SAMPLE_GUIDE "${FORGESIM_SAMPLE_GUIDE}")
+set(FORGESIM_INSTALLED_SAMPLE_GUIDE "${CMAKE_CURRENT_BINARY_DIR}/SampleScenes.md")
+file(CONFIGURE OUTPUT "${FORGESIM_INSTALLED_SAMPLE_GUIDE}"
+    CONTENT "${FORGESIM_SAMPLE_GUIDE}" @ONLY)
+# Refresh the generated guide when its source changes without a CMake edit.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/docs/SampleScenes.md")
+install(FILES "${FORGESIM_INSTALLED_SAMPLE_GUIDE}"
+    DESTINATION . COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
+# Explicit preview allowlist; never include arbitrary local screenshots.
+install(FILES
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/DirectionalShadows.png"
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/MaterialGallery.png"
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/README.md"
+    DESTINATION assets/previews COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)

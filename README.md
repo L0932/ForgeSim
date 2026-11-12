@@ -149,6 +149,19 @@ and interactive scene-light editing.*
 
 Asset: [Flight Helmet — Khronos glTF Sample Assets](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/FlightHelmet).
 
+### Sample scenes
+
+Choose **File > Open Sample** for a small directional-shadow starter scene or the
+material gallery. Both ship with the application and open as editable copies;
+Save asks for your own destination. No separate asset download or project-root
+configuration is needed for this menu.
+
+Use **File > Open Sample > Browse Samples...** for descriptions and to open an
+external scene with its project-root folder. External assets are obtained separately.
+
+See [Sample scenes and distribution](docs/SampleScenes.md) for saved-copy asset
+roots, source locations, credits, and the plan for optional larger showcases.
+
 ### Loading an external glTF scene
 
 The Sandbox accepts an optional glTF scene path as its first

@@ -31,6 +31,26 @@ Asset sources and attribution are recorded in:
 
 Dependency notices are under notices/.
 
+## Sample Scenes
+
+Choose **File > Open Sample > Starter: Directional Shadows** or **Material Gallery**.
+Both use bundled assets and open as editable copies. Save asks for a user file;
+the installation's scene documents are not overwritten. Unsaved edits are
+confirmed before switching scenes.
+
+The menu chooses the bundled asset root automatically, including after moving
+the whole application folder. It leaves your Console `project.root` setting intact.
+Saved sample copies still reference bundled assets: before reopening a copy with
+Open Scene, set `project.root "C:/Path/To/ForgeSim"` if you have selected an external
+root. Saving a scene does not copy its assets.
+
+For an external scene, choose **File > Open Sample > Browse Samples...**, select
+its ForgeSim scene JSON and enter its project-root folder. This opens a copy using
+that root without changing the Console setting. External assets must already be
+available on your computer.
+
+See [SampleScenes.md](SampleScenes.md) for distribution and asset provenance.
+
 ## User Data
 
 On Windows, ForgeSim stores application-managed data under:
