@@ -54,7 +54,7 @@ int main(){
     Require(failed,"Scene cannot open under the old root");
     const auto replacement=current.PrepareOpen(scenePath,setting.Path());
     Require(replacement.ProjectRoot()==fs::canonical(newRoot),"Replacement adopts new root");
-    Require(replacement.SharedModelPath()==fs::canonical(newRoot/"Cathedral_01/cathedral.glb"),"Replacement model resolution");
+    Require(replacement.ModelPaths()==std::vector<fs::path>{fs::canonical(newRoot/"Cathedral_01/cathedral.glb")},"Replacement model resolution");
     Require(current.ProjectRoot()==fs::canonical(oldRoot) && current.Scene().Name()=="Original", "Current scene unchanged before replacement");
     Require(!current.HasUnsavedChanges(),"Root command does not dirty current scene");
     current.SaveAs(temp.path/"original.scene.json");

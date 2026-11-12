@@ -342,6 +342,44 @@ namespace ForgeSim::Sandbox
                 cameraForward.y,
                 cameraForward.z);
 
+            ImGui::BeginDisabled(context.cameraEditingDisabled);
+            if (ImGui::Button("Reset fly speed to 10"))
+            {
+                static_cast<void>(context.scene.TrySetCameraMovementSpeed(std::nullopt));
+                context.cameraController.SetMovementSpeed(10.0f);
+            }
+            float speed = context.cameraController.MovementSpeed();
+            if (ImGui::SliderFloat("Fly speed (units/s)", &speed, 0.0001f, 10000.0f,
+                "%.4f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp))
+            {
+                if (!context.scene.TrySetCameraMovementSpeed(speed))
+                    context.cameraController.SetMovementSpeed(speed);
+            }
+            ImGui::TextWrapped("Fly speed is saved with the scene. Capture the viewpoint separately to save position and clipping.");
+            ImGui::TextDisabled("RMB + WASD to fly; wheel adjusts speed. Ctrl moves 10x slower.");
+            ImGui::TextDisabled("Ctrl-click the speed slider to type a precise value.");
+            float nearPlane = camera.NearClippingPlane();
+            float farPlane = camera.FarClippingPlane();
+            const bool nearChanged = ImGui::InputFloat("Near clip", &nearPlane, 0.0f, 0.0f,
+                "%.6f", ImGuiInputTextFlags_EnterReturnsTrue);
+            const bool farChanged = ImGui::InputFloat("Far clip", &farPlane, 0.0f, 0.0f,
+                "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
+            if ((nearChanged || farChanged) && std::isfinite(nearPlane) && std::isfinite(farPlane) &&
+                nearPlane > 0.0f && farPlane > nearPlane)
+            {
+                auto changed = CaptureSceneCamera(camera, context.referenceViewport);
+                changed.nearClippingPlane = nearPlane;
+                changed.farClippingPlane = farPlane;
+                context.cameraRestoreRequest = changed;
+            }
+            ImGui::TextDisabled("Press Enter to apply clipping. Require 0 < near < far.");
+            if (ImGui::Button("Frame scene") && context.frameScene) context.frameScene();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!context.canFocusSelection);
+            if (ImGui::Button("Focus selected object") && context.focusSelection) context.focusSelection();
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
+
             if (ImGui::Button("Copy camera pose", ImVec2(-1.0f, 0.0f)))
             {
                 std::array<char, 512> cameraPose{};
@@ -369,7 +407,7 @@ namespace ForgeSim::Sandbox
             {
                 ImGui::BeginDisabled(context.cameraEditingDisabled);
 
-                if (ImGui::Button("Save current viewpoint", ImVec2(-1.0f, 0.0f)))
+                if (ImGui::Button("Capture current viewpoint", ImVec2(-1.0f, 0.0f)))
                 {
                     const SceneCameraData saved = CaptureSceneCamera(
                         context.camera, context.referenceViewport);
@@ -400,7 +438,7 @@ namespace ForgeSim::Sandbox
                     : "Scene will use automatic framing.");
 
                 ImGui::TextWrapped(
-                    "Save the scene file to keep viewpoint changes.");
+                    "Capture stores the current position, direction, and clipping. Then save the scene file.\nNormal scene saving retains the captured viewpoint; it does not capture your current view.");
             }
 
             if (EditorSectionHeader("Camera bookmarks"))

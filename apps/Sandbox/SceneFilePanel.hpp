@@ -31,6 +31,7 @@ namespace ForgeSim::Sandbox
         None,
         New,
         Open,
+        ImportModel,
         OpenSample,
         BrowseExternalSample,
         OpenExternalSample,

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
@@ -194,6 +195,25 @@ int main()
 			return EXIT_FAILURE;
 		}
 	}
+
+    {
+        FreeCameraController controller;
+        controller.SetMovementSpeed(2.5f);
+        if (!controller.AdjustMovementSpeed(1.0) || !NearlyEqual(controller.MovementSpeed(), 3.125f))
+            return EXIT_FAILURE;
+        if (!controller.AdjustMovementSpeed(-1.0) || !NearlyEqual(controller.MovementSpeed(), 2.5f))
+            return EXIT_FAILURE;
+        static_cast<void>(controller.AdjustMovementSpeed(0.5));
+        static_cast<void>(controller.AdjustMovementSpeed(-0.5));
+        if (!NearlyEqual(controller.MovementSpeed(), 2.5f)) return EXIT_FAILURE;
+        if (controller.AdjustMovementSpeed(0.0) ||
+            controller.AdjustMovementSpeed(std::numeric_limits<double>::quiet_NaN()) ||
+            controller.AdjustMovementSpeed(std::numeric_limits<double>::infinity())) return EXIT_FAILURE;
+        static_cast<void>(controller.AdjustMovementSpeed(100000.0));
+        if (controller.MovementSpeed() != 10000.0f || controller.AdjustMovementSpeed(1.0)) return EXIT_FAILURE;
+        static_cast<void>(controller.AdjustMovementSpeed(-100000.0));
+        if (controller.MovementSpeed() != 0.0001f || controller.AdjustMovementSpeed(-1.0)) return EXIT_FAILURE;
+    }
 
 	return EXIT_SUCCESS;
 }

@@ -8,7 +8,7 @@
 
 namespace ForgeSim::Sandbox
 {
-    // All objects currently share the same model-local bounds.
+    // Each object uses its loaded model bounds, with a fallback for unloaded objects.
     // Empty scenes return the supplied model bounds.
     [[nodiscard]] Renderer::AxisAlignedBoundingBox
         CalculateSceneBounds(

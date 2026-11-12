@@ -49,6 +49,7 @@ namespace ForgeSim::Sandbox
         for (const SandboxObject& object : objects)
         {
             const glm::mat4 matrix = object.transform.ModelMatrix();
+            const auto& bounds = object.localBounds.value_or(modelBounds);
 
             // Transform all eight corners. Transforming only minimum
             // and maximum is incorrect for rotation and negative scale.
@@ -56,16 +57,16 @@ namespace ForgeSim::Sandbox
             {
                 const glm::vec3 local{
                     (corner & 1u) != 0
-                        ? modelBounds.maximum.x
-                        : modelBounds.minimum.x,
+                        ? bounds.maximum.x
+                        : bounds.minimum.x,
 
                     (corner & 2u) != 0
-                        ? modelBounds.maximum.y
-                        : modelBounds.minimum.y,
+                        ? bounds.maximum.y
+                        : bounds.minimum.y,
 
                     (corner & 4u) != 0
-                        ? modelBounds.maximum.z
-                        : modelBounds.minimum.z
+                        ? bounds.maximum.z
+                        : bounds.minimum.z
                 };
 
                 const glm::vec3 world{

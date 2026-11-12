@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 int main()
 {
@@ -284,6 +285,29 @@ int main()
 			return EXIT_FAILURE;
 		}
 	}
+
+    {
+        InputState input;
+        input.AddScrollDelta(1.0);
+        input.AddScrollDelta(0.5);
+        input.AddScrollDelta(-0.25);
+        if (input.GetScrollDelta() != 1.25)
+        {
+            std::cerr << "Wheel events did not accumulate within the frame.\n";
+            return EXIT_FAILURE;
+        }
+        input.AddScrollDelta(std::numeric_limits<double>::quiet_NaN());
+        if (input.GetScrollDelta() != 1.25) return EXIT_FAILURE;
+        input.BeginFrame();
+        if (input.GetScrollDelta() != 0.0) return EXIT_FAILURE;
+        input.AddScrollDelta(2.0);
+        input.Clear();
+        if (input.GetScrollDelta() != 0.0)
+        {
+            std::cerr << "Focus/input clear left a stale wheel delta.\n";
+            return EXIT_FAILURE;
+        }
+    }
 
 	return EXIT_SUCCESS;
 }

@@ -37,6 +37,9 @@ namespace ForgeSim::Sandbox
                 m_MenuAction = SceneFileAction::Open;
             }
 
+            if (ImGui::MenuItem("Import Model..."))
+                m_MenuAction = SceneFileAction::ImportModel;
+
             if (ImGui::BeginMenu("Open Sample"))
             {
                 for (const auto& sample : BundledSamples)

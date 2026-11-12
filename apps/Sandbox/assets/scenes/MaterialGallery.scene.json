@@ -2,19 +2,19 @@
   "camera": {
     "farClippingPlane": 10.0,
     "forwardDirection": [
-      0.0929437130689621,
-      -0.13954369723796844,
-      -0.9858443140983582
+      0.05161679908633232,
+      -0.11772894859313965,
+      -0.9917033910751343
     ],
     "nearClippingPlane": 0.0010000000474974513,
     "position": [
-      0.001766777248121798,
-      0.004688486456871033,
-      0.024651862680912018
+      0.0033983481116592884,
+      0.0036301682703197002,
+      0.019751636311411858
     ],
     "referenceViewport": {
       "height": 885,
-      "width": 2312
+      "width": 2166
     },
     "upDirection": [
       0.0,
@@ -24,6 +24,7 @@
     "verticalFieldOfViewRadians": 0.7853981852531433
   },
   "cameraBookmarks": [],
+  "cameraMovementSpeed": 0.009903520345687866,
   "directionalLight": {
     "color": [
       1.0,

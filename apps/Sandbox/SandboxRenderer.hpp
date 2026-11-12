@@ -1,4 +1,6 @@
 #pragma once
+#include <map>
+#include <memory>
 
 #include "DirectionalShadowSettings.hpp"
 #include "SandboxObject.hpp"
@@ -147,6 +149,13 @@ namespace ForgeSim::Sandbox
         void SetLoadingDiagnostics(bool enabled) noexcept { m_LoadingDiagnostics = enabled; }
         [[nodiscard]] bool LoadingDiagnostics() const noexcept { return m_LoadingDiagnostics; }
 
+        void LoadSceneModels(const std::filesystem::path& root,
+            std::span<SandboxObject> objects,
+            const std::optional<std::filesystem::path>& environmentPath,
+            const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress = {},
+            std::optional<Assets::GltfTexturePolicy> texturePolicy = std::nullopt,
+            bool reuseLoadedModels = true);
+
         // Prepare the environment and model before committing either replacement.
         // An absent model retains unused existing model resources for empty scenes.
         void LoadSceneResources(
@@ -165,8 +174,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]]
 		unsigned int SceneColorTexture() const noexcept;
 
-		// Temporary integration path while SandboxRenderer owns the shared object mesh.
-		// Move bounds ownership to the mesh resource when objects support distinct meshes.
+		// Default model bounds, also used as an empty-scene fallback.
 		[[nodiscard]]
 		const Renderer::AxisAlignedBoundingBox&
 			ObjectLocalBounds() const noexcept;
@@ -187,14 +195,17 @@ namespace ForgeSim::Sandbox
 		void RenderDirectionalShadowMap(
 			const glm::mat4& lightViewProjection, bool transmissionPass);
 
-		void BindMaterial(
-			std::optional<Assets::MaterialIndex> materialIndex);
+		struct GpuMaterialResource;
+		struct GpuPrimitiveResource;
+		void BindMaterial(const GpuMaterialResource* material);
 
 		void AppendSceneNodeSubmissions(
 			Assets::SceneNodeIndex nodeIndex,
 			const glm::mat4& parentNodeTransform,
 			const glm::mat4& objectTransform,
-			bool isSelected);
+			bool isSelected, const Assets::SceneAsset& asset,
+            const std::vector<GpuPrimitiveResource>& primitives,
+            const std::vector<GpuMaterialResource>& materials);
 
 		void UploadPointLights(
 			std::span<const PointLight> lights);
@@ -205,7 +216,7 @@ namespace ForgeSim::Sandbox
 		struct RenderSubmission
 		{
 			const Renderer::OpenGL::GpuMesh* mesh = nullptr;
-			std::optional<Assets::MaterialIndex> materialIndex;
+			const GpuMaterialResource* material = nullptr;
 			glm::mat4 modelTransform{ 1.0f };
 			bool isSelected = false;
 			bool castsDirectionalShadows = true;
@@ -258,6 +269,18 @@ namespace ForgeSim::Sandbox
 			bool doubleSided = false;
 			std::optional<Assets::DirectionalTransmissionData> directionalTransmission;
 		};
+
+        struct ModelResources
+        {
+            Assets::SceneAsset asset;
+            Renderer::AxisAlignedBoundingBox bounds;
+            std::vector<GpuPrimitiveResource> primitives;
+            std::vector<GpuTextureResource> textures;
+            std::vector<Renderer::OpenGL::Sampler> samplers;
+            std::vector<GpuMaterialResource> materials;
+        };
+        std::map<std::filesystem::path, std::shared_ptr<ModelResources>> m_Models;
+        std::map<std::string, std::filesystem::path> m_ModelBindings;
 
 		void UploadObjectModelResources(
 			const Assets::SceneAsset& sceneAsset,

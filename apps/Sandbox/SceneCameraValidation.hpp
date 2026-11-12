@@ -16,6 +16,9 @@ namespace ForgeSim::Sandbox
     [[nodiscard]] std::optional<CameraValidationError>
     ValidateCameraBookmarkName(std::string_view name) noexcept;
 
+    [[nodiscard]] std::optional<CameraValidationError>
+    ValidateCameraMovementSpeed(float speed) noexcept;
+
     // Empty optional means valid. Never modifies camera data.
     [[nodiscard]]
     std::optional<CameraValidationError> ValidateSceneCamera(

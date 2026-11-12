@@ -38,6 +38,12 @@ int main()
     {
         TemporaryDirectory temp;
         auto pack = temp.path / fs::path(u8"Sample pack \u00e9");
+        // Exercise canonicalization through an alternate spelling on systems
+        // that permit directory symlinks. Windows CI also exercises temp aliases.
+        fs::create_directories(temp.path / "physical");
+        std::error_code aliasError;
+        fs::create_directory_symlink(temp.path / "physical", temp.path / "alias", aliasError);
+        if (!aliasError) pack = temp.path / "alias" / fs::path(u8"Sample pack \u00e9");
         const auto fallback = temp.path / "application";
         const auto overrideRoot = temp.path / "override";
         fs::create_directories(pack / "scenes/nested");
@@ -62,9 +68,16 @@ int main()
         std::ofstream(manifest) << R"({"version":1,"assetRoot":"content"})";
         fs::current_path(fallback);
         result = resolve();
-        Require(result.root == fs::canonical(pack / "content") && result.manifest == manifest &&
-            result.source == SceneAssetRootSource::ProjectManifest,
-            "Ancestor manifest resolves relative root independently of cwd");
+        Require(result.source == SceneAssetRootSource::ProjectManifest,
+            "Ancestor discovery must select the project manifest independently of cwd");
+        Require(fs::equivalent(result.root, pack / "content"),
+            "Ancestor manifest must resolve assetRoot relative to its own directory");
+        // Discovery canonicalizes the scene path. On Windows this can expand
+        // a temporary directory's short name or change its case, so the returned
+        // manifest may identify the same file with a different path spelling.
+        Require(result.manifest.has_value(), "Ancestor discovery must return its manifest path");
+        Require(fs::equivalent(*result.manifest, manifest),
+            "Ancestor discovery must return the expected manifest file");
         ConsoleProjectRoot setting{fallback};
         Require(!setting.Override(), "Default root is not an explicit override");
         static_cast<void>(setting.Execute({}));

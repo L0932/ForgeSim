@@ -53,6 +53,14 @@ namespace ForgeSim::Sandbox
         return std::nullopt;
     }
 
+    std::optional<CameraValidationError> ValidateCameraMovementSpeed(float speed) noexcept
+    {
+        if (!std::isfinite(speed) || speed < 0.0001f || speed > 10000.0f)
+            return CameraValidationError{"cameraMovementSpeed",
+                "Camera speed must be finite and between 0.0001 and 10000 units per second."};
+        return std::nullopt;
+    }
+
     std::optional<CameraValidationError> ValidateSceneCamera(
         const SceneCameraData& camera) noexcept
     {

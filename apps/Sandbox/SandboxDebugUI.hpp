@@ -10,6 +10,7 @@
 #include "SceneViewportPanel.hpp"
 
 #include "SceneCameraData.hpp"
+#include "FreeCameraController.hpp"
 #include "SceneRenderingSettings.hpp"
 
 #include <array>
@@ -59,11 +60,15 @@ namespace ForgeSim::Sandbox
 			diagnosticsSnapshot = nullptr;
 
 		const Renderer::PerspectiveCamera& camera;
+        FreeCameraController& cameraController;
 
 		SandboxScene& scene;
 		bool cameraEditingDisabled = false;
         std::optional<SceneCaptureExtent> referenceViewport;
         std::optional<SceneCameraData>& cameraRestoreRequest;
+        bool canFocusSelection = false;
+        std::function<void()> focusSelection;
+        std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
 

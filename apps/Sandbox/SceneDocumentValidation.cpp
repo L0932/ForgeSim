@@ -148,6 +148,10 @@ namespace ForgeSim::Sandbox
             }
         }
 
+        if (document.cameraMovementSpeed)
+            if (const auto error = ValidateCameraMovementSpeed(*document.cameraMovementSpeed))
+                return Error{std::string{error->property}, std::string{error->message}};
+
         if (const auto error = ValidateSceneRendering(document.rendering))
         {
             return Error{

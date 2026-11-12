@@ -1085,6 +1085,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
@@ -1095,6 +1096,7 @@ target_include_directories(
     ForgeSimSceneDocumentIOTests
     PRIVATE
         ${PROJECT_SOURCE_DIR}/apps/Sandbox
+        ${PROJECT_SOURCE_DIR}/engine/Renderer/include
 )
 
 target_link_libraries(
@@ -1139,6 +1141,7 @@ target_include_directories(
     ForgeSimSandboxSceneDocumentTests
     PRIVATE
         ${PROJECT_SOURCE_DIR}/apps/Sandbox
+        ${PROJECT_SOURCE_DIR}/engine/Renderer/include
 )
 
 target_link_libraries(
@@ -1318,6 +1321,7 @@ add_executable(
     ForgeSimShowcasePersistenceTests
     ShowcasePersistenceTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraState.cpp
@@ -1389,6 +1393,7 @@ add_test(NAME ForgeSim.Sandbox.ConsoleCommands COMMAND ForgeSimConsoleCommandsTe
 add_executable(ForgeSimConsoleProjectRootTests
     ConsoleProjectRootTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
@@ -1398,7 +1403,9 @@ add_executable(ForgeSimConsoleProjectRootTests
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
 target_include_directories(ForgeSimConsoleProjectRootTests PRIVATE
-    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox"
+    "${PROJECT_SOURCE_DIR}/engine/Renderer/include"
+)
 target_link_libraries(ForgeSimConsoleProjectRootTests PRIVATE
     glm::glm-header-only nlohmann_json::nlohmann_json)
 target_compile_features(ForgeSimConsoleProjectRootTests PRIVATE cxx_std_20)
@@ -1409,6 +1416,7 @@ add_test(NAME ForgeSim.Sandbox.ConsoleProjectRoot COMMAND ForgeSimConsoleProject
 add_executable(ForgeSimBundledSamplesTests
     BundledSamplesTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
@@ -1418,7 +1426,9 @@ add_executable(ForgeSimBundledSamplesTests
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
 target_include_directories(ForgeSimBundledSamplesTests PRIVATE
-    "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox"
+    "${PROJECT_SOURCE_DIR}/engine/Renderer/include"
+)
 target_link_libraries(ForgeSimBundledSamplesTests PRIVATE
     glm::glm-header-only nlohmann_json::nlohmann_json)
 target_compile_features(ForgeSimBundledSamplesTests PRIVATE cxx_std_20)
@@ -1449,3 +1459,32 @@ target_compile_features(ForgeSimSceneAssetRootTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimSceneAssetRootTests)
 set_target_properties(ForgeSimSceneAssetRootTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SceneAssetRoot COMMAND ForgeSimSceneAssetRootTests)
+
+add_executable(ForgeSimMaterialUsageTests MaterialUsageTest.cpp)
+target_include_directories(ForgeSimMaterialUsageTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox"
+    "${PROJECT_SOURCE_DIR}/engine/Assets/include")
+target_link_libraries(ForgeSimMaterialUsageTests PRIVATE glm::glm-header-only)
+target_compile_features(ForgeSimMaterialUsageTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimMaterialUsageTests)
+set_target_properties(ForgeSimMaterialUsageTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.MaterialUsage COMMAND ForgeSimMaterialUsageTests)
+
+add_executable(ForgeSimModelImportTests ModelImportTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp)
+target_include_directories(ForgeSimModelImportTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimModelImportTests PRIVATE nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimModelImportTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimModelImportTests)
+set_target_properties(ForgeSimModelImportTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ModelImport COMMAND ForgeSimModelImportTests)
+
+add_executable(ForgeSimCameraNavigationTests CameraNavigationTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraFraming.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp)
+target_include_directories(ForgeSimCameraNavigationTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimCameraNavigationTests PRIVATE ForgeSim::Platform ForgeSim::Renderer)
+target_compile_features(ForgeSimCameraNavigationTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimCameraNavigationTests)
+set_target_properties(ForgeSimCameraNavigationTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.CameraNavigation COMMAND ForgeSimCameraNavigationTests)

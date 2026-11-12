@@ -67,6 +67,9 @@ namespace ForgeSim::Platform
 		void SetCursorPosition(
 			CursorPosition position) noexcept;
 
+        void AddScrollDelta(double verticalOffset) noexcept;
+        [[nodiscard]] double GetScrollDelta() const noexcept { return m_ScrollDelta; }
+
 		void Clear() noexcept;
 
 		[[nodiscard]] ButtonState GetKeyState(
@@ -96,5 +99,6 @@ namespace ForgeSim::Platform
 		CursorDelta m_CursorDelta{};
 
 		bool m_HasCursorPosition = false;
+        double m_ScrollDelta = 0.0;
 	};
 }

@@ -7,7 +7,28 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Changed
+
+- Default camera fly speed to 10 units/s for new scenes and files without saved
+  navigation speed; replace automatic speed with a reset-to-10 action.
+
+### Fixed
+
+- Reset camera navigation from the active scene after New, Open, and model import,
+  including when viewpoint restoration bypasses automatic framing.
+
 ### Added
+
+- Import glTF models into the active scene for side-by-side comparisons, with
+  independent model materials, bounds, selection, and save/reopen support.
+
+- Mouse-wheel fly-speed adjustment during right-mouse camera navigation.
+
+- Per-scene fly-speed persistence with an Automatic fly speed option, independent
+  of explicit viewpoint capture.
+
+- Camera fly-speed and near/far clipping controls, Ctrl precision movement,
+  and scene/selected-object framing actions in the Camera panel.
 
 - Bundled directional-shadow starter and material-gallery scenes, available from
   **File > Open Sample** without project-root configuration.
@@ -26,6 +47,16 @@ contains the detailed implementation record.
   changing the global texture policy.
 
 ### Fixed
+
+- Automatic camera speed and near clipping are more conservative for large
+  imported environments, while retaining scale-aware defaults.
+
+- Direct external model imports discover their project manifest, or use the
+  model folder when none exists, avoiding invalid scene references after GPU
+  loading. Incompatible explicit roots are rejected before loading.
+
+- Unused source materials no longer cause GPU upload failures after texture
+  fallback creates compatible material variants for the actual mesh primitives.
 
 - Reset Layout now restores the Samples window's default size and position,
   including clearing saved placement when the window is closed.

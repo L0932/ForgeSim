@@ -9,7 +9,7 @@ namespace ForgeSim::Sandbox
 {
 	struct FreeCameraControllerSpecification
 	{
-		float movementSpeed = 2.5f;
+		float movementSpeed = 10.0f;
 		float mouseSensitivity = 0.002f;
 		float maximumDeltaSeconds = 0.1f;
 	};
@@ -24,6 +24,11 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]]
 		std::optional<Platform::CursorMode> RequestedCursorMode(
 			const Platform::InputState& input) const noexcept;
+
+        [[nodiscard]] float MovementSpeed() const noexcept { return m_Specification.movementSpeed; }
+        void SetMovementSpeed(float speed);
+        // Returns true only when a finite, nonzero wheel delta changes speed.
+        [[nodiscard]] bool AdjustMovementSpeed(double wheelDelta) noexcept;
 
 		void Update(
 			ForgeSim::Renderer::PerspectiveCamera& camera,

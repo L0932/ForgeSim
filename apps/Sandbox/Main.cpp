@@ -2,6 +2,7 @@
 #include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneAssetRoot.hpp"
+#include "ModelImportLocation.hpp"
 
 #include <charconv>
 #include <chrono>
@@ -201,7 +202,8 @@ namespace
             "  --serial-image-decode   Decode glTF images one at a time.\n"
             "  --help               Show this help.\n"
             "\n"
-            "The default project root contains the copied assets folder.\n"
+            "Scene files and model imports discover project manifests automatically.\n"
+            "Standalone model imports use their containing folder without a manifest.\n"
             "Relative scene-file paths use the working directory.\n"
             "The save destination directory must already exist.\n";
     }
@@ -211,12 +213,11 @@ namespace
         return ForgeSim::Platform::ExecutableDirectory();
     }
 
-    [[nodiscard]] fs::path ResolveSharedModel(
+    [[nodiscard]] fs::path ResolveInitialModel(
         const ForgeSim::Sandbox::SceneDocument& document,
         const fs::path& projectRoot)
     {
-        // The document format supports more than this renderer currently
-        // does. Reject unsupported interactive scenes explicitly.
+        // Initialize the first model here; the application prepares the remaining models.
         if (document.objects.empty())
         {
             // No object is drawn. Keep the default model resource
@@ -226,17 +227,6 @@ namespace
 
         const std::string& reference =
             document.objects.front().modelPath;
-
-        for (const auto& object : document.objects)
-        {
-            if (object.modelPath != reference)
-            {
-                throw std::invalid_argument(
-                    "The current Sandbox renderer supports one shared "
-                    "model reference per scene. Object '" +
-                    object.name + "' references a different model.");
-            }
-        }
 
         const std::u8string utf8Reference{
             reference.begin(),
@@ -324,7 +314,7 @@ int main(int argumentCount, char* arguments[])
                     ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
                     " ms (" + commandLine.scenePath->string() + ")");
 
-                modelFilename = ResolveSharedModel(
+                modelFilename = ResolveInitialModel(
                     *document,
                     projectRoot);
             }
@@ -334,6 +324,18 @@ int main(int argumentCount, char* arguments[])
                 ForgeSim::Sandbox::SandboxApplication::ShowStartupError(windowSpec, exception.what());
                 return EXIT_FAILURE;
             }
+        }
+
+        if (!commandLine.scenePath && commandLine.modelSpecified)
+        {
+            // Establish a portable root before spending time on import/upload.
+            const auto resolvedModel = modelFilename.is_absolute()
+                ? modelFilename
+                : ForgeSim::Sandbox::BundledAssetDirectory() / "models" / modelFilename;
+            const auto location = ForgeSim::Sandbox::ResolveModelImportLocation(
+                resolvedModel, commandLine.projectRoot);
+            modelFilename = location.model;
+            projectRoot = location.root;
         }
 
         ForgeSim::Sandbox::SandboxApplication app{
