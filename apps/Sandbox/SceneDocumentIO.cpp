@@ -37,6 +37,7 @@ namespace ForgeSim::Sandbox
                     projectRoot.string());
             }
 
+            std::vector<MissingSceneAsset> missing;
             for (std::size_t index = 0;
                 index < document.objects.size();
                 ++index)
@@ -51,10 +52,8 @@ namespace ForgeSim::Sandbox
 
                 if (!fs::is_regular_file(resolvedPath, error) || error)
                 {
-                    throw std::runtime_error(
-                        "objects[" + std::to_string(index) +
-                        "].modelPath: Model is not an accessible "
-                        "regular file: " + resolvedPath.string());
+                    missing.push_back({"objects[" + std::to_string(index) + "].modelPath",
+                        object.modelPath, resolvedPath});
                 }
             }
 
@@ -65,11 +64,11 @@ namespace ForgeSim::Sandbox
                 error.clear();
                 if (!fs::is_regular_file(environmentPath, error) || error)
                 {
-                    throw std::runtime_error(
-                        "rendering.environment.asset: Environment is not an accessible regular file: " +
-                        environmentPath.string());
+                    missing.push_back({"rendering.environment.asset",
+                        document.rendering.environmentAsset, environmentPath});
                 }
             }
+            if (!missing.empty()) throw MissingSceneAssets(projectRoot, std::move(missing));
         }
 
         class PendingSceneFile final
@@ -137,6 +136,18 @@ namespace ForgeSim::Sandbox
         };
     }
 
+    MissingSceneAssets::MissingSceneAssets(std::filesystem::path rootPath,
+        std::vector<MissingSceneAsset> unresolved, const std::filesystem::path& scene)
+        : std::runtime_error([&]
+          {
+              std::string message = scene.empty() ? "" : "Could not load scene '" + scene.string() + "':\n";
+              message += "Scene assets could not be resolved under: " + rootPath.string();
+              for (const auto& asset : unresolved)
+                  message += "\n" + asset.field + ": " + asset.reference + "\nAttempted: " + asset.attemptedPath.string();
+              return message;
+          }()),
+          root(std::move(rootPath)), assets(std::move(unresolved)) {}
+
     SceneDocument LoadSceneDocument(
         const std::filesystem::path& scenePath,
         const std::filesystem::path& projectRoot)
@@ -171,6 +182,10 @@ namespace ForgeSim::Sandbox
             ValidateModelFiles(document, projectRoot);
 
             return document;
+        }
+        catch (const MissingSceneAssets& missing)
+        {
+            throw MissingSceneAssets(missing.root, missing.assets, scenePath);
         }
         catch (const std::exception& exception)
         {

@@ -2434,7 +2434,8 @@ namespace ForgeSim::Sandbox
 
 	void SandboxRenderer::LoadObjectModel(
 		const std::filesystem::path& path,
-		const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
+		const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress,
+        std::optional<Assets::GltfTexturePolicy> texturePolicy)
 	{
 		if (path.empty() || path.filename().empty())
 		{
@@ -2447,7 +2448,7 @@ namespace ForgeSim::Sandbox
 				std::filesystem::absolute(path));
 
 		Assets::SceneAsset replacementScene =
-			LoadSceneWithTexturePolicy(replacementPath, m_TexturePolicy, m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages, m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
+			LoadSceneWithTexturePolicy(replacementPath, texturePolicy.value_or(m_TexturePolicy), m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages, m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
 
 		const Renderer::AxisAlignedBoundingBox replacementBounds =
 			CalculateSceneBounds(replacementScene);
@@ -2500,7 +2501,8 @@ namespace ForgeSim::Sandbox
     void SandboxRenderer::LoadSceneResources(
         const std::optional<std::filesystem::path>& modelPath,
         const std::optional<std::filesystem::path>& environmentPath,
-        const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress)
+        const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress,
+        std::optional<Assets::GltfTexturePolicy> texturePolicy)
     {
         auto replacementPath = environmentPath;
         if (replacementPath)
@@ -2508,7 +2510,7 @@ namespace ForgeSim::Sandbox
 
         if (replacementPath == m_EnvironmentPath)
         {
-            if (modelPath) LoadObjectModel(*modelPath, drawProgress);
+            if (modelPath) LoadObjectModel(*modelPath, drawProgress, texturePolicy);
             return;
         }
 
@@ -2523,7 +2525,7 @@ namespace ForgeSim::Sandbox
         auto specular = m_EnvironmentMapProcessor.CreatePrefilteredSpecularMap(cubemap, 128, 5);
 
         // LoadObjectModel itself commits only after successful import/upload.
-        if (modelPath) LoadObjectModel(*modelPath, drawProgress);
+        if (modelPath) LoadObjectModel(*modelPath, drawProgress, texturePolicy);
         static_assert(std::is_nothrow_move_assignable_v<decltype(texture)>);
         static_assert(std::is_nothrow_move_assignable_v<decltype(cubemap)>);
         m_EnvironmentEquirectangularTexture = std::move(texture);

@@ -91,7 +91,7 @@ namespace ForgeSim::Sandbox
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
-		void BeginWorkspace(const std::function<void()>& drawMainToolbar = {});
+		[[nodiscard]] bool BeginWorkspace(const std::function<void()>& drawMainToolbar = {});
 
 		[[nodiscard]] TransformEditorUIState UpdateTransformEditorShortcuts(
 			bool editingActive,

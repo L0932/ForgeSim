@@ -1,6 +1,7 @@
 #include "SandboxApplication.hpp"
 #include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
+#include "SceneAssetRoot.hpp"
 
 #include <charconv>
 #include <chrono>
@@ -287,7 +288,7 @@ int main(int argumentCount, char* arguments[])
                 "Skipped textures will be reported; material factors are retained.");
         }
 
-        const fs::path projectRoot =
+        fs::path projectRoot =
             fs::weakly_canonical(
                 fs::absolute(
                     commandLine.projectRoot.value_or(
@@ -310,6 +311,9 @@ int main(int argumentCount, char* arguments[])
             try
             {
                 const auto sceneStart = std::chrono::steady_clock::now();
+                projectRoot = ForgeSim::Sandbox::ResolveSceneAssetRoot(
+                    fs::absolute(*commandLine.scenePath), commandLine.projectRoot,
+                    DefaultProjectRoot()).root;
                 document = ForgeSim::Sandbox::LoadSceneDocument(
                     *commandLine.scenePath,
                     projectRoot);
@@ -348,7 +352,8 @@ int main(int argumentCount, char* arguments[])
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,
-                .scenePath = commandLine.scenePath
+                .scenePath = commandLine.scenePath,
+                .explicitSceneRoot = commandLine.projectRoot
             }
         };
 

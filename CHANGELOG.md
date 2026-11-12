@@ -11,12 +11,24 @@ contains the detailed implementation record.
 
 - Bundled directional-shadow starter and material-gallery scenes, available from
   **File > Open Sample** without project-root configuration.
-- Samples browser with screenshot previews and local scene opening using an
-  explicit asset root.
+- Samples browser with screenshot previews and local scene opening using
+  automatic asset-root discovery.
 - Editable sample copies that ask for a save destination and preserve bundled
   scene documents.
 - Sample setup, asset provenance, and distribution guidance included in the
   application package, with package-relative credit links and its build version.
+
+- Project and sample-pack manifests with portable asset roots, shared discovery
+  for editor and command-line scene opens, and a bundled application manifest.
+- `project.root.auto` to clear explicit root overrides for subsequent scene opens.
+- Missing-asset recovery with model and folder pickers, retry, and cancellation.
+- A checked-by-default texture-fallback option for local sample opens, without
+  changing the global texture policy.
+
+### Fixed
+
+- Reset Layout now restores the Samples window's default size and position,
+  including clearing saved placement when the window is closed.
 
 ## [0.1.0-preview.2] - 2026-10-26
 
