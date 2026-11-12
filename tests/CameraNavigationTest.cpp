@@ -22,11 +22,23 @@ int main()
         auto small = Sandbox::CreateSceneCameraFraming(prop, 1.6f);
         Require(large.camera.NearClippingPlane() <= 0.05f, "Large-scene near clip remains suitable for close navigation");
         Require(small.camera.NearClippingPlane() < 0.001f, "Small scene has a proportionally smaller near clip");
-        Require(large.controller.MovementSpeed() > small.controller.MovementSpeed() &&
-            large.controller.MovementSpeed() <= 10.0f, "Automatic movement adapts with a conservative upper bound");
+        Require(large.controller.MovementSpeed() == 10.0f && small.controller.MovementSpeed() == 10.0f &&
+            Sandbox::FreeCameraController{}.MovementSpeed() == 10.0f,
+            "Default speed must be 10 for every model scale and a fresh controller");
         Require(Sandbox::CreateSceneCameraFraming(city, 0.5f).controller.MovementSpeed() ==
             large.controller.MovementSpeed(), "Viewport aspect does not change navigation speed");
         large.controller.SetMovementSpeed(0.25f);
+        const Renderer::AxisAlignedBoundingBox defaultScene{glm::vec3{-1.0f}, glm::vec3{1.0f}};
+        auto navigation = Sandbox::CreateSceneCameraController(prop, 0.001f);
+        navigation = Sandbox::CreateSceneCameraController(defaultScene);
+        Require(navigation.MovementSpeed() ==
+            Sandbox::CreateSceneCameraFraming(defaultScene, 1.6f).controller.MovementSpeed(),
+            "Opening a scene without a saved speed must discard the previous scene's manual speed");
+        navigation = Sandbox::CreateSceneCameraController(city, 2.5f);
+        Require(navigation.MovementSpeed() == 2.5f, "Opening a scene must restore its own saved speed");
+        navigation = Sandbox::CreateSceneCameraController(prop);
+        Require(navigation.MovementSpeed() == small.controller.MovementSpeed(),
+            "Returning to a scene without a saved speed must restore the default 10");
         Platform::InputState input;
         input.SetKeyState(Platform::Key::W, true);
         auto normal = large.camera;

@@ -103,6 +103,7 @@ namespace ForgeSim::Sandbox
             return;
         }
 
+        const auto& objectBounds = object->localBounds.value_or(context.modelBounds);
         ImGui::TextWrapped("%s", object->name.c_str());
 
         ImGui::Text(
@@ -122,8 +123,8 @@ namespace ForgeSim::Sandbox
                 if (ImGui::Button("Use bounds center", ImVec2(-1.0f, 0.0f)))
                 {
                     // Half each endpoint separately to avoid overflowing their sum.
-                    const glm::vec3 center = context.modelBounds.minimum * 0.5f +
-                        context.modelBounds.maximum * 0.5f;
+                    const glm::vec3 center = objectBounds.minimum * 0.5f +
+                        objectBounds.maximum * 0.5f;
                     static_cast<void>(context.transformEditor->SetObjectPivot(*object, center));
                 }
                 if (ImGui::Button("Use authored origin", ImVec2(-1.0f, 0.0f)))
@@ -138,7 +139,7 @@ namespace ForgeSim::Sandbox
             InspectorUI::DragFloat3(
                 "##Position", "Position",
                 &object->transform.position.x,
-                CalculatePositionDragSpeed(context.modelBounds),
+                CalculatePositionDragSpeed(objectBounds),
                 0.0f,
                 0.0f,
                 "%.6f",

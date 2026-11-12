@@ -91,7 +91,7 @@ namespace ForgeSim::Sandbox
 			const auto hitDistance =
 				IntersectRayTransformedBox(
 					pickingRay,
-					localBounds,
+					object.localBounds.value_or(localBounds),
 					object.transform.ModelMatrix());
 
 			if (hitDistance &&

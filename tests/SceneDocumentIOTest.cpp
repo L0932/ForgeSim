@@ -129,6 +129,51 @@ namespace
         Require(rejected, "Invalid scene file was accepted.");
     }
 
+    void TestModelImport()
+    {
+        TemporaryDirectory temporary;
+        const auto root = temporary.Path();
+        fs::create_directories(root / "models");
+        WriteTestFile(root / "models/plain.glb", "placeholder");
+        WriteTestFile(root / "models/normal.glb", "placeholder");
+        SceneDocument document;
+        document.objects.push_back(SceneObjectData{.id = 7, .name = "Plain", .transform = {},
+            .modelPath = "models/plain.glb"});
+        EditorSession active(document, root);
+        active.Scene().Objects().front().transform.position.x = -5.0f;
+        auto prepared = active.PrepareImportModel(root / "models/normal.glb");
+        Require(active.Scene().Objects().size() == 1, "Preparing import changed active scene");
+        Require(prepared.Scene().Objects().size() == 2 && prepared.HasUnsavedChanges(),
+            "Imported model was not appended as an unsaved change");
+        const auto objects = prepared.Scene().Objects();
+        Require(objects[0].transform.position.x == -5.0f && objects[1].id == 8 &&
+            objects[1].modelPath == "models/normal.glb", "Import changed existing object or reused an ID");
+        auto duplicate = prepared.PrepareImportModel(root / "models/normal.glb");
+        Require(duplicate.ModelPaths().size() == 2, "Repeated imports should share model resources");
+        Require(duplicate.Scene().Objects().back().id == 9, "Repeated model import reused an object ID");
+        bool failed = false;
+        try { static_cast<void>(active.PrepareImportModel(root / "missing.glb")); }
+        catch (const std::exception&) { failed = true; }
+        Require(failed && active.Scene().Objects().size() == 1 && active.HasUnsavedChanges(),
+            "Failed import lost existing edits");
+        prepared.SaveAs(root / "comparison.scene.json");
+        const auto reopened = prepared.PrepareOpen(root / "comparison.scene.json", root);
+        Require(reopened.Scene().Objects().size() == 2 &&
+            reopened.Scene().Objects()[0].modelPath == "models/plain.glb" &&
+            reopened.Scene().Objects()[1].modelPath == "models/normal.glb" &&
+            !reopened.HasUnsavedChanges(), "Distinct model references did not survive save/reopen");
+        TemporaryDirectory outside;
+        WriteTestFile(outside.Path() / "outside.glb", "placeholder");
+        failed = false;
+        try { static_cast<void>(active.PrepareImportModel(outside.Path() / "outside.glb")); }
+        catch (const std::invalid_argument&) { failed = true; }
+        Require(failed, "Outside-root import should not create an unportable scene reference");
+        const auto fresh = active.PrepareNew().PrepareImportModel(outside.Path() / "outside.glb");
+        Require(fresh.ProjectRoot() == fs::canonical(outside.Path()) &&
+            fresh.Scene().Objects().front().modelPath == "outside.glb" && fresh.HasUnsavedChanges(),
+            "First import into a new scene should discover the model's asset root");
+    }
+
     void TestFileLoading()
     {
         TemporaryDirectory temporary;
@@ -739,6 +784,7 @@ int main()
 {
     try
     {
+        TestModelImport();
         TestFileLoading();
         TestFileSaving();
         TestEditorSession();

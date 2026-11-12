@@ -1,4 +1,5 @@
 #include "SandboxScene.hpp"
+#include "SceneAssetPath.hpp"
 
 #include <stdexcept>
 #include <utility>
@@ -22,6 +23,22 @@ namespace ForgeSim::Sandbox
 			}
 		}
 	{}
+
+    SandboxObjectId SandboxScene::AddModelObject(std::string name, std::string modelPath)
+    {
+        if (!IsValidSceneAssetPath(modelPath))
+            throw std::invalid_argument("Imported model needs a portable project-relative path.");
+        SandboxObjectId id = 1;
+        for (const auto& object : m_Objects)
+        {
+            if (object.id == std::numeric_limits<SandboxObjectId>::max())
+                throw std::overflow_error("No object IDs remain.");
+            id = std::max(id, object.id + 1);
+        }
+        m_Objects.push_back(SandboxObject{.id = id, .transform = {},
+            .name = std::move(name), .modelPath = std::move(modelPath)});
+        return id;
+    }
 
     void SandboxScene::SetObjectVisible(SandboxObjectId id, bool visible)
     {

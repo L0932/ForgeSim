@@ -89,6 +89,18 @@ namespace
             "Scene bounds did not include every object.");
     }
 
+    void TestDistinctModelBounds()
+    {
+        const ForgeSim::Renderer::AxisAlignedBoundingBox fallback{{-1,-1,-1}, {1,1,1}};
+        std::array<SandboxObject, 2> objects{};
+        objects[0].localBounds = ForgeSim::Renderer::AxisAlignedBoundingBox{{-2,-3,-4}, {2,3,4}};
+        objects[1].localBounds = ForgeSim::Renderer::AxisAlignedBoundingBox{{0,0,0}, {20,1,2}};
+        objects[1].transform.position.x = 10;
+        const auto result = CalculateSceneBounds(objects, fallback);
+        Require(Near(result.minimum, {-2,-3,-4}) && Near(result.maximum, {30,3,4}),
+            "Scene framing ignored distinct model bounds");
+    }
+
     void TestEmptyScene()
     {
         const ForgeSim::Renderer::AxisAlignedBoundingBox local{
@@ -113,6 +125,7 @@ int main()
         TestPivotPreservesBounds();
         TestMultipleObjects();
         TestEmptyScene();
+        TestDistinctModelBounds();
 
         return EXIT_SUCCESS;
     }

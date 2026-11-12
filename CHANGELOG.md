@@ -7,7 +7,20 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Changed
+
+- Default camera fly speed to 10 units/s for new scenes and files without saved
+  navigation speed; replace automatic speed with a reset-to-10 action.
+
+### Fixed
+
+- Reset camera navigation from the active scene after New, Open, and model import,
+  including when viewpoint restoration bypasses automatic framing.
+
 ### Added
+
+- Import glTF models into the active scene for side-by-side comparisons, with
+  independent model materials, bounds, selection, and save/reopen support.
 
 - Mouse-wheel fly-speed adjustment during right-mouse camera navigation.
 

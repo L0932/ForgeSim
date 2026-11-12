@@ -343,12 +343,10 @@ namespace ForgeSim::Sandbox
                 cameraForward.z);
 
             ImGui::BeginDisabled(context.cameraEditingDisabled);
-            bool automaticSpeed = !context.scene.CameraMovementSpeed();
-            if (ImGui::Checkbox("Automatic fly speed", &automaticSpeed))
+            if (ImGui::Button("Reset fly speed to 10"))
             {
-                static_cast<void>(context.scene.TrySetCameraMovementSpeed(automaticSpeed
-                    ? std::nullopt : std::optional{context.cameraController.MovementSpeed()}));
-                if (automaticSpeed && context.automaticCameraSpeed) context.automaticCameraSpeed();
+                static_cast<void>(context.scene.TrySetCameraMovementSpeed(std::nullopt));
+                context.cameraController.SetMovementSpeed(10.0f);
             }
             float speed = context.cameraController.MovementSpeed();
             if (ImGui::SliderFloat("Fly speed (units/s)", &speed, 0.0001f, 10000.0f,

@@ -59,7 +59,7 @@ int main()
             Require(sample.ProjectRoot() == fs::canonical(bundle), "Sample uses bundled root");
             Require(!sample.ScenePath(), "Sample opens as an editable copy");
             Require(sample.DefaultSceneDirectory() == userDirectory, "Save dialog keeps user directory");
-            Require(sample.SharedModelPath() && fs::is_regular_file(*sample.SharedModelPath()),
+            Require(sample.ModelPaths().size() == 1 && fs::is_regular_file(sample.ModelPaths().front()),
                 "Sample model resolves after relocation");
             bool failed = false;
             try { sample.Save(); } catch (const std::logic_error&) { failed = true; }

@@ -976,16 +976,18 @@ namespace ForgeSim::Sandbox
 		Assets::SceneNodeIndex nodeIndex,
 		const glm::mat4& parentNodeTransform,
 		const glm::mat4& objectTransform,
-		bool isSelected)
+		bool isSelected, const Assets::SceneAsset& asset,
+        const std::vector<GpuPrimitiveResource>& primitives,
+        const std::vector<GpuMaterialResource>& materials)
 	{
-		if (nodeIndex >= m_ObjectSceneAsset.nodes.size())
+		if (nodeIndex >= asset.nodes.size())
 		{
 			throw std::runtime_error(
 				"Scene node index is invalid.");
 		}
 
 		const Assets::SceneNodeData& node =
-			m_ObjectSceneAsset.nodes[nodeIndex];
+			asset.nodes[nodeIndex];
 
 		const glm::mat4 nodeTransform =
 			parentNodeTransform *
@@ -995,14 +997,14 @@ namespace ForgeSim::Sandbox
 		if (node.meshIndex)
 		{
 			if (*node.meshIndex >=
-				m_ObjectSceneAsset.meshes.size())
+				asset.meshes.size())
 			{
 				throw std::runtime_error(
 					"Scene node references an invalid mesh.");
 			}
 
 			for (const GpuPrimitiveResource& resource :
-				m_GpuPrimitiveResources)
+				primitives)
 			{
 				if (resource.sceneMeshIndex !=
 					*node.meshIndex)
@@ -1013,8 +1015,7 @@ namespace ForgeSim::Sandbox
 				m_RenderSubmissions.push_back(
 					RenderSubmission{
 						.mesh = &resource.mesh,
-						.materialIndex =
-							resource.materialIndex,
+						.material = resource.materialIndex ? &materials.at(*resource.materialIndex) : nullptr,
 						.modelTransform =
 							objectTransform *
 							nodeTransform,
@@ -1031,7 +1032,7 @@ namespace ForgeSim::Sandbox
 				childIndex,
 				nodeTransform,
 				objectTransform,
-				isSelected);
+				isSelected, asset, primitives, materials);
 		}
 	}
 
@@ -1514,14 +1515,19 @@ namespace ForgeSim::Sandbox
 			const glm::mat4 objectTransform =
 				object.transform.ModelMatrix();
 
-			for (const Assets::SceneNodeIndex rootNodeIndex :
-			m_ObjectSceneAsset.rootNodeIndices)
+            const auto& path = m_ModelBindings.at(object.modelPath);
+            const auto cached = m_Models.find(path);
+            const auto* extra = cached == m_Models.end() ? nullptr : cached->second.get();
+            const auto& asset = extra ? extra->asset : m_ObjectSceneAsset;
+            const auto& primitives = extra ? extra->primitives : m_GpuPrimitiveResources;
+            const auto& materials = extra ? extra->materials : m_GpuMaterialResources;
+            for (const Assets::SceneNodeIndex rootNodeIndex : asset.rootNodeIndices)
 			{
 				AppendSceneNodeSubmissions(
 					rootNodeIndex,
 					glm::mat4{ 1.0f },
 					objectTransform,
-					isSelected);
+					isSelected, asset, primitives, materials);
 			}
 
 			if (settings.showObjectBounds)
@@ -1541,7 +1547,7 @@ namespace ForgeSim::Sandbox
 
 				const auto boundsVertices =
 					Renderer::CreateWireframeBoxLines(
-						m_ObjectLocalBounds,
+						object.localBounds.value_or(m_ObjectLocalBounds),
 						objectTransform,
 						boundsColor);
 
@@ -1566,11 +1572,10 @@ namespace ForgeSim::Sandbox
             RenderDirectionalShadowMap(m_DirectionalLightViewProjection, false);
             transmissionActive = std::any_of(
                 m_RenderSubmissions.begin(), m_RenderSubmissions.end(),
-                [this](const RenderSubmission& submission)
+                [](const RenderSubmission& submission)
                 {
                     return submission.mesh != nullptr && submission.castsDirectionalShadows &&
-                        submission.materialIndex &&
-                        m_GpuMaterialResources.at(*submission.materialIndex).directionalTransmission.has_value();
+                        submission.material && submission.material->directionalTransmission.has_value();
                 });
             if (transmissionActive)
             {
@@ -1761,26 +1766,7 @@ namespace ForgeSim::Sandbox
 			SandboxRendererShaderUniform::selectionColor,
 			settings.selectionHighlight.color);
 
-		const auto materialFor =
-			[this](const RenderSubmission& submission)
-			-> const GpuMaterialResource*
-			{
-				if (!submission.materialIndex)
-				{
-					return nullptr;
-				}
-
-				if (*submission.materialIndex >=
-					m_GpuMaterialResources.size())
-				{
-					throw std::runtime_error(
-						"Render submission references "
-						"an invalid material.");
-				}
-
-				return &m_GpuMaterialResources[
-					*submission.materialIndex];
-			};
+        const auto materialFor = [](const RenderSubmission& submission) { return submission.material; };
 
 		const auto alphaModeFor =
 			[&materialFor](
@@ -1931,7 +1917,7 @@ namespace ForgeSim::Sandbox
 			}
 
 			BindMaterial(
-				submission.materialIndex);
+				submission.material);
 
 			const float selectionAmount =
 				submission.isSelected &&
@@ -2211,16 +2197,7 @@ namespace ForgeSim::Sandbox
                 continue;
             }
 
-            const GpuMaterialResource* material = nullptr;
-            if (submission.materialIndex)
-            {
-                if (*submission.materialIndex >= m_GpuMaterialResources.size())
-                {
-                    throw std::runtime_error(
-                        "Shadow submission references an invalid material.");
-                }
-                material = &m_GpuMaterialResources[*submission.materialIndex];
-            }
+            const GpuMaterialResource* material = submission.material;
 
             const bool transmits = material != nullptr && material->directionalTransmission.has_value();
             if (transmissionPass != transmits ||
@@ -2509,6 +2486,62 @@ namespace ForgeSim::Sandbox
 	}
 
 
+    void SandboxRenderer::LoadSceneModels(const std::filesystem::path& root,
+        std::span<SandboxObject> objects,
+        const std::optional<std::filesystem::path>& environmentPath,
+        const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress,
+        std::optional<Assets::GltfTexturePolicy> texturePolicy, bool reuseLoadedModels)
+    {
+        // Stage all resources. Failed imports leave the active bindings and GPU resources intact.
+        std::map<std::filesystem::path, std::shared_ptr<ModelResources>> models;
+        std::map<std::string, std::filesystem::path> bindings;
+        for (auto& object : objects)
+        {
+            const std::u8string reference(object.modelPath.begin(), object.modelPath.end());
+            const auto path = std::filesystem::canonical(root / std::filesystem::path(reference));
+            bindings.emplace(object.modelPath, path);
+            if (reuseLoadedModels && path == m_ObjectModelPath)
+            {
+                object.localBounds = m_ObjectLocalBounds;
+                continue;
+            }
+            if (!models.contains(path))
+            {
+                if (const auto existing = m_Models.find(path); reuseLoadedModels && existing != m_Models.end())
+                    models.emplace(path, existing->second);
+                else
+                {
+                    auto model = std::make_shared<ModelResources>();
+                    model->asset = LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
+                        m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages,
+                        m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
+                    model->bounds = CalculateSceneBounds(model->asset);
+                    UploadObjectModelResources(model->asset, model->primitives, model->textures,
+                        model->samplers, model->materials, drawProgress);
+                    models.emplace(path, std::move(model));
+                }
+            }
+            object.localBounds = models.at(path)->bounds;
+        }
+        LoadSceneResources(std::nullopt, environmentPath, drawProgress, texturePolicy);
+        m_RenderSubmissions.clear();
+        m_ModelBindings.swap(bindings);
+        m_Models.swap(models);
+        // Release the initial model when a replacement scene no longer uses it.
+        // Bounds remain available as the empty-scene fallback.
+        const bool usesInitial = std::any_of(m_ModelBindings.begin(), m_ModelBindings.end(),
+            [this](const auto& binding) { return binding.second == m_ObjectModelPath; });
+        if (!usesInitial || m_Models.contains(m_ObjectModelPath))
+        {
+            m_GpuMaterialResources.clear();
+            m_GpuPrimitiveResources.clear();
+            m_GpuTextures.clear();
+            m_GpuSamplers.clear();
+            m_ObjectSceneAsset = {};
+            m_ObjectModelPath.clear();
+        }
+    }
+
     void SandboxRenderer::LoadSceneResources(
         const std::optional<std::filesystem::path>& modelPath,
         const std::optional<std::filesystem::path>& environmentPath,
@@ -2595,7 +2628,7 @@ namespace ForgeSim::Sandbox
 	}
 
 	void SandboxRenderer::BindMaterial(
-		std::optional<Assets::MaterialIndex> materialIndex)
+		const GpuMaterialResource* selectedMaterial)
 	{
 		GpuTextureBinding baseColor{
 			.texture = &m_FallbackWhiteTexture,
@@ -2638,18 +2671,9 @@ namespace ForgeSim::Sandbox
 		float roughnessFactor = 1.0f;
 		float occlusionStrength = 1.0f;
 
-		if (materialIndex)
-		{
-			if (*materialIndex >=
-				m_GpuMaterialResources.size())
-			{
-				throw std::runtime_error(
-					"Render submission references "
-					"an invalid material.");
-			}
-
-			const GpuMaterialResource& material =
-				m_GpuMaterialResources[*materialIndex];
+        if (selectedMaterial)
+        {
+            const GpuMaterialResource& material = *selectedMaterial;
 
 			baseColor = material.baseColor;
 

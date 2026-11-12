@@ -10,6 +10,15 @@
 
 namespace ForgeSim::Sandbox
 {
+    FreeCameraController CreateSceneCameraController(
+        const Renderer::AxisAlignedBoundingBox& bounds,
+        std::optional<float> savedMovementSpeed)
+    {
+        auto controller = CreateSceneCameraFraming(bounds, 1.0f).controller;
+        if (savedMovementSpeed) controller.SetMovementSpeed(*savedMovementSpeed);
+        return controller;
+    }
+
     SceneCameraFraming CreateSceneCameraFraming(
         const Renderer::AxisAlignedBoundingBox& bounds,
         float aspectRatio)
@@ -80,8 +89,7 @@ namespace ForgeSim::Sandbox
             },
             .controller = FreeCameraController{
                 FreeCameraControllerSpecification{
-                    .movementSpeed =
-                        std::clamp(radius * 0.1f, 0.001f, 10.0f),
+                    .movementSpeed = 10.0f,
                     .mouseSensitivity = 0.002f,
                     .maximumDeltaSeconds = 0.1f
                 }

@@ -46,6 +46,7 @@ namespace ForgeSim::Sandbox
                     // The popup itself is expected; only the caller's edit lock applies.
                     ImGui::BeginDisabled(!context.actionsAllowed);
                     if (ImGui::MenuItem("Open Scene...")) result.fileAction = SceneFileAction::Open;
+                    if (ImGui::MenuItem("Import Model...")) result.fileAction = SceneFileAction::ImportModel;
                     if (ImGui::MenuItem("Save", "Ctrl+S")) result.fileAction =
                         context.hasScenePath ? SceneFileAction::Save : SceneFileAction::SaveAs;
                     ImGui::Separator();

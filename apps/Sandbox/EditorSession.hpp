@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ForgeSim::Sandbox
 {
@@ -50,16 +51,16 @@ namespace ForgeSim::Sandbox
             const std::filesystem::path& path,
             const std::filesystem::path& bundledRoot) const;
 
+        [[nodiscard]] EditorSession PrepareImportModel(const std::filesystem::path& path) const;
+
         // Save requires an existing scene path.
         void Save();
 
         // Updates the current path only after saving succeeds.
         void SaveAs(const std::filesystem::path& path);
 
-        // Empty scenes have no shared model.
-        // Throws if objects reference different models.
-        [[nodiscard]]
-        std::optional<std::filesystem::path> SharedModelPath() const;
+        // Unique model files in object order; empty scenes have none.
+        [[nodiscard]] std::vector<std::filesystem::path> ModelPaths() const;
 
     private:
         SandboxScene m_Scene;

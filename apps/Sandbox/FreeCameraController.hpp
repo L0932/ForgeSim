@@ -9,7 +9,7 @@ namespace ForgeSim::Sandbox
 {
 	struct FreeCameraControllerSpecification
 	{
-		float movementSpeed = 2.5f;
+		float movementSpeed = 10.0f;
 		float mouseSensitivity = 0.002f;
 		float maximumDeltaSeconds = 0.1f;
 	};

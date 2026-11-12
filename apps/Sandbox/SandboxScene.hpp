@@ -45,6 +45,8 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] const SandboxObject* FindObject(
 			SandboxObjectId objectId) const noexcept;
 
+        [[nodiscard]] SandboxObjectId AddModelObject(std::string name, std::string modelPath);
+
 		[[nodiscard]] SceneLightId AddPointLight();
 		[[nodiscard]] SceneLightId AddSpotLight();
 

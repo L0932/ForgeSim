@@ -108,3 +108,28 @@ that does not contain the model is rejected before image decoding or GPU upload.
 The default bundled startup model retains the application root. Relative model
 arguments retain the existing bundled `assets/models` lookup; use an absolute
 path for external models. This change does not create a manifest or copy assets.
+
+## Import models into the active scene
+
+Use **File > Import Model...** to append a `.glb` or `.gltf` model without
+replacing the active scene or discarding its edits. The new object is selected,
+placed beside the existing objects along X, and the viewport frames the combined
+scene. Move or scale it with the normal transform controls for closer comparison.
+Each model retains its own materials, textures, hierarchy, and bounds. Repeated
+imports of the same file create separate objects sharing the loaded resources.
+
+The first import into a new, unsaved empty scene discovers its asset root
+automatically from the project manifest or model folder. To start a comparison
+from external files, choose **File > New Scene**, then **Import Model...**.
+
+Place further comparison models under the active scene's asset root before importing.
+For example, open `C:/ForgeSimAssets/Hidden_Alley/plain.glb`, then import
+`C:/ForgeSimAssets/Hidden_Alley/normal.glb`. Keep any external `.gltf` buffers and
+images in their authored relative locations. Import does not copy files or rewrite
+material maps. Files outside the active asset root are rejected with the folder
+location so scene references remain portable.
+
+Save the scene to retain all model references and object transforms. Reopening it
+through the editor or `--scene` restores the different models together. Canceling
+the file picker or a failed import preserves the current scene. Import itself is
+not an undo-history action; transform edits still support undo/redo.

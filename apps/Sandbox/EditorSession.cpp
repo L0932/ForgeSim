@@ -1,12 +1,44 @@
 #include "EditorSession.hpp"
+#include "ModelImportLocation.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneSerializer.hpp"
 
 #include <stdexcept>
+#include <algorithm>
+#include <cctype>
 #include <utility>
 
 namespace ForgeSim::Sandbox
 {
+    EditorSession EditorSession::PrepareImportModel(const std::filesystem::path& path) const
+    {
+        auto extension = path.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (extension != ".glb" && extension != ".gltf")
+            throw std::invalid_argument("Import Model supports .glb and .gltf files.");
+        const bool adoptRoot = m_Scene.Objects().empty() && !m_ScenePath &&
+            m_Scene.RenderingSettings().environmentSource != SceneEnvironmentSource::ProjectAsset;
+        ModelImportLocation location;
+        try { location = ResolveModelImportLocation(path,
+            adoptRoot ? std::nullopt : std::optional{m_ProjectRoot}); }
+        catch (const std::invalid_argument&)
+        {
+            throw std::invalid_argument("Place the model and its dependencies inside this scene's asset folder: " + m_ProjectRoot.string());
+        }
+        const auto reference = location.model.lexically_relative(location.root).generic_u8string();
+        const auto name = path.stem().generic_u8string();
+        EditorSession replacement = *this;
+        if (adoptRoot)
+        {
+            replacement.m_ProjectRoot = location.root;
+            replacement.m_DefaultSceneDirectory = location.root / "scenes";
+        }
+        static_cast<void>(replacement.m_Scene.AddModelObject(
+            std::string(name.begin(), name.end()), std::string(reference.begin(), reference.end())));
+        return replacement;
+    }
+
     EditorSession::EditorSession(
         const SceneDocument& document,
         const std::filesystem::path& projectRoot,
@@ -191,10 +223,9 @@ namespace ForgeSim::Sandbox
         m_ScenePath.swap(scenePath);
     }
 
-    std::optional<std::filesystem::path>
-        EditorSession::SharedModelPath() const
+    std::vector<std::filesystem::path> EditorSession::ModelPaths() const
     {
-        std::optional<std::filesystem::path> sharedPath;
+        std::vector<std::filesystem::path> paths;
 
         for (const SandboxObject& object : m_Scene.Objects())
         {
@@ -208,16 +239,10 @@ namespace ForgeSim::Sandbox
                     m_ProjectRoot /
                     std::filesystem::path{ reference });
 
-            if (sharedPath && *sharedPath != resolvedPath)
-            {
-                throw std::runtime_error(
-                    "Opening scenes with multiple different models "
-                    "is not supported yet.");
-            }
-
-            sharedPath = resolvedPath;
+            if (std::find(paths.begin(), paths.end(), resolvedPath) == paths.end())
+                paths.push_back(resolvedPath);
         }
 
-        return sharedPath;
+        return paths;
     }
 }
