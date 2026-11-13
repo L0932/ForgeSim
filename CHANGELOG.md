@@ -7,6 +7,12 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Fixed
+
+- Default startup opens the bundled Material Gallery scene document, restoring
+  its saved camera speed, view, lighting and rendering settings instead of
+  importing the gallery model with generic defaults.
+
 ### Added
 
 - Ctrl+F selection orbit mode with RMB-drag rotation, wheel zoom, a Scene status

@@ -205,6 +205,7 @@ namespace
             "Scene files and model imports discover project manifests automatically.\n"
             "Standalone model imports use their containing folder without a manifest.\n"
             "Relative scene-file paths use the working directory.\n"
+            "Without a model or --scene, load the bundled Material Gallery scene.\n"
             "The save destination directory must already exist.\n";
     }
 
@@ -286,6 +287,13 @@ int main(int argumentCount, char* arguments[])
 
         std::optional<ForgeSim::Sandbox::SceneDocument> document;
 
+        const bool useBundledStartupScene =
+            !commandLine.scenePath && !commandLine.modelSpecified;
+        const std::optional<fs::path> scenePath = useBundledStartupScene
+            ? std::optional<fs::path>{ForgeSim::Sandbox::BundledAssetDirectory() /
+                "scenes" / "MaterialGallery.scene.json"}
+            : commandLine.scenePath;
+
         fs::path modelFilename = commandLine.modelFilename;
 
         const ForgeSim::Platform::WindowSpecification windowSpec{
@@ -296,23 +304,24 @@ int main(int argumentCount, char* arguments[])
             .startMaximized = true
         };
 
-        if (commandLine.scenePath)
+        if (scenePath)
         {
             try
             {
                 const auto sceneStart = std::chrono::steady_clock::now();
                 projectRoot = ForgeSim::Sandbox::ResolveSceneAssetRoot(
-                    fs::absolute(*commandLine.scenePath), commandLine.projectRoot,
+                    fs::absolute(*scenePath),
+                    useBundledStartupScene ? std::nullopt : commandLine.projectRoot,
                     DefaultProjectRoot()).root;
                 document = ForgeSim::Sandbox::LoadSceneDocument(
-                    *commandLine.scenePath,
+                    *scenePath,
                     projectRoot);
 
                 const auto sceneMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - sceneStart).count();
                 if (commandLine.loadingDiagnostics)
                     ForgeSim::Core::LogInfo("Scene document: " + std::to_string(sceneMs) +
-                    " ms (" + commandLine.scenePath->string() + ")");
+                    " ms (" + scenePath->string() + ")");
 
                 modelFilename = ResolveInitialModel(
                     *document,
@@ -354,6 +363,7 @@ int main(int argumentCount, char* arguments[])
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,
+                // Keep bundled startup editable as a copy, like the Samples menu.
                 .scenePath = commandLine.scenePath,
                 .explicitSceneRoot = commandLine.projectRoot
             }
