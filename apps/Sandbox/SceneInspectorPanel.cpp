@@ -45,6 +45,7 @@ namespace ForgeSim::Sandbox
     void SceneInspectorPanel::Reset() noexcept
     {
         m_LightValidationError.reset();
+        m_NodeEditError.clear();
         m_ObjectEdit.reset();
         m_EditTargets.clear();
     }
@@ -105,7 +106,7 @@ namespace ForgeSim::Sandbox
     {
         const auto& selected = *context.selection.SelectedNode();
         const auto* asset = context.materials.asset;
-        const auto* owner = context.scene.FindObject(selected.objectId);
+        auto* owner = context.scene.FindObject(selected.objectId);
         const auto* record = context.nodeQuery ? context.nodeQuery->Find(selected.nodeIndex) : nullptr;
         if (!asset || !owner || !record || selected.nodeIndex >= asset->nodes.size())
         { ImGui::TextWrapped("Selected node is unavailable."); return; }
@@ -120,7 +121,56 @@ namespace ForgeSim::Sandbox
             ImGui::TextWrapped("Parent: %s (node %zu)", parent.name.empty() ? "Unnamed" : parent.name.c_str(), *record->parent);
         }
         else ImGui::TextUnformatted("Parent: model instance");
-        ImGui::TextWrapped("Read-only node inspection. Use the model row for instance transforms, deletion, and duplication. Node editing and persistence follow separately.");
+        ImGui::TextWrapped("Adjust this node and its descendants in this model instance. The imported asset stays unchanged.");
+        if (EditorSectionHeader("Instance Node Adjustment", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            Transform value = owner->nodeOverrides.contains(selected.nodeIndex)
+                ? owner->nodeOverrides.at(selected.nodeIndex) : Transform{};
+            ImGui::BeginDisabled(!context.transformEditor);
+            auto rotation = glm::degrees(value.rotationRadians);
+            ImGui::TextUnformatted("Position offset");
+            ImGui::SetNextItemWidth(-1.0f);
+            bool changed = ImGui::InputFloat3("##NodePositionOffset", &value.position.x, "%.6f", ImGuiInputTextFlags_EnterReturnsTrue);
+            ImGui::TextUnformatted("Rotation offset (degrees)");
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::InputFloat3("##NodeRotationOffset", &rotation.x, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+            { value.rotationRadians=glm::radians(rotation); changed=true; }
+            ImGui::TextUnformatted("Scale multiplier");
+            ImGui::SetNextItemWidth(-1.0f);
+            changed = ImGui::InputFloat3("##NodeScaleMultiplier", &value.scale.x, "%.6f", ImGuiInputTextFlags_EnterReturnsTrue) || changed;
+            if (changed && context.transformEditor)
+            {
+                try
+                {
+                    if (!ValidNodeOverride(value)) throw std::invalid_argument("Use finite values and nonzero scale components.");
+                    auto candidate=owner->nodeOverrides;
+                    candidate.insert_or_assign(selected.nodeIndex,value);
+                    static_cast<void>(context.nodeQuery->ModelBounds(candidate));
+                    static_cast<void>(context.nodeQuery->WorldBounds(selected.nodeIndex,owner->transform.ModelMatrix(),candidate));
+                    static_cast<void>(context.transformEditor->SetNodeOverride(*owner,selected.nodeIndex,value));
+                    m_NodeEditError.clear();
+                }
+                catch(const std::exception& error) { m_NodeEditError=error.what(); }
+            }
+            ImGui::BeginDisabled(!owner->nodeOverrides.contains(selected.nodeIndex));
+            if (ImGui::Button("Reset node adjustment") && context.transformEditor)
+            {
+                try
+                {
+                    auto candidate=owner->nodeOverrides;
+                    candidate.erase(selected.nodeIndex);
+                    static_cast<void>(context.nodeQuery->ModelBounds(candidate));
+                    static_cast<void>(context.nodeQuery->WorldBounds(selected.nodeIndex,owner->transform.ModelMatrix(),candidate));
+                    static_cast<void>(context.transformEditor->SetNodeOverride(*owner,selected.nodeIndex,std::nullopt));
+                    m_NodeEditError.clear();
+                }
+                catch(const std::exception& error) { m_NodeEditError=error.what(); }
+            }
+            ImGui::EndDisabled();
+            ImGui::TextWrapped("Press Enter to apply. Adjustments use the authored node's local axes and inherit parent edits. Ctrl+Z / Ctrl+Y undo and redo.");
+            if (!m_NodeEditError.empty()) ImGui::TextWrapped("%s",m_NodeEditError.c_str());
+            ImGui::EndDisabled();
+        }
         if (EditorSectionHeader("Local Transform", ImGuiTreeNodeFlags_DefaultOpen))
         {
             const auto& t = node.localTransform;
@@ -141,7 +191,7 @@ namespace ForgeSim::Sandbox
         }
         if (EditorSectionHeader("World Bounds", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            const auto bounds = context.nodeQuery->WorldBounds(selected.nodeIndex, owner->transform.ModelMatrix());
+            const auto bounds = context.nodeQuery->WorldBounds(selected.nodeIndex, owner->transform.ModelMatrix(),owner->nodeOverrides);
             if (!bounds) ImGui::TextWrapped("No geometry in this node or its descendants; nothing to frame.");
             else
             {

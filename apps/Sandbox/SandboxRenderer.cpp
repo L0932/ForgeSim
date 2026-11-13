@@ -979,7 +979,8 @@ namespace ForgeSim::Sandbox
 		const glm::mat4& objectTransform,
 		bool isSelected, const Assets::SceneAsset& asset,
         const std::vector<GpuPrimitiveResource>& primitives,
-        const std::vector<GpuMaterialResource>& materials, std::optional<std::size_t> selectedNode)
+        const std::vector<GpuMaterialResource>& materials, std::optional<std::size_t> selectedNode,
+        const NodeTransformOverrides& overrides)
 	{
 		if (nodeIndex >= asset.nodes.size())
 		{
@@ -993,7 +994,7 @@ namespace ForgeSim::Sandbox
 		const glm::mat4 nodeTransform =
 			parentNodeTransform *
 			CreateSceneNodeLocalMatrix(
-				node.localTransform);
+				node.localTransform) * NodeOverrideMatrix(overrides,nodeIndex);
 
         const bool subtreeSelected = isSelected || selectedNode == nodeIndex;
 
@@ -1035,7 +1036,7 @@ namespace ForgeSim::Sandbox
 				childIndex,
 				nodeTransform,
 				objectTransform,
-				subtreeSelected, asset, primitives, materials, selectedNode);
+				subtreeSelected, asset, primitives, materials, selectedNode, overrides);
 		}
 	}
 
@@ -1532,7 +1533,7 @@ namespace ForgeSim::Sandbox
 					objectTransform,
 					isSelected, asset, primitives, materials,
                         selectedNode && selectedNode->objectId == object.id && selectedNode->modelReference == object.modelPath
-                            ? std::optional{selectedNode->nodeIndex} : std::nullopt);
+                            ? std::optional{selectedNode->nodeIndex} : std::nullopt, object.nodeOverrides);
 			}
 
 			if (settings.showObjectBounds)
@@ -2545,7 +2546,7 @@ namespace ForgeSim::Sandbox
             bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
-                object.localBounds = m_ObjectLocalBounds;
+                object.localBounds = ModelNodeQuery{m_ObjectSceneAsset}.ModelBounds(object.nodeOverrides);
                 continue;
             }
             if (!models.contains(path))
@@ -2564,7 +2565,7 @@ namespace ForgeSim::Sandbox
                     models.emplace(path, std::move(model));
                 }
             }
-            object.localBounds = models.at(path)->bounds;
+            object.localBounds = ModelNodeQuery{models.at(path)->asset}.ModelBounds(object.nodeOverrides);
         }
         LoadSceneResources(std::nullopt, environmentPath, drawProgress, texturePolicy);
         m_RenderSubmissions.clear();

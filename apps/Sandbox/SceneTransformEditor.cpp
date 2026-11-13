@@ -285,6 +285,21 @@ namespace ForgeSim::Sandbox
         }
     }
 
+    bool SceneTransformEditor::SetNodeOverride(SandboxObject& object, std::size_t nodeIndex,
+        const std::optional<Transform>& value)
+    {
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || (value && !ValidNodeOverride(*value))) return false;
+        const auto found = object.nodeOverrides.find(nodeIndex);
+        const std::optional<Transform> before = found == object.nodeOverrides.end() ? std::nullopt : std::optional{found->second};
+        if (!before && !value) return false;
+        if (before && value && before->position==value->position && before->rotationRadians==value->rotationRadians &&
+            before->scale==value->scale && before->pivot==value->pivot) return false;
+        if (value) object.nodeOverrides.insert_or_assign(nodeIndex,*value);
+        else object.nodeOverrides.erase(nodeIndex);
+        m_History.RecordApplied(NodeTransformOverrideEdit{object.id,object.modelPath,nodeIndex,before,value});
+        return true;
+    }
+
 	void SceneTransformEditor::BeginFrame()
 	{
 		m_Gizmo.BeginFrame();

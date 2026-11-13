@@ -214,7 +214,8 @@ namespace ForgeSim::Sandbox
 			bool isSelected, const Assets::SceneAsset& asset,
             const std::vector<GpuPrimitiveResource>& primitives,
             const std::vector<GpuMaterialResource>& materials,
-            std::optional<std::size_t> selectedNode = std::nullopt);
+            std::optional<std::size_t> selectedNode = std::nullopt,
+            const NodeTransformOverrides& overrides = {});
 
 		void UploadPointLights(
 			std::span<const PointLight> lights);

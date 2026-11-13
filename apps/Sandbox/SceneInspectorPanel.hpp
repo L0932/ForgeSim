@@ -6,6 +6,7 @@
 #include "SceneLightValidation.hpp"
 
 #include <optional>
+#include <string>
 
 namespace ForgeSim::Renderer
 {
@@ -40,6 +41,7 @@ namespace ForgeSim::Sandbox
 		void DrawLights(const SceneInspectorPanelContext& context);
 		void DrawObject(const SceneInspectorPanelContext& context);
         void DrawNode(const SceneInspectorPanelContext& context);
+        std::string m_NodeEditError;
         std::optional<ObjectBatchEdit> m_ObjectEdit;
         std::vector<SandboxObjectId> m_EditTargets;
         void FinishObjectEdit(SceneTransformEditor* editor);

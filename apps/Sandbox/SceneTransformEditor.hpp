@@ -33,6 +33,8 @@ namespace ForgeSim::Sandbox
 		void BeginFrame();
 
         void RecordObjectEdits(ObjectBatchEdit batch);
+        [[nodiscard]] bool SetNodeOverride(SandboxObject& object, std::size_t nodeIndex,
+            const std::optional<Transform>& value);
         [[nodiscard]] bool SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
             const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter);
         [[nodiscard]] bool SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible);

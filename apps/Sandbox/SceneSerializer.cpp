@@ -107,7 +107,11 @@ namespace ForgeSim::Sandbox
         [[nodiscard]] Json WriteObject(
             const SceneObjectData& object)
         {
+            Json overrides = Json::array();
+            for (const auto& [node, transform] : object.nodeOverrides)
+                overrides.push_back({{"nodeIndex", node}, {"transform", WriteTransform(transform)}});
             return Json{
+                { "nodeOverrides", overrides },
                 { "id", object.id },
                 { "name", object.name },
                 { "transform", WriteTransform(object.transform) },
@@ -462,7 +466,7 @@ namespace ForgeSim::Sandbox
             const Json& value,
             const std::string& property)
         {
-            return SceneObjectData{
+            SceneObjectData result{
                 .id = ReadUnsigned(
                     ReadMember(value, "id", property),
                     property + ".id"),
@@ -479,6 +483,21 @@ namespace ForgeSim::Sandbox
                     ReadMember(value, "modelPath", property),
                     property + ".modelPath")
             };
+            if (value.contains("nodeOverrides"))
+            {
+                const auto overridesProperty = property + ".nodeOverrides";
+                const Json& overrides = ReadArray(value.at("nodeOverrides"), overridesProperty);
+                for (std::size_t i=0; i<overrides.size(); ++i)
+                {
+                    const auto field = property + ".nodeOverrides[" + std::to_string(i) + "]";
+                    const auto node = ReadUnsigned(ReadMember(overrides[i], "nodeIndex", field), field + ".nodeIndex");
+                    if (node > std::numeric_limits<std::size_t>::max()) ReadError(field + ".nodeIndex", "Node index is too large.");
+                    const auto transform = ReadTransform(ReadMember(overrides[i], "transform", field), field + ".transform");
+                    if (!result.nodeOverrides.emplace(static_cast<std::size_t>(node), transform).second)
+                        ReadError(field + ".nodeIndex", "Duplicate node override.");
+                }
+            }
+            return result;
         }
 
         template<typename Light>

@@ -37,7 +37,8 @@ namespace ForgeSim::Sandbox
                     .id = object.id,
                     .transform = object.transform,
                     .name = object.name,
-                    .modelPath = object.modelPath
+                    .modelPath = object.modelPath,
+                    .nodeOverrides = object.nodeOverrides
                 });
         }
 
@@ -88,7 +89,8 @@ namespace ForgeSim::Sandbox
                     .id = object.id,
                     .name = object.name,
                     .transform = object.transform,
-                    .modelPath = object.modelPath
+                    .modelPath = object.modelPath,
+                    .nodeOverrides = object.nodeOverrides
                 });
         }
 

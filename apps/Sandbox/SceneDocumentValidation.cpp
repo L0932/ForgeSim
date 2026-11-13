@@ -203,6 +203,12 @@ namespace ForgeSim::Sandbox
                 return error;
             }
 
+            for (const auto& [node, transform] : object.nodeOverrides)
+            {
+                const auto field = property + ".nodeOverrides[" + std::to_string(node) + "]";
+                if (const auto error = ValidateTransform(transform, field)) return error;
+                if (!ValidNodeOverride(transform)) return Error{field, "Node adjustment matrix must be finite."};
+            }
             if (!IsValidSceneAssetPath(object.modelPath))
             {
                 return Error{

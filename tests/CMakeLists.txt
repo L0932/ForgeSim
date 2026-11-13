@@ -1000,6 +1000,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
@@ -1043,6 +1044,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
@@ -1091,6 +1093,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
@@ -1136,6 +1139,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
@@ -1333,6 +1337,7 @@ add_executable(
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
 )
 
 target_include_directories(
@@ -1402,7 +1407,9 @@ add_executable(ForgeSimConsoleProjectRootTests
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
-    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
 target_include_directories(ForgeSimConsoleProjectRootTests PRIVATE
     "${PROJECT_SOURCE_DIR}/apps/Sandbox"
     "${PROJECT_SOURCE_DIR}/engine/Renderer/include"
@@ -1425,7 +1432,9 @@ add_executable(ForgeSimBundledSamplesTests
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
-    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
 target_include_directories(ForgeSimBundledSamplesTests PRIVATE
     "${PROJECT_SOURCE_DIR}/apps/Sandbox"
     "${PROJECT_SOURCE_DIR}/engine/Renderer/include"
@@ -1513,7 +1522,9 @@ add_executable(ForgeSimSceneDeletionTests SceneDeletionTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
-    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+)
 target_include_directories(ForgeSimSceneDeletionTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
 target_link_libraries(ForgeSimSceneDeletionTests PRIVATE ForgeSim::Renderer nlohmann_json::nlohmann_json)
 target_compile_features(ForgeSimSceneDeletionTests PRIVATE cxx_std_20)
@@ -1580,3 +1591,26 @@ target_compile_features(ForgeSimSelectionOrbitTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimSelectionOrbitTests)
 set_target_properties(ForgeSimSelectionOrbitTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SelectionOrbit COMMAND ForgeSimSelectionOrbitTests)
+
+add_executable(ForgeSimNodeTransformOverrideTests NodeTransformOverrideTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneTransformEditor.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/ViewportSelectionController.cpp)
+target_include_directories(ForgeSimNodeTransformOverrideTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimNodeTransformOverrideTests PRIVATE ForgeSim::Assets ForgeSim::PlatformGLFW ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimNodeTransformOverrideTests PRIVATE cxx_std_20)
+target_compile_definitions(ForgeSimNodeTransformOverrideTests PRIVATE GLM_ENABLE_EXPERIMENTAL)
+forgesim_set_project_warnings(ForgeSimNodeTransformOverrideTests)
+set_target_properties(ForgeSimNodeTransformOverrideTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.NodeTransformOverrides COMMAND ForgeSimNodeTransformOverrideTests)

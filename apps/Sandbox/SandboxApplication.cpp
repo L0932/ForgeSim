@@ -553,6 +553,9 @@ namespace ForgeSim::Sandbox
 
 			m_DebugUI.BeginFrame();
 			transformEditor.BeginFrame();
+            for (auto& object : scene.Objects())
+                if (const auto* query = m_Renderer.InspectModelNodes(object.modelPath))
+                    object.localBounds = query->ModelBounds(object.nodeOverrides);
 
 			sceneFilePanel.DrawMenu(
 				!changePending &&
@@ -696,7 +699,7 @@ namespace ForgeSim::Sandbox
                 {
                     const auto* owner = scene.FindObject(node->objectId);
                     const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
-                    return owner && query ? query->WorldBounds(node->nodeIndex,owner->transform.ModelMatrix()) : std::nullopt;
+                    return owner && query ? query->WorldBounds(node->nodeIndex,owner->transform.ModelMatrix(),owner->nodeOverrides) : std::nullopt;
                 }
                 return SelectionFocusBounds(scene.Objects(),
                     SceneLightingView{scene.MainDirectionalLight(),scene.PointLights(),scene.SpotLights()},
@@ -1035,7 +1038,7 @@ namespace ForgeSim::Sandbox
                 {
                     const auto* asset = m_Renderer.InspectModelHierarchy(object.modelPath);
                     const auto* query = m_Renderer.InspectModelNodes(object.modelPath);
-                    return asset && query ? query->Pick(*asset, ray, object.transform.ModelMatrix()) : std::nullopt;
+                    return asset && query ? query->Pick(*asset, ray, object.transform.ModelMatrix(),object.nodeOverrides) : std::nullopt;
                 });
 
             selectionOrbit.ObserveSelection(selection);

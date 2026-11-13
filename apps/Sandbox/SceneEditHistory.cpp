@@ -137,6 +137,15 @@ namespace ForgeSim::Sandbox
 			return true;
 		}
 
+        bool ApplyEdit(SandboxScene& scene, const NodeTransformOverrideEdit& edit, bool useAfter)
+        {
+            auto* object = scene.FindObject(edit.objectId);
+            const auto& value = useAfter ? edit.after : edit.before;
+            if (!object || object->modelPath != edit.modelPath || (value && !ValidNodeOverride(*value))) return false;
+            if (value) object->nodeOverrides.insert_or_assign(edit.nodeIndex, *value);
+            else object->nodeOverrides.erase(edit.nodeIndex);
+            return true;
+        }
         bool ApplyEdit(SandboxScene& scene, const ObjectCreationEdit& edit, bool useAfter)
         {
             return useAfter ? scene.RestoreObject(edit.index, edit.object, edit.visible) : scene.RemoveObject(edit.object.id);

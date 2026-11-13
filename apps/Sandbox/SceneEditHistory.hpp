@@ -17,6 +17,15 @@ namespace ForgeSim::Sandbox
 		Transform after;
 	};
 
+    struct NodeTransformOverrideEdit
+    {
+        SandboxObjectId objectId;
+        std::string modelPath;
+        std::size_t nodeIndex;
+        std::optional<Transform> before;
+        std::optional<Transform> after;
+    };
+
 	struct PointLightPositionEdit
 	{
 		SceneLightId lightId;
@@ -75,7 +84,7 @@ namespace ForgeSim::Sandbox
     using SceneTransformEdit = std::variant<ObjectTransformEdit, PointLightPositionEdit,
         SpotLightPoseEdit, DirectionalLightDirectionEdit, DirectionalLightPositionEdit>;
 
-	using SceneEdit = std::variant<
+	using SceneEdit = std::variant<NodeTransformOverrideEdit,
 		ObjectTransformEdit,
 		PointLightPositionEdit,
 		SpotLightPoseEdit,

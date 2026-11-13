@@ -163,10 +163,10 @@ nodes without descendant geometry have no framing bounds. The Inspector shows
 read-only local transforms (including authored matrices), parent information,
 world bounds, mesh/primitive references and the subtree's associated materials.
 
-Node transforms, pivots, deletion and duplication are unavailable in this first
-step. Select the model's main row to edit the complete instance. Node editing and
-saved per-instance overrides will follow separately under #123. Selection is
-editor state and does not change the scene document.
+Numeric node adjustments, Reset, undo/redo and scene persistence are supported
+through the Inspector. Node gizmos, pivots, deletion and duplication remain
+unavailable. Select the model's main row to manipulate the complete instance.
+Selection itself is temporary editor state; node adjustments are authored scene data.
 
 ## Selection orbit mode
 
@@ -197,3 +197,11 @@ Mouse input pauses during text entry, active controls, gizmo edits, scene-change
 confirmation, and popups. RMB capture still begins only inside Scene and releases
 when navigation stops. Orbit is temporary navigation state; it does not mark the
 scene modified, change saved viewpoints, or save an orbit mode in the scene file.
+
+## Imported node adjustments
+
+Select an imported node in Hierarchy or Alt-click it in Scene. Under Inspector >
+Instance Node Adjustment, edit position offsets, rotation offsets in degrees, or
+scale multipliers and press Enter. Reset node adjustment restores that node's
+original local transform while preserving descendant adjustments. Ctrl+Z/Ctrl+Y
+undo and redo these edits. Save the scene to retain the per-instance adjustments.

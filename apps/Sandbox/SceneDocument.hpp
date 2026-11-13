@@ -4,6 +4,7 @@
 #include "SceneLight.hpp"
 #include "SceneRenderingSettings.hpp"
 #include "Transform.hpp"
+#include "NodeTransformOverrides.hpp"
 
 #include <optional>
 #include <cstdint>
@@ -12,7 +13,7 @@
 
 namespace ForgeSim::Sandbox
 {
-    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 4;
+    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 5;
 
     struct SceneObjectData
     {
@@ -25,6 +26,7 @@ namespace ForgeSim::Sandbox
         // Project-relative path using forward slashes.
         // Example: assets/models/BoxTextured.glb
         std::string modelPath;
+        NodeTransformOverrides nodeOverrides{};
     };
 
     struct SceneDocument

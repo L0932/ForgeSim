@@ -15,6 +15,11 @@ contains the detailed implementation record.
 
 ### Added
 
+- Per-instance node adjustments in the Inspector: local position/rotation offsets,
+  scale multipliers, Reset, undo/redo, and version 5 scene persistence. Rendering,
+  shadows, picking, bounds and focus follow the adjusted hierarchy. Model copies
+  retain independent adjustments; shared source assets stay unchanged.
+
 - Shift+H toggles selection highlighting from Scene or Hierarchy without clearing
   the selection or changing the active editing target.
 
@@ -28,8 +33,7 @@ contains the detailed implementation record.
   scene changes and refocuses after manual camera movement.
 - Select imported model nodes through Hierarchy labels or Alt-click geometry in
   Scene. Highlight and focus the selected subtree, and inspect its local
-  transform, world bounds, mesh references and associated materials. Node editing
-  and saved overrides remain follow-up work under #123.
+  transform, world bounds, mesh references and associated materials. Node gizmos remain follow-up work under #123.
 
 ## [0.1.0-preview.9] - 2026-11-12
 

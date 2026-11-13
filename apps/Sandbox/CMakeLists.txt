@@ -140,6 +140,7 @@ target_sources(
 		GizmoTransform.hpp
         ObjectTransformSelection.hpp
         ModelNodeQuery.hpp
+        NodeTransformOverrides.hpp
         SelectionFocusToggle.hpp
         SelectionOrbitController.hpp
 		GizmoTransform.cpp

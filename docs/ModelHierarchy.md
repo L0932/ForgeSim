@@ -26,10 +26,30 @@ bounds, mesh/primitive references, and associated material values/texture previe
 Material numbers retain their original asset indices. A grouping node includes
 materials used by descendant geometry.
 
-Node editing is not enabled in this first #123 patch. Gizmos, pivot edits,
-deletion, and duplication do not operate on selected nodes. Select the model's
-main row to author the whole instance. Per-instance transform overrides, reset,
-undo/redo and persistence are subsequent work.
+The **Instance Node Adjustment** section edits position offsets, rotation offsets
+(in degrees), and scale multipliers. Press Enter to apply each field. These are
+local adjustments after the authored transform:
+
+`instance × parent nodes × authored local transform × adjustment`
+
+An adjusted group moves its descendants. A child adjustment composes with its
+adjusted parent; siblings outside the group and other model instances remain
+unchanged. **Reset node adjustment** removes only that node's adjustment. Numeric
+edits and Reset support Ctrl+Z/Ctrl+Y. Scale may be mirrored but cannot be zero;
+nonfinite values and overflowing hierarchy matrices are rejected.
+
+Scene document version 5 saves each instance's `nodeOverrides` as an array of
+`nodeIndex` and `transform` records. Older scene versions load with no adjustments.
+Duplicating a model copies its adjustments; editing the copy stays independent.
+Overrides use active-scene node indices from the referenced asset, not node names.
+Keep the source asset's node layout stable: re-exporting or replacing it can change
+those indices. Missing or unreachable referenced indices fail scene preparation
+rather than silently applying the edit elsewhere. Indices cannot detect a reordered
+asset that still contains the same indices; review adjustments after re-export.
+
+Gizmos, pivot edits, node deletion, and node duplication remain unavailable for
+node selections. Select the model row for whole-instance manipulation. Node gizmo
+editing is the next part of #123.
 
 Selection and tree expansion are temporary UI state. Scene replacement clears
 selection; deleted owners, changed model references, and unavailable node indices
