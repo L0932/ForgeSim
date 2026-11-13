@@ -1114,12 +1114,18 @@ namespace ForgeSim::Sandbox
 
             if (selectionOrbit.Active() && viewport.IsDrawable())
                 ImGui::GetWindowDrawList()->AddText(ImVec2(viewport.position.x+12,viewport.position.y+viewport.size.y-24),
-                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F / Esc: exit");
+                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return | Esc: keep view");
 			sceneViewportPanel.End();
 
             selectionFocusToggle.ObserveSelection(selection);
             const auto focusSelection = [&]
             {
+                if (selectionOrbit.Active())
+                {
+                    cameraRestoreRequest = CaptureSceneCamera(selectionOrbit.RestorePreviousView(camera));
+                    selectionFocusToggle.Reset();
+                    return;
+                }
                 const auto focusBounds = getSelectionBounds();
                 if (!focusBounds) return;
                 const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
@@ -1135,7 +1141,11 @@ namespace ForgeSim::Sandbox
 
             const auto toggleOrbit = [&]
             {
-                if (selectionOrbit.Active()) selectionOrbit.Stop();
+                if (selectionOrbit.Active())
+                {
+                    camera = selectionOrbit.RestorePreviousView(camera);
+                    cameraRestoreRequest.reset();
+                }
                 else if (const auto orbitBounds = getSelectionBounds())
                 {
                     camera = selectionOrbit.Start(selection,*orbitBounds,

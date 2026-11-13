@@ -51,6 +51,29 @@ namespace
         Require(!orbit.Active() && Near(stopped.Position(),camera.Position()) && Near(stopped.ForwardDirection(),camera.ForwardDirection()),
             "Exit leaves current pose unchanged");
     }
+    void TestReturnView()
+    {
+        SelectionOrbitController orbit; SceneSelection selection; selection.SelectObject(1);
+        const auto original = Original();
+        auto camera = orbit.Start(selection,bounds,world,original,1.6f);
+        camera = orbit.Update(bounds,world,camera,100,-40,5);
+        const auto restored = orbit.RestorePreviousView(camera);
+        Require(!orbit.Active() && Near(restored.Position(),original.Position()) &&
+            Near(restored.ForwardDirection(),original.ForwardDirection()) &&
+            Near(restored.UpDirection(),original.UpDirection()) &&
+            restored.NearClippingPlane()==original.NearClippingPlane() &&
+            restored.FarClippingPlane()==original.FarClippingPlane() &&
+            restored.VerticalFieldOfViewRadians()==original.VerticalFieldOfViewRadians(),
+            "Return restores complete pre-orbit camera after rotation and zoom");
+        camera = orbit.Start(selection,bounds,world,restored,1.6f);
+        orbit.Stop();
+        Require(Near(orbit.RestorePreviousView(camera).Position(),camera.Position()),
+            "Keeping current view discards the old return view");
+        camera = orbit.Start(selection,bounds,world,camera,1.6f);
+        selection.SelectObject(2); orbit.ObserveSelection(selection);
+        Require(Near(orbit.RestorePreviousView(camera).Position(),camera.Position()),
+            "Changing target discards the old return view");
+    }
     void TestSelectionAndTracking()
     {
         SelectionOrbitController orbit;SceneSelection selection;selection.AddObject(1);selection.AddObject(2);
@@ -95,7 +118,7 @@ namespace
 }
 int main()
 {
-    try { TestMovement();TestSelectionAndTracking();TestInvalidInputAndClipping(); }
+    try { TestMovement();TestReturnView();TestSelectionAndTracking();TestInvalidInputAndClipping(); }
     catch(const std::exception& error) { std::cerr<<error.what()<<'\n';return 1; }
     std::cout<<"Selection orbit rotation, zoom, target identity, clipping and exit tests passed\n";
 }

@@ -178,14 +178,19 @@ without geometry cannot start orbit mode.
 - Scroll over Scene to move closer/farther without changing FOV or saved fly speed.
 - While orbiting, WASD fly movement is suspended. Pitch and zoom distance are
   bounded to avoid camera flips or crossing through the pivot.
-- Ctrl+F again, Esc, or the Camera panel's Exit orbit button exits without moving
-  the camera. An active-mode hint appears in Scene.
+- Ctrl+F again or the Camera panel's Exit orbit button restores the view from
+  before orbit started. Esc exits while keeping the current orbit view.
+  An active-mode hint appears in Scene.
 - Changing selection, deleting the target, New/Open/import, explicit Frame scene,
   or restoring/editing a camera pose exits orbit. Moving the same selected target
   updates the pivot while retaining the orbit offset.
-- Ordinary F and Hierarchy double-click exit orbit and retain the existing
-  selection-focus/previous-view toggle behavior. Entering or explicitly toggling
-  orbit resets that temporary focus pair.
+- Ordinary F and Hierarchy double-click also restore the pre-orbit view while
+  orbit is active. Outside orbit, the existing selection-focus/previous-view
+  toggle remains available. Entering or explicitly toggling orbit resets that pair.
+
+Uncheck **Show selection highlight** in the Camera panel to hide the selection
+tint while retaining the selection, Inspector target, and editing controls.
+This shares the existing highlight setting under **ForgeSim Debug > Selection**.
 
 Mouse input pauses during text entry, active controls, gizmo edits, scene-change
 confirmation, and popups. RMB capture still begins only inside Scene and releases

@@ -16,8 +16,9 @@ contains the detailed implementation record.
 ### Added
 
 - Ctrl+F selection orbit mode with RMB-drag rotation, wheel zoom, a Scene status
-  hint, and Camera-panel controls. Ctrl+F or Esc exits at the current view; the
-  ordinary F/Hierarchy double-click previous-view toggle remains available.
+  hint, and Camera-panel controls. Ctrl+F, F or Hierarchy double-click restores
+  the pre-orbit view; Esc keeps the current view. The Camera panel also exposes
+  the selection highlight toggle without clearing the selection.
 - Toggle between framing the selection and the previous camera view with F,
   Hierarchy label double-clicks, or the Camera-panel action. Supports objects,
   groups, imported node subtrees and lights; return state resets on selection or

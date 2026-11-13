@@ -38,6 +38,6 @@ not internal node names. Metadata is cached per immutable loaded asset and rebui
 when resources are replaced; instance transforms are evaluated at query time.
 
 Ctrl+F can orbit a selected node subtree using the same bounds center as F focus.
-RMB drag rotates around it and the wheel zooms. Ctrl+F or Esc exits at the current
-view; selecting a different node or model exits orbit. This is camera navigation,
+RMB drag rotates around it and the wheel zooms. Ctrl+F restores the pre-orbit
+view; Esc keeps the current view. Selecting a different node or model exits orbit. This is camera navigation,
 not a node-transform edit.

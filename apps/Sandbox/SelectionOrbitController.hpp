@@ -14,7 +14,14 @@ namespace ForgeSim::Sandbox
     {
     public:
         [[nodiscard]] bool Active() const noexcept { return m_Target.has_value(); }
-        void Stop() noexcept { m_Target.reset(); }
+        void Stop() noexcept { m_Target.reset(); m_PreviousView.reset(); }
+        [[nodiscard]] Renderer::PerspectiveCamera RestorePreviousView(
+            const Renderer::PerspectiveCamera& current)
+        {
+            const auto result = m_PreviousView.value_or(current);
+            Stop();
+            return result;
+        }
         void ObserveSelection(const SceneSelection& selection)
         {
             if (!m_Target) return;
@@ -41,6 +48,7 @@ namespace ForgeSim::Sandbox
             m_Pitch = std::clamp(std::asin(std::clamp(offset.y/m_Distance,-1.0f,1.0f)), -PitchLimit, PitchLimit);
             const auto result = MakeCamera(bounds,sceneBounds,framed,m_Yaw,m_Pitch,m_Distance);
             m_Target = selection;
+            m_PreviousView = current;
             return result;
         }
         [[nodiscard]] Renderer::PerspectiveCamera Update(
@@ -86,6 +94,7 @@ namespace ForgeSim::Sandbox
             return {position,center,{0,1,0},current.VerticalFieldOfViewRadians(),nearPlane,farPlane};
         }
         std::optional<SceneSelection> m_Target;
+        std::optional<Renderer::PerspectiveCamera> m_PreviousView;
         float m_Yaw=0, m_Pitch=0, m_Distance=1;
     };
 }
