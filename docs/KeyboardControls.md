@@ -15,7 +15,8 @@ Update both when bindings change; list only implemented commands.
 | Selection | Ctrl+Left click | Toggle object membership; last selected object is active | Scene or Hierarchy |
 | Selection | Shift+Left click | Select a visible range from the anchor / add an object | Hierarchy range / Scene add |
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
-| Selection | F | Focus selected object or light | Scene or Hierarchy focused; navigation stopped |
+| Selection | F | Toggle selection focus / previous view | Scene or Hierarchy focused; navigation stopped |
+| Selection | Double-click label | Select and toggle focus on object, imported node, or light | Hierarchy |
 | Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
 | Selection | Delete | Delete selected model or light | Scene or Hierarchy focused; navigation stopped |
 | Transforms | W | Move tool | Navigation stopped; no text entry or active edit |
@@ -33,21 +34,31 @@ Update both when bindings change; list only implemented commands.
 
 ## Selection focus
 
-Click the Scene viewport or a Hierarchy row, then press **F** to focus the selected
-model instance or light. This changes only the live camera viewpoint. It preserves
-fly speed and does not mark the scene modified or overwrite a saved viewpoint.
-The Camera panel's **Focus selection (F)** button performs the same operation.
+Click the Scene viewport or a Hierarchy row, then press **F** to frame the selected
+objects, imported node subtree, or light. Press F again on the same selection to
+restore the view from before focusing; another press frames the selection again.
+Double-clicking an object, imported-node, or light label in Hierarchy uses the same
+toggle. Expansion arrows and visibility buttons do not focus. Node-label double
+clicks no longer collapse/expand the node; use the arrow for that.
 
-Model focus fits its own transformed bounds, including its pivot and scale,
-while preserving the current viewing direction and field of view. Far clipping
-covers the complete scene so rotating after light focus does not cut off models.
-Directional lights frame their editor marker; point and spot lights frame a
-neighborhood of their position sized from their range and the scene scale.
+The Camera panel's **Toggle focus (F)** button shares this behavior. Focusing and
+returning preserve fly speed, saved viewpoints, scene data, and the viewing
+parameters captured for the return view. Selection changes, New/Open/import, and
+explicit Frame scene reset the return state. If the camera is moved or edited, or
+the selected geometry moves, the next focus starts a new pair from the current view.
+
+Model focus fits transformed bounds, including pivot and scale, while preserving
+the current viewing direction and field of view. Group focus covers all selected
+objects, and node focus includes descendant geometry. Far clipping covers the
+complete scene. Directional lights frame their editor marker; point and spot
+lights frame a neighborhood sized from their range and scene scale. Empty node
+subtrees without geometry have no focus bounds.
 
 F is suppressed while typing, editing a numeric control, using a gizmo, navigating
-with RMB, using modifier keys, or while a popup/scene-change dialog is open. It
-does not fire from the Console or from an unrelated panel. With no selection it
-does nothing. Internal-node focus will follow when node selection is implemented.
+with RMB, holding modifier keys, or while a popup/scene-change dialog is open.
+It does not fire from the Console or an unrelated panel. With no selection it does
+nothing. Hierarchy double-click focus is also suppressed while interactions are
+blocked or modifier keys are held.
 
 ## Deletion and undo
 

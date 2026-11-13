@@ -16,20 +16,25 @@ namespace ForgeSim::Sandbox
                 (enabled ? "" : " (disabled)");
         }
         void DrawAssetNode(const Assets::SceneAsset& asset, std::size_t index,
-            std::vector<bool>& ancestors, std::size_t depth, const SandboxObject& object, SceneSelection& selection)
+            std::vector<bool>& ancestors, std::size_t depth, const SandboxObject& object, SceneSelection& selection,
+            bool& focusRequested)
         {
             if (index >= asset.nodes.size()) { ImGui::TextDisabled("Invalid node reference"); return; }
             if (ancestors[index] || depth >= 128) { ImGui::TextDisabled("Hierarchy depth/cycle limit"); return; }
             const auto& node = asset.nodes[index];
             ImGui::PushID(static_cast<int>(index));
             const auto name = node.name.empty() ? "Node " + std::to_string(index) : node.name;
-            auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
             if (node.childIndices.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
             if (selection.IsNodeSelected(object.id, index)) flags |= ImGuiTreeNodeFlags_Selected;
             const auto label = name + (node.meshIndex ? " [Mesh " + std::to_string(*node.meshIndex) + "]" : " [Node]");
             const bool expanded = ImGui::TreeNodeEx("##AssetNode", flags, "%s", label.c_str());
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
-                selection.SelectNode(object.id, index, object.modelPath);
+            const bool labelClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen();
+            if (labelClicked) selection.SelectNode(object.id, index, object.modelPath);
+            const auto& io = ImGui::GetIO();
+            if (labelClicked && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+                !io.KeyCtrl && !io.KeyShift && !io.KeyAlt && !io.KeySuper)
+                focusRequested = true;
             if (ImGui::IsItemHovered())
             {
                 ImGui::BeginTooltip();
@@ -54,14 +59,14 @@ namespace ForgeSim::Sandbox
             if (expanded)
             {
                 ancestors[index] = true;
-                for (const auto child : node.childIndices) DrawAssetNode(asset, child, ancestors, depth + 1, object, selection);
+                for (const auto child : node.childIndices) DrawAssetNode(asset, child, ancestors, depth + 1, object, selection, focusRequested);
                 ancestors[index] = false;
                 ImGui::TreePop();
             }
             ImGui::PopID();
         }
 
-        struct HierarchyRowAction { bool select = false; bool toggle = false; };
+        struct HierarchyRowAction { bool select = false; bool toggle = false; bool focus = false; };
 
         HierarchyRowAction DrawVisibilityRow(const std::string& label, const std::string& buttonId,
             bool selected, bool visible)
@@ -73,7 +78,10 @@ namespace ForgeSim::Sandbox
             if (!visible) ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
             ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0,.5f));
             const bool select = ImGui::Selectable(label.c_str(), selected,
-                ImGuiSelectableFlags_None, ImVec2(rowWidth,buttonSize));
+                ImGuiSelectableFlags_AllowDoubleClick, ImVec2(rowWidth,buttonSize));
+            const auto& io = ImGui::GetIO();
+            const bool focus = select && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+                !io.KeyCtrl && !io.KeyShift && !io.KeyAlt && !io.KeySuper;
             ImGui::PopStyleVar();
             if (!visible) ImGui::PopStyleColor();
             ImGui::SameLine();
@@ -94,7 +102,7 @@ namespace ForgeSim::Sandbox
             draw->AddCircleFilled(center,radius*.28f,color);
             if (!visible) draw->AddLine({center.x-radius,center.y-radius},
                 {center.x+radius,center.y+radius},color,weight);
-            return {select,toggle};
+            return {select,toggle,focus};
         }
 
     }
@@ -109,6 +117,7 @@ namespace ForgeSim::Sandbox
         const auto action = DrawVisibilityRow(label, "##VisibilityLight_" + std::to_string(id),
             selection.IsLightSelected(id), visibleInScene);
         if (action.select) selection.SelectLight(id);
+        if (action.focus) m_FocusSelectionRequested = true;
         if (action.toggle) scene.SetLightVisible(id, !visibleInScene);
     }
 
@@ -231,6 +240,7 @@ namespace ForgeSim::Sandbox
                     }
                     const auto action = DrawVisibilityRow(label, "##VisibilityObject_" + id,
                         context.selection.IsObjectSelected(object.id), visible);
+                    if (action.focus) m_FocusSelectionRequested = true;
                     if (action.select)
                         context.selection.ClickObject(object.id, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift, rangeOrder);
                     if (action.toggle)
@@ -245,7 +255,7 @@ namespace ForgeSim::Sandbox
                         const float assetIndent = ImGui::GetTreeNodeToLabelSpacing() * 1.5f;
                         ImGui::Indent(assetIndent);
                         std::vector<bool> ancestors(asset->nodes.size(), false);
-                        for (const auto root : asset->rootNodeIndices) DrawAssetNode(*asset, root, ancestors, 0, object, context.selection);
+                        for (const auto root : asset->rootNodeIndices) DrawAssetNode(*asset, root, ancestors, 0, object, context.selection, m_FocusSelectionRequested);
                         ImGui::Unindent(assetIndent);
                     }
                     ImGui::PopID();
@@ -271,7 +281,7 @@ namespace ForgeSim::Sandbox
         }
         ImGui::Separator();
         if (context.selection.SelectedNode())
-            ImGui::TextWrapped("Node selected. F focuses its geometry. Select the model row for whole-instance editing.");
+            ImGui::TextWrapped("Node selected. F or double-click toggles focus. Select the model row for whole-instance editing.");
         if (!context.selection.SelectedObjectIds().empty())
         {
             if (ImGui::Button("Show selection")) m_SelectionVisibilityRequested = true;

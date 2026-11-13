@@ -140,6 +140,7 @@ target_sources(
 		GizmoTransform.hpp
         ObjectTransformSelection.hpp
         ModelNodeQuery.hpp
+        SelectionFocusToggle.hpp
 		GizmoTransform.cpp
 		LightSubmission.hpp
 		LightSubmission.cpp

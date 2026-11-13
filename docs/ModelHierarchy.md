@@ -9,6 +9,8 @@ and material-reference details.
 Click a node label to select that node in that model instance. Expansion arrows
 only control expansion. Alt-click in Scene selects the nearest mesh-node triangle;
 ordinary clicks and Ctrl/Shift object multi-selection retain their prior behavior.
+Double-click a node label to toggle between its framed view and the previous
+view. Expansion arrows remain responsible for opening and closing nodes.
 Picking is double-sided and geometric: texture-alpha cutouts are not evaluated.
 
 Selection highlights the selected node's geometry and descendants without

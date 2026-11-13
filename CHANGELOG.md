@@ -9,6 +9,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Toggle between framing the selection and the previous camera view with F,
+  Hierarchy label double-clicks, or the Camera-panel action. Supports objects,
+  groups, imported node subtrees and lights; return state resets on selection or
+  scene changes and refocuses after manual camera movement.
 - Select imported model nodes through Hierarchy labels or Alt-click geometry in
   Scene. Highlight and focus the selected subtree, and inspect its local
   transform, world bounds, mesh references and associated materials. Node editing

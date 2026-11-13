@@ -376,7 +376,8 @@ namespace ForgeSim::Sandbox
             if (ImGui::Button("Frame scene") && context.frameScene) context.frameScene();
             ImGui::SameLine();
             ImGui::BeginDisabled(!context.canFocusSelection);
-            if (ImGui::Button("Focus selection (F)") && context.focusSelection) context.focusSelection();
+            if (ImGui::Button("Toggle focus (F)") && context.focusSelection) context.focusSelection();
+            ImGui::SetItemTooltip("Frame the selection, or restore the previous view when already focused.");
             ImGui::EndDisabled();
             ImGui::EndDisabled();
 

@@ -1558,3 +1558,15 @@ target_compile_features(ForgeSimModelNodeSelectionTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimModelNodeSelectionTests)
 set_target_properties(ForgeSimModelNodeSelectionTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.ModelNodeSelection COMMAND ForgeSimModelNodeSelectionTests)
+
+add_executable(ForgeSimSelectionFocusToggleTests SelectionFocusToggleTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraFraming.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraState.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp)
+target_include_directories(ForgeSimSelectionFocusToggleTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSelectionFocusToggleTests PRIVATE ForgeSim::Platform ForgeSim::Renderer)
+target_compile_features(ForgeSimSelectionFocusToggleTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimSelectionFocusToggleTests)
+set_target_properties(ForgeSimSelectionFocusToggleTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SelectionFocusToggle COMMAND ForgeSimSelectionFocusToggleTests)

@@ -23,6 +23,7 @@
 #include "SceneViewportPanel.hpp"
 #include "SceneSelection.hpp"
 #include "SelectionFocus.hpp"
+#include "SelectionFocusToggle.hpp"
 #include "SceneSelectionValidation.hpp"
 #include "TransformEditorUIState.hpp"
 #include "ViewportSelectionController.hpp"
@@ -438,6 +439,7 @@ namespace ForgeSim::Sandbox
 		bool cameraFramingRequested = true;
         bool sceneNavigationResetRequested = true;
         std::optional<SceneCameraData> cameraRestoreRequest;
+        SelectionFocusToggle selectionFocusToggle;
         std::vector<SandboxObject> visibleObjects;
         std::vector<PointLight> visiblePointLights;
         std::vector<SpotLight> visibleSpotLights;
@@ -725,6 +727,7 @@ namespace ForgeSim::Sandbox
             // so it always belongs to the new scene, including empty scenes/imports.
             if (sceneNavigationResetRequested)
             {
+                selectionFocusToggle.Reset();
                 const auto navigationBounds = scene.Objects().empty() ? emptySceneBounds :
                     CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
                 cameraController = CreateSceneCameraController(navigationBounds, scene.CameraMovementSpeed());
@@ -1074,6 +1077,7 @@ namespace ForgeSim::Sandbox
 
 			sceneViewportPanel.End();
 
+            selectionFocusToggle.ObserveSelection(selection);
             const auto focusSelection = [&]
             {
                 auto focusBounds = SelectionFocusBounds(scene.Objects(),
@@ -1087,7 +1091,7 @@ namespace ForgeSim::Sandbox
                 }
                 if (!focusBounds) return;
                 const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
-                const auto focused = CreateSelectionFocusCamera(*focusBounds, sceneBounds, camera, aspectRatio);
+                const auto focused = selectionFocusToggle.Toggle(selection, *focusBounds, sceneBounds, camera, aspectRatio);
                 cameraRestoreRequest = CaptureSceneCamera(focused);
                 // Focusing changes the viewpoint, never the fly-speed setting or scene data.
             };
@@ -1117,6 +1121,7 @@ namespace ForgeSim::Sandbox
                 .focusSelection = focusSelection,
                 .frameScene = [&]
                 {
+                    selectionFocusToggle.Reset();
                     auto framing = scene.Objects().empty() ? CreateEmptySceneCameraFraming(aspectRatio) :
                         CreateSceneCameraFraming(CalculateSceneBounds(
                             scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
