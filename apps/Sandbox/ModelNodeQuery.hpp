@@ -8,6 +8,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <span>
 
 namespace ForgeSim::Sandbox
 {
@@ -201,4 +202,14 @@ namespace ForgeSim::Sandbox
         std::vector<std::size_t> m_Roots;
         std::vector<std::optional<Renderer::AxisAlignedBoundingBox>> m_MeshBounds;
     };
+    // Refresh after history actions before copying objects for bounds picking or
+    // fitting shadows. Node geometry and the owning instance must share a frame.
+    template<class InspectNodes>
+    void RefreshModelNodeBounds(std::span<SandboxObject> objects, InspectNodes&& inspect)
+    {
+        for (auto& object : objects)
+            if (const auto* query=inspect(object.modelPath))
+                object.localBounds=query->ModelBounds(object.nodeOverrides);
+    }
+
 }

@@ -1,6 +1,7 @@
 #include "NodeGizmoTransform.hpp"
 #include "SceneTransformEditor.hpp"
 #include "SceneSerializer.hpp"
+#include "SceneBounds.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <glm/gtc/matrix_transform.hpp>
@@ -88,6 +89,33 @@ namespace
         Require(sibling && Near(sibling->minimum,{118,10,0}),"Sibling geometry stays unchanged");
         Require(Near(glm::vec3{f.query.Evaluate({})[1][3]},{10,1,0}),"Shared asset stays unchanged");
     }
+    void HistoryBoundsStayInSync()
+    {
+        Fixture f;
+        const auto refresh=[&]
+        {
+            RefreshModelNodeBounds(f.scene.Objects(),[&](const std::string&) { return &f.query; });
+        };
+        refresh();
+        desired=f.Base();desired[3]+=glm::vec4{0,40,0,0};changed=true;active=true;f.Frame();f.Release();
+        const Renderer::Ray movedRay{{119.5f,42.5f,10},{0,0,-1}};
+        const auto hitsMovedLocation=[&]
+        {
+            return Renderer::IntersectRayTransformedBox(movedRay,*f.Object().localBounds,
+                f.Object().transform.ModelMatrix()).has_value();
+        };
+        Require(hitsMovedLocation(),"Whole-model picking covers moved node before undo");
+        Require(f.editor.Undo(f.scene),"Undo node move for bounds regression");
+        refresh();
+        Require(!hitsMovedLocation(),"Undo removes old picking volume in the same frame");
+        const auto afterUndo=CalculateSceneBounds(f.scene.Objects(),*f.Object().localBounds);
+        Require(afterUndo.maximum.y<13,"Shadow fitting bounds return to original geometry on undo");
+        Require(f.editor.Redo(f.scene),"Redo node move for bounds regression");
+        refresh();
+        Require(hitsMovedLocation(),"Redo restores moved picking volume in the same frame");
+        const auto afterRedo=CalculateSceneBounds(f.scene.Objects(),*f.Object().localBounds);
+        Require(afterRedo.maximum.y>43,"Shadow fitting bounds follow the redone geometry");
+    }
     void RotationScaleAndGroups()
     {
         Fixture f;Transform rotation;rotation.rotationRadians.z=glm::radians(30.f);
@@ -147,7 +175,7 @@ namespace
 }
 int main()
 {
-    try{DragAndHistory();RotationScaleAndGroups();GuardsAndPinnedTarget();RejectionAndNoOps();}
+    try{DragAndHistory();HistoryBoundsStayInSync();RotationScaleAndGroups();GuardsAndPinnedTarget();RejectionAndNoOps();}
     catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}
     std::cout<<"Node gizmo hierarchy, drag history, persistence, guards and rejection checks passed\n";
 }

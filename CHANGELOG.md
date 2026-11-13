@@ -9,6 +9,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Refresh owning model bounds immediately after node undo/redo so whole-model
+  picking and directional shadow fitting match the current geometry in the same frame.
+
 - Default startup opens the bundled Material Gallery scene document, restoring
   its saved camera speed, view, lighting and rendering settings instead of
   importing the gallery model with generic defaults.

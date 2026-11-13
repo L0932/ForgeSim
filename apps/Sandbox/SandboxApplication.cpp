@@ -445,6 +445,11 @@ namespace ForgeSim::Sandbox
         std::vector<SandboxObject> visibleObjects;
         std::vector<PointLight> visiblePointLights;
         std::vector<SpotLight> visibleSpotLights;
+        const auto refreshNodeBounds=[&]
+        {
+            RefreshModelNodeBounds(scene.Objects(),[this](const std::string& reference)
+                { return m_Renderer.InspectModelNodes(reference); });
+        };
 		bool viewportNavigationActive = false;
 
 		// Empty workspaces use a fixed guide scale instead of tiny placeholder bounds.
@@ -553,9 +558,7 @@ namespace ForgeSim::Sandbox
 
 			m_DebugUI.BeginFrame();
 			transformEditor.BeginFrame();
-            for (auto& object : scene.Objects())
-                if (const auto* query = m_Renderer.InspectModelNodes(object.modelPath))
-                    object.localBounds = query->ModelBounds(object.nodeOverrides);
+            refreshNodeBounds();
 
 			sceneFilePanel.DrawMenu(
 				!changePending &&
@@ -1002,6 +1005,7 @@ namespace ForgeSim::Sandbox
             }
             if (sceneEntitiesChanged)
             {
+                refreshNodeBounds();
                 ClearMissingSceneSelection(selection, scene);
                 inspectorPanel.Reset();
                 lightPickTargets.clear();
