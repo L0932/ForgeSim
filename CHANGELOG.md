@@ -105,3 +105,7 @@ contains the detailed implementation record.
 - Add GameObject > 3D Object > Cube with built-in geometry, selection, undo/redo, and portable scene persistence.
 
 - Identify saved scenes by filename in the toolbar and load/save messages instead of the internal Untitled name.
+
+- Add Ctrl+D and Hierarchy duplication for model instances, cubes, point lights, and spot lights, with selection and undo/redo.
+
+- Number duplicated object names instead of accumulating Copy suffixes.

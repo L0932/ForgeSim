@@ -60,6 +60,7 @@ namespace ForgeSim::Sandbox
     struct PointLightCreationEdit { PointLight light; std::size_t index; bool visible; };
     struct SpotLightCreationEdit { SpotLight light; std::size_t index; bool visible; };
 
+    [[nodiscard]] bool CanDuplicateSceneSelection(const SandboxScene& scene, const SceneSelection& selection);
     [[nodiscard]] bool CanDeleteSceneSelection(const SandboxScene& scene, const SceneSelection& selection);
 
     using SceneTransformEdit = std::variant<ObjectTransformEdit, PointLightPositionEdit,
@@ -87,6 +88,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool CanUndo() const noexcept;
 		[[nodiscard]] bool CanRedo() const noexcept;
 
+        [[nodiscard]] bool DuplicateSelection(SandboxScene& scene, SceneSelection& selection);
         [[nodiscard]] bool CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position);
         [[nodiscard]] bool CreateLight(SandboxScene& scene, SceneSelection& selection,
             SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range);

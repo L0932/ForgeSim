@@ -20,6 +20,7 @@ namespace ForgeSim::Sandbox
         {"Camera", "Ctrl while flying", "Move at one tenth of fly speed", "Scene navigation"},
         {"Selection", "Left click", "Select an object or light", "Scene or Hierarchy; empty Scene space clears selection"},
         {"Selection", "F", "Focus selected object or light", "Scene or Hierarchy focused; navigation stopped"},
+        {"Selection", "Ctrl+D", "Duplicate selected model, point light, or spot light", "Scene or Hierarchy focused; navigation stopped"},
         {"Selection", "Delete", "Delete selected model or light", "Scene or Hierarchy focused; navigation stopped"},
         {"Transforms", "W", "Move tool", "Navigation stopped; no text entry or active edit"},
         {"Transforms", "E", "Rotate tool", "Navigation stopped; no text entry or active edit"},

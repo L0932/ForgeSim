@@ -503,6 +503,12 @@ namespace ForgeSim::Sandbox
 		return m_History.Redo(scene, selection);
 	}
 
+    bool SceneTransformEditor::DuplicateSelection(SandboxScene& scene, SceneSelection& selection)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit) return false;
+        return m_History.DuplicateSelection(scene, selection);
+    }
+
     bool SceneTransformEditor::CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position)
     {
         if (m_WasActive || IsActive() || m_PendingEdit) return false;

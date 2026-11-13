@@ -24,6 +24,78 @@ namespace
         TemporaryDirectory() { fs::create_directories(path); }
         ~TemporaryDirectory() { std::error_code error; fs::remove_all(path, error); }
     };
+    void TestCopyNames(const fs::path& root)
+    {
+        EditorSession session(SceneDocument{}, root);
+        auto& scene = session.Scene();
+        SceneSelection selection;
+        SceneEditHistory history;
+        Require(history.CreateCube(scene, selection, {0,0,0}), "Create naming source");
+        const auto originalId = *selection.SelectedObjectId();
+        Require(history.DuplicateSelection(scene, selection) && scene.Objects().back().name == "Cube (Copy 1)", "First numbered copy");
+        Require(history.DuplicateSelection(scene, selection) && scene.Objects().back().name == "Cube (Copy 2)", "Duplicating copy increments number");
+        selection.SelectObject(originalId);
+        Require(history.DuplicateSelection(scene, selection) && scene.Objects().back().name == "Cube (Copy 3)", "Original skips existing names");
+        Require(history.Undo(scene, &selection) && history.Redo(scene, &selection) && scene.Objects().back().name == "Cube (Copy 3)", "Redo preserves copy name");
+        scene.FindObject(originalId)->name = "Cube (Copy) (Copy)";
+        selection.SelectObject(originalId);
+        Require(history.DuplicateSelection(scene, selection) && scene.Objects().back().name == "Cube (Copy 4)", "Legacy suffixes normalize without renaming source");
+        Require(scene.FindObject(originalId)->name == "Cube (Copy) (Copy)", "Source name remains unchanged");
+        scene.FindObject(originalId)->name = "Cube (Copy custom)";
+        selection.SelectObject(originalId);
+        Require(history.DuplicateSelection(scene, selection) && scene.Objects().back().name == "Cube (Copy custom) (Copy 1)", "Preserve custom suffixes");
+    }
+
+    void TestDuplication(const fs::path& root)
+    {
+        EditorSession session(SceneDocument{}, root);
+        auto& scene = session.Scene();
+        SceneSelection selection;
+        SceneEditHistory history;
+        Require(history.CreateCube(scene, selection, {1,2,3}), "Prepare source cube");
+        const auto originalId = *selection.SelectedObjectId();
+        scene.FindObject(originalId)->transform.scale = {2,3,4};
+        scene.FindObject(originalId)->transform.pivot = {0.1f,0.2f,0.3f};
+        scene.SetObjectVisible(originalId, false);
+        const auto original = *scene.FindObject(originalId);
+        Require(history.DuplicateSelection(scene, selection), "Duplicate cube");
+        const auto copyId = *selection.SelectedObjectId();
+        Require(copyId != originalId && scene.Objects().size() == 2, "Copy gets fresh identity");
+        Require(scene.FindObject(copyId)->modelPath == original.modelPath && scene.FindObject(copyId)->localBounds.has_value() &&
+            scene.FindObject(copyId)->transform.pivot == original.transform.pivot && scene.FindObject(copyId)->transform.scale == original.transform.scale &&
+            !scene.IsObjectVisible(copyId), "Copy preserves model reference, bounds, transform and visibility");
+        scene.FindObject(copyId)->transform.position.x += 5;
+        Require(scene.FindObject(originalId)->transform.position == original.transform.position, "Copy transform is independent");
+        Require(history.Undo(scene, &selection) && !scene.FindObject(copyId) && selection.Empty(), "Undo removes copy");
+        Require(history.Redo(scene, &selection) && selection.IsObjectSelected(copyId), "Redo restores same copy ID and selection");
+        for (auto kind : {SceneLightKind::Point, SceneLightKind::Spot})
+        {
+            Require(history.CreateLight(scene, selection, kind, {3,4,5}, {0,-1,0}, 8), "Create source light");
+            const auto sourceId = *selection.SelectedLightId();
+            scene.SetLightVisible(sourceId, false);
+            if (kind == SceneLightKind::Point) { scene.PointLights().back().intensity = 7; scene.PointLights().back().enabled = false; }
+            else { scene.SpotLights().back().intensity = 7; scene.SpotLights().back().enabled = false; }
+            Require(history.DuplicateSelection(scene, selection), "Duplicate local light");
+            const auto lightCopyId = *selection.SelectedLightId();
+            Require(lightCopyId != sourceId && !scene.IsLightVisible(lightCopyId), "Light copy identity and visibility");
+            if (kind == SceneLightKind::Point) Require(scene.PointLights().back().range == 8 && scene.PointLights().back().intensity == 7 && !scene.PointLights().back().enabled, "Point properties preserved");
+            else Require(scene.SpotLights().back().range == 8 && scene.SpotLights().back().intensity == 7 && !scene.SpotLights().back().enabled, "Spot properties preserved");
+            Require(history.Undo(scene, &selection) && history.Redo(scene, &selection) && selection.IsLightSelected(lightCopyId), "Light duplication undo/redo");
+        }
+        const auto path = root / "copies.scene.json";
+        SaveSceneDocument(scene.ToDocument(), path, root);
+        const auto loaded = LoadSceneDocument(path, root);
+        Require(loaded.objects.size() == 2 && loaded.pointLights.size() == 2 && loaded.spotLights.size() == 2, "All copies persist");
+        Require(history.Undo(scene, &selection), "Prepare redo branch");
+        selection.SelectLight(scene.MainDirectionalLight().id);
+        Require(!CanDuplicateSceneSelection(scene, selection) && !history.DuplicateSelection(scene, selection) && history.CanRedo(), "Unsupported directional duplication preserves redo");
+        selection.Clear();
+        Require(!history.DuplicateSelection(scene, selection) && history.CanRedo(), "Empty selection is a no-op");
+        Require(history.CreateCube(scene, selection, {0,0,0}) && !history.CanRedo(), "New edit discards redo branch");
+        const auto freshId = *selection.SelectedObjectId();
+        Require(freshId > copyId, "New objects do not reuse copy IDs");
+    }
+
     void TestCubeCreation(const fs::path& root)
     {
         EditorSession session(SceneDocument{}, root);
@@ -254,6 +326,8 @@ int main()
         TemporaryDirectory temporary;
         const auto root = temporary.path;
         std::ofstream(root / "model.glb") << "placeholder";
+        TestCopyNames(root);
+        TestDuplication(root);
         TestCubeCreation(root);
         TestObjectDeletion(root);
         TestLightDeletion(root);

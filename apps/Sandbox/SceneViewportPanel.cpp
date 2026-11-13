@@ -44,6 +44,7 @@ namespace ForgeSim::Sandbox
 
         m_State.focusSelectionRequested = FocusSelectionShortcutPressed();
         m_State.deleteSelectionRequested = DeleteSelectionShortcutPressed();
+        m_State.duplicateSelectionRequested = DuplicateSelectionShortcutPressed();
 
         const ImVec2 position = ImGui::GetCursorScreenPos();
         const ImVec2 size = ImGui::GetContentRegionAvail();

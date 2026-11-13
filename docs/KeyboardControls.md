@@ -12,6 +12,7 @@ Update both when bindings change; list only implemented commands.
 | Camera | Ctrl while flying | Move at one tenth of fly speed | Scene navigation |
 | Selection | Left click | Select an object or light | Scene or Hierarchy; empty Scene space clears selection |
 | Selection | F | Focus selected object or light | Scene or Hierarchy focused; navigation stopped |
+| Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
 | Selection | Delete | Delete selected model or light | Scene or Hierarchy focused; navigation stopped |
 | Transforms | W | Move tool | Navigation stopped; no text entry or active edit |
 | Transforms | E | Rotate tool | Navigation stopped; no text entry or active edit |
@@ -91,3 +92,14 @@ F focus, deletion, undo/redo, and scene saving. Repeated cubes share mesh resour
 The reserved `@builtin/cube` model reference is generated internally when loading;
 it requires no external asset file or texture. Saved transforms remain independent
 for each cube. Existing imported models and environment lighting are preserved.
+
+## Duplication
+
+Select a model instance, built-in cube, point light, or spot light and press
+**Ctrl+D** in Scene or Hierarchy, or click **Duplicate selection** in Hierarchy.
+The copy starts at the same position and becomes selected; use the Move tool to
+separate it. Model copies share their asset resources but have independent
+transforms, IDs, and visibility. Light copies preserve all authored settings.
+Hidden and disabled states are preserved. Creation is undoable and redo restores
+the same copy and ID. Copies are included in normal scene saving.
+Directional-light duplication is disabled because the renderer supports one.

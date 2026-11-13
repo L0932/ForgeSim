@@ -70,6 +70,7 @@ namespace ForgeSim::Sandbox
     {
         m_FocusSelectionRequested = false;
         m_DeleteSelectionRequested = false;
+        m_DuplicateSelectionRequested = false;
         if (!ImGui::Begin("Hierarchy"))
         {
             ImGui::End();
@@ -77,6 +78,7 @@ namespace ForgeSim::Sandbox
         }
         m_FocusSelectionRequested = FocusSelectionShortcutPressed(context.interactionDisabled);
         m_DeleteSelectionRequested = DeleteSelectionShortcutPressed(context.interactionDisabled);
+        m_DuplicateSelectionRequested = DuplicateSelectionShortcutPressed(context.interactionDisabled);
         // Compact list density belongs to the Hierarchy, independent of the
         // larger form controls in the Inspector and Debug panels.
         const auto padding = ImGui::GetStyle().FramePadding;
@@ -184,6 +186,12 @@ namespace ForgeSim::Sandbox
             }
         }
         ImGui::Separator();
+        ImGui::BeginDisabled(!CanDuplicateSceneSelection(context.scene, context.selection));
+        if (ImGui::Button("Duplicate selection", ImVec2(-1, 0)))
+            m_DuplicateSelectionRequested = true;
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Duplicate at the same position (Ctrl+D), then use Move. One directional light is supported; it cannot be duplicated.");
+        ImGui::EndDisabled();
         ImGui::BeginDisabled(!CanDeleteSceneSelection(context.scene, context.selection));
         if (ImGui::Button("Delete selection", ImVec2(-1, 0)))
             m_DeleteSelectionRequested = true;

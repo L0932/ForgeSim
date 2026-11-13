@@ -47,6 +47,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool Undo(SandboxScene& scene, SceneSelection* selection = nullptr);
 		[[nodiscard]] bool Redo(SandboxScene& scene, SceneSelection* selection = nullptr);
 
+        [[nodiscard]] bool DuplicateSelection(SandboxScene& scene, SceneSelection& selection);
         [[nodiscard]] bool CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position);
         [[nodiscard]] bool CreateLight(SandboxScene& scene, SceneSelection& selection,
             SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range);

@@ -899,6 +899,12 @@ namespace ForgeSim::Sandbox
 				sceneEntitiesChanged = transformEditor.Redo(scene, &selection);
 			}
 
+            else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && !rightMouseDown &&
+                (viewport.duplicateSelectionRequested || hierarchyPanel.DuplicateSelectionRequested()))
+            {
+                sceneEntitiesChanged = transformEditor.DuplicateSelection(scene, selection);
+                if (sceneEntitiesChanged) sceneFileMessage = "Selection duplicated at the same position. Use Move to separate the copy.";
+            }
             else if (fileRequest.createCube && !changePending && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard())
             {
