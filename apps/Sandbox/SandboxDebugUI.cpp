@@ -378,6 +378,9 @@ namespace ForgeSim::Sandbox
             ImGui::BeginDisabled(!context.canFocusSelection);
             if (ImGui::Button("Toggle focus (F)") && context.focusSelection) context.focusSelection();
             ImGui::SetItemTooltip("Frame the selection, or restore the previous view when already focused.");
+            if (ImGui::Button(context.orbitActive ? "Exit orbit (Ctrl+F)" : "Orbit selection (Ctrl+F)") && context.toggleOrbit)
+                context.toggleOrbit();
+            ImGui::SetItemTooltip("RMB drag orbits the selection; wheel over Scene zooms. Ctrl+F or Esc exits at the current view.");
             ImGui::EndDisabled();
             ImGui::EndDisabled();
 

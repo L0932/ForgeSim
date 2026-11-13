@@ -125,6 +125,8 @@ namespace ForgeSim::Sandbox
     {
         m_SelectionVisibilityRequested.reset();
         m_FocusSelectionRequested = false;
+        m_OrbitSelectionRequested = false;
+        m_ExitOrbitRequested = false;
         m_DeleteSelectionRequested = false;
         m_DuplicateSelectionRequested = false;
         if (!ImGui::Begin("Hierarchy"))
@@ -133,6 +135,8 @@ namespace ForgeSim::Sandbox
             return;
         }
         m_FocusSelectionRequested = FocusSelectionShortcutPressed(context.interactionDisabled);
+        m_OrbitSelectionRequested = OrbitSelectionShortcutPressed(context.interactionDisabled);
+        m_ExitOrbitRequested = ExitOrbitShortcutPressed(context.interactionDisabled);
         m_DeleteSelectionRequested = DeleteSelectionShortcutPressed(context.interactionDisabled);
         m_DuplicateSelectionRequested = DuplicateSelectionShortcutPressed(context.interactionDisabled);
         // Compact list density belongs to the Hierarchy, independent of the

@@ -1570,3 +1570,13 @@ target_compile_features(ForgeSimSelectionFocusToggleTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimSelectionFocusToggleTests)
 set_target_properties(ForgeSimSelectionFocusToggleTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SelectionFocusToggle COMMAND ForgeSimSelectionFocusToggleTests)
+
+add_executable(ForgeSimSelectionOrbitTests SelectionOrbitTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraFraming.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp)
+target_include_directories(ForgeSimSelectionOrbitTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSelectionOrbitTests PRIVATE ForgeSim::Platform ForgeSim::Renderer)
+target_compile_features(ForgeSimSelectionOrbitTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimSelectionOrbitTests)
+set_target_properties(ForgeSimSelectionOrbitTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SelectionOrbit COMMAND ForgeSimSelectionOrbitTests)

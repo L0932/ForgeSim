@@ -20,6 +20,10 @@ namespace ForgeSim::Sandbox
     }
     [[nodiscard]] inline bool DuplicateSelectionShortcutPressed(bool blocked = false)
     { return SceneShortcutPressed(ImGuiKey_D, blocked, true); }
+    [[nodiscard]] inline bool OrbitSelectionShortcutPressed(bool blocked = false)
+    { return SceneShortcutPressed(ImGuiKey_F, blocked, true); }
+    [[nodiscard]] inline bool ExitOrbitShortcutPressed(bool blocked = false)
+    { return SceneShortcutPressed(ImGuiKey_Escape, blocked); }
     [[nodiscard]] inline bool FocusSelectionShortcutPressed(bool blocked = false)
     { return SceneShortcutPressed(ImGuiKey_F, blocked); }
     [[nodiscard]] inline bool DeleteSelectionShortcutPressed(bool blocked = false)

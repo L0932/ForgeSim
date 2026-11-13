@@ -15,6 +15,9 @@ Update both when bindings change; list only implemented commands.
 | Selection | Ctrl+Left click | Toggle object membership; last selected object is active | Scene or Hierarchy |
 | Selection | Shift+Left click | Select a visible range from the anchor / add an object | Hierarchy range / Scene add |
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
+| Camera | Ctrl+F | Toggle orbit mode around selection | Scene or Hierarchy focused; navigation stopped |
+| Camera | RMB drag / Wheel | Orbit / zoom around selection | Orbit mode active; wheel over Scene |
+| Camera | Esc | Exit orbit at current view | Scene or Hierarchy focused; no text entry or modal |
 | Selection | F | Toggle selection focus / previous view | Scene or Hierarchy focused; navigation stopped |
 | Selection | Double-click label | Select and toggle focus on object, imported node, or light | Hierarchy |
 | Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
@@ -163,3 +166,28 @@ Node transforms, pivots, deletion and duplication are unavailable in this first
 step. Select the model's main row to edit the complete instance. Node editing and
 saved per-instance overrides will follow separately under #123. Selection is
 editor state and does not change the scene document.
+
+## Selection orbit mode
+
+Press Ctrl+F with Scene or Hierarchy focused to frame the current selection and
+enter an upright orbit mode. Objects, object groups, imported node subtrees and
+lights use the same bounds as ordinary focus. An empty selection or node subtree
+without geometry cannot start orbit mode.
+
+- Hold RMB and drag in Scene to orbit around the selection's bounds center.
+- Scroll over Scene to move closer/farther without changing FOV or saved fly speed.
+- While orbiting, WASD fly movement is suspended. Pitch and zoom distance are
+  bounded to avoid camera flips or crossing through the pivot.
+- Ctrl+F again, Esc, or the Camera panel's Exit orbit button exits without moving
+  the camera. An active-mode hint appears in Scene.
+- Changing selection, deleting the target, New/Open/import, explicit Frame scene,
+  or restoring/editing a camera pose exits orbit. Moving the same selected target
+  updates the pivot while retaining the orbit offset.
+- Ordinary F and Hierarchy double-click exit orbit and retain the existing
+  selection-focus/previous-view toggle behavior. Entering or explicitly toggling
+  orbit resets that temporary focus pair.
+
+Mouse input pauses during text entry, active controls, gizmo edits, scene-change
+confirmation, and popups. RMB capture still begins only inside Scene and releases
+when navigation stops. Orbit is temporary navigation state; it does not mark the
+scene modified, change saved viewpoints, or save an orbit mode in the scene file.

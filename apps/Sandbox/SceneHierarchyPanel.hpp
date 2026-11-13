@@ -26,6 +26,8 @@ namespace ForgeSim::Sandbox
         [[nodiscard]] std::optional<bool> SelectionVisibilityRequested() const noexcept { return m_SelectionVisibilityRequested; }
         [[nodiscard]] bool DuplicateSelectionRequested() const noexcept { return m_DuplicateSelectionRequested; }
         [[nodiscard]] bool DeleteSelectionRequested() const noexcept { return m_DeleteSelectionRequested; }
+        [[nodiscard]] bool OrbitSelectionRequested() const noexcept { return m_OrbitSelectionRequested; }
+        [[nodiscard]] bool ExitOrbitRequested() const noexcept { return m_ExitOrbitRequested; }
         [[nodiscard]] bool FocusSelectionRequested() const noexcept { return m_FocusSelectionRequested; }
 
 
@@ -40,6 +42,8 @@ namespace ForgeSim::Sandbox
         bool m_DeleteSelectionRequested = false;
         bool m_DuplicateSelectionRequested = false;
         bool m_FocusSelectionRequested = false;
+        bool m_OrbitSelectionRequested = false;
+        bool m_ExitOrbitRequested = false;
         ImGuiTextFilter m_Filter;
     };
 }

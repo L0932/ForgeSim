@@ -68,6 +68,8 @@ namespace ForgeSim::Sandbox
         std::optional<SceneCameraData>& cameraRestoreRequest;
         bool canFocusSelection = false;
         std::function<void()> focusSelection;
+        bool orbitActive = false;
+        std::function<void()> toggleOrbit;
         std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
