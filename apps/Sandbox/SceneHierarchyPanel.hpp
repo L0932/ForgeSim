@@ -19,6 +19,7 @@ namespace ForgeSim::Sandbox
     {
     public:
         void Draw(const SceneHierarchyPanelContext& context);
+        [[nodiscard]] bool DeleteSelectionRequested() const noexcept { return m_DeleteSelectionRequested; }
         [[nodiscard]] bool FocusSelectionRequested() const noexcept { return m_FocusSelectionRequested; }
 
 
@@ -29,6 +30,7 @@ namespace ForgeSim::Sandbox
             bool enabled,
             SceneSelection& selection, SandboxScene& scene);
 
+        bool m_DeleteSelectionRequested = false;
         bool m_FocusSelectionRequested = false;
         ImGuiTextFilter m_Filter;
     };

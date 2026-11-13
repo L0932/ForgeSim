@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SandboxScene.hpp"
+#include "SceneSelection.hpp"
 #include "Transform.hpp"
 
 #include <cstddef>
@@ -50,12 +51,23 @@ namespace ForgeSim::Sandbox
 		glm::vec3 after;
 	};
 
+    struct ObjectRemovalEdit { SandboxObject object; std::size_t index; bool visible; };
+    struct PointLightRemovalEdit { PointLight light; std::size_t index; bool visible; };
+    struct SpotLightRemovalEdit { SpotLight light; std::size_t index; bool visible; };
+    struct DirectionalLightEnabledEdit { SceneLightId lightId; bool before; bool after; };
+
+    [[nodiscard]] bool CanDeleteSceneSelection(const SandboxScene& scene, const SceneSelection& selection);
+
+    using SceneTransformEdit = std::variant<ObjectTransformEdit, PointLightPositionEdit,
+        SpotLightPoseEdit, DirectionalLightDirectionEdit, DirectionalLightPositionEdit>;
+
 	using SceneEdit = std::variant<
 		ObjectTransformEdit,
 		PointLightPositionEdit,
 		SpotLightPoseEdit,
 		DirectionalLightDirectionEdit,
-		DirectionalLightPositionEdit>;
+		DirectionalLightPositionEdit, ObjectRemovalEdit, PointLightRemovalEdit,
+        SpotLightRemovalEdit, DirectionalLightEnabledEdit>;
 
 	class SceneEditHistory final
 	{
@@ -64,11 +76,13 @@ namespace ForgeSim::Sandbox
 		// Recording a new edit discards the redo branch.
 		void RecordApplied(SceneEdit edit);
 
-		[[nodiscard]] bool Undo(SandboxScene& scene);
-		[[nodiscard]] bool Redo(SandboxScene& scene);
+		[[nodiscard]] bool Undo(SandboxScene& scene, SceneSelection* selection = nullptr);
+		[[nodiscard]] bool Redo(SandboxScene& scene, SceneSelection* selection = nullptr);
 
 		[[nodiscard]] bool CanUndo() const noexcept;
 		[[nodiscard]] bool CanRedo() const noexcept;
+
+        [[nodiscard]] bool DeleteSelection(SandboxScene& scene, SceneSelection& selection);
 
 		// Call when replacing the scene
 		void Clear() noexcept;

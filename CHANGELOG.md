@@ -22,6 +22,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Delete selected model instances and local lights from Hierarchy or with Delete,
+  with undo/redo restoring properties, visibility, IDs, and selection. Deleting the
+  required main directional light disables it with undo support.
+
 - Searchable Help > Keyboard Controls reference and context-aware F focus for
   selected model instances and lights, shared with the Camera-panel action.
 

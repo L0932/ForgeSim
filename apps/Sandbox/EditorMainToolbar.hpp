@@ -50,8 +50,8 @@ namespace ForgeSim::Sandbox
                     if (ImGui::MenuItem("Save", "Ctrl+S")) result.fileAction =
                         context.hasScenePath ? SceneFileAction::Save : SceneFileAction::SaveAs;
                     ImGui::Separator();
-                    result.undo = ImGui::MenuItem("Undo transform / pivot", "Ctrl+Z", false, context.canUndo);
-                    result.redo = ImGui::MenuItem("Redo transform / pivot", "Ctrl+Y", false, context.canRedo);
+                    result.undo = ImGui::MenuItem("Undo scene edit", "Ctrl+Z", false, context.canUndo);
+                    result.redo = ImGui::MenuItem("Redo scene edit", "Ctrl+Y", false, context.canRedo);
                     ImGui::EndDisabled();
                     ImGui::EndPopup();
                 }
@@ -68,12 +68,12 @@ namespace ForgeSim::Sandbox
                 ImGui::SameLine();
                 ImGui::BeginDisabled(!context.canUndo);
                 result.undo = ImGui::Button("Undo");
-                ImGui::SetItemTooltip("Undo transform / pivot edit (Ctrl+Z)");
+                ImGui::SetItemTooltip("Undo scene edit (Ctrl+Z)");
                 ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::BeginDisabled(!context.canRedo);
                 result.redo = ImGui::Button("Redo");
-                ImGui::SetItemTooltip("Redo transform / pivot edit (Ctrl+Y or Ctrl+Shift+Z)");
+                ImGui::SetItemTooltip("Redo scene edit (Ctrl+Y or Ctrl+Shift+Z)");
                 ImGui::EndDisabled();
                 ImGui::EndDisabled();
             }

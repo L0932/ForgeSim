@@ -26,10 +26,12 @@ namespace ForgeSim::Sandbox
         m_CameraBookmarks = document.cameraBookmarks;
         m_RenderingSettings = document.rendering;
 
+        m_LastObjectId = 0;
         m_Objects.reserve(document.objects.size());
 
         for (const SceneObjectData& object : document.objects)
         {
+            m_LastObjectId = std::max(m_LastObjectId, object.id);
             m_Objects.push_back(
                 SandboxObject{
                     .id = object.id,

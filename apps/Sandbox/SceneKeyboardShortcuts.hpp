@@ -5,7 +5,7 @@
 
 namespace ForgeSim::Sandbox
 {
-    [[nodiscard]] inline bool FocusSelectionShortcutPressed(bool editingBlocked = false)
+    [[nodiscard]] inline bool SceneShortcutPressed(ImGuiKey key, bool editingBlocked = false)
     {
         const auto& io = ImGui::GetIO();
         return AllowSceneShortcut({
@@ -16,6 +16,10 @@ namespace ForgeSim::Sandbox
             .popupOpen = ImGui::IsPopupOpen(nullptr,
                 ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel),
             .modifierHeld = io.KeyCtrl || io.KeyAlt || io.KeyShift || io.KeySuper
-        }) && ImGui::IsKeyPressed(ImGuiKey_F, false);
+        }) && ImGui::IsKeyPressed(key, false);
     }
+    [[nodiscard]] inline bool FocusSelectionShortcutPressed(bool blocked = false)
+    { return SceneShortcutPressed(ImGuiKey_F, blocked); }
+    [[nodiscard]] inline bool DeleteSelectionShortcutPressed(bool blocked = false)
+    { return SceneShortcutPressed(ImGuiKey_Delete, blocked); }
 }

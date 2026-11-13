@@ -5,6 +5,7 @@
 #include <utility>
 #include <algorithm>
 #include <limits>
+#include <type_traits>
 
 #include <glm/trigonometric.hpp>
 #include <glm/vec3.hpp>
@@ -28,16 +29,78 @@ namespace ForgeSim::Sandbox
     {
         if (!IsValidSceneAssetPath(modelPath))
             throw std::invalid_argument("Imported model needs a portable project-relative path.");
-        SandboxObjectId id = 1;
-        for (const auto& object : m_Objects)
-        {
-            if (object.id == std::numeric_limits<SandboxObjectId>::max())
-                throw std::overflow_error("No object IDs remain.");
-            id = std::max(id, object.id + 1);
-        }
+        SandboxObjectId highest = m_LastObjectId;
+        for (const auto& object : m_Objects) highest = std::max(highest, object.id);
+        if (highest == std::numeric_limits<SandboxObjectId>::max())
+            throw std::overflow_error("No object IDs remain.");
+        const SandboxObjectId id = highest + 1;
         m_Objects.push_back(SandboxObject{.id = id, .transform = {},
             .name = std::move(name), .modelPath = std::move(modelPath)});
+        m_LastObjectId = id;
         return id;
+    }
+
+    namespace
+    {
+        template<class T, class Id>
+        bool RemoveEntity(std::vector<T>& entities, std::unordered_set<Id>& hidden, Id id)
+        {
+            const auto found = std::find_if(entities.begin(), entities.end(),
+                [id](const T& entity) { return entity.id == id; });
+            if (found == entities.end()) return false;
+            entities.erase(found);
+            hidden.erase(id);
+            return true;
+        }
+        template<class T, class Id>
+        bool RestoreEntity(std::vector<T>& entities, std::unordered_set<Id>& hidden,
+            std::size_t index, const T& entity, bool visible)
+        {
+            if (index > entities.size() || std::any_of(entities.begin(), entities.end(),
+                [&](const T& existing) { return existing.id == entity.id; })) return false;
+            static_assert(std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T>);
+            T copy = entity;
+            entities.reserve(entities.size() + 1);
+            // Finish allocating before the no-throw moves that insert the entity.
+            if (!visible) hidden.insert(entity.id);
+            entities.insert(entities.begin() + static_cast<std::ptrdiff_t>(index), std::move(copy));
+            if (visible) hidden.erase(entity.id);
+            return true;
+        }
+        bool LightIdExists(const SandboxScene& scene, SceneLightId id)
+        {
+            if (scene.MainDirectionalLight().id == id) return true;
+            for (const auto& light : scene.PointLights()) if (light.id == id) return true;
+            for (const auto& light : scene.SpotLights()) if (light.id == id) return true;
+            return false;
+        }
+    }
+    bool SandboxScene::RemoveObject(SandboxObjectId id)
+    { return RemoveEntity(m_Objects, m_HiddenObjects, id); }
+    bool SandboxScene::RemovePointLight(SceneLightId id)
+    { return RemoveEntity(m_PointLights, m_HiddenLights, id); }
+    bool SandboxScene::RemoveSpotLight(SceneLightId id)
+    { return RemoveEntity(m_SpotLights, m_HiddenLights, id); }
+    bool SandboxScene::RestoreObject(std::size_t index, const SandboxObject& object, bool visible)
+    {
+        if (object.id == 0) return false;
+        if (!RestoreEntity(m_Objects, m_HiddenObjects, index, object, visible)) return false;
+        m_LastObjectId = std::max(m_LastObjectId, object.id);
+        return true;
+    }
+    bool SandboxScene::RestorePointLight(std::size_t index, const PointLight& light, bool visible)
+    {
+        if (light.id == InvalidSceneLightId || LightIdExists(*this, light.id) || !RestoreEntity(m_PointLights, m_HiddenLights, index, light, visible)) return false;
+        if (m_NextLightId != InvalidSceneLightId && light.id >= m_NextLightId)
+            m_NextLightId = light.id == std::numeric_limits<SceneLightId>::max() ? InvalidSceneLightId : light.id + 1;
+        return true;
+    }
+    bool SandboxScene::RestoreSpotLight(std::size_t index, const SpotLight& light, bool visible)
+    {
+        if (light.id == InvalidSceneLightId || LightIdExists(*this, light.id) || !RestoreEntity(m_SpotLights, m_HiddenLights, index, light, visible)) return false;
+        if (m_NextLightId != InvalidSceneLightId && light.id >= m_NextLightId)
+            m_NextLightId = light.id == std::numeric_limits<SceneLightId>::max() ? InvalidSceneLightId : light.id + 1;
+        return true;
     }
 
     void SandboxScene::SetObjectVisible(SandboxObjectId id, bool visible)

@@ -883,14 +883,33 @@ namespace ForgeSim::Sandbox
 					.navigationActive = changePending|| rightMouseDown
 				});
 
+            bool sceneEntitiesChanged = false;
 			if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.undoRequested || toolbarRequest.undo))
 			{
-				static_cast<void>(transformEditor.Undo(scene));
+				sceneEntitiesChanged = transformEditor.Undo(scene, &selection);
 			}
 			else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.redoRequested || toolbarRequest.redo))
 			{
-				static_cast<void>(transformEditor.Redo(scene));
+				sceneEntitiesChanged = transformEditor.Redo(scene, &selection);
 			}
+
+            else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && !rightMouseDown &&
+                (viewport.deleteSelectionRequested || hierarchyPanel.DeleteSelectionRequested()))
+            {
+                const bool directional = selection.IsLightSelected(scene.MainDirectionalLight().id);
+                sceneEntitiesChanged = transformEditor.DeleteSelection(scene, selection);
+                if (sceneEntitiesChanged) sceneFileMessage = directional
+                    ? "Directional light disabled. Undo restores it."
+                    : "Selection deleted. Undo restores it.";
+            }
+            if (sceneEntitiesChanged)
+            {
+                ClearMissingSceneSelection(selection, scene);
+                inspectorPanel.Reset();
+                lightPickTargets.clear();
+                lightDebugBounds = scene.Objects().empty() ? emptySceneBounds :
+                    CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+            }
 
 			const bool pickingSuppressed =
 				!viewport.hovered ||
@@ -1341,9 +1360,9 @@ namespace ForgeSim::Sandbox
 							EditorSession replacement =
 								m_EditorSession->PrepareNew();
 
-                            m_Renderer.LoadSceneResources(std::nullopt,
+                            m_Renderer.LoadSceneModels(replacement.ProjectRoot(), replacement.Scene().Objects(),
                                 ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
-                                    replacement.ProjectRoot(), BundledAssetDirectory() / "environments"));
+                                    replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), {}, std::nullopt, false);
 
 							// Keep the EditorSession and its SandboxScene
 							// at their existing addresses.

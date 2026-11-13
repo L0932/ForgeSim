@@ -132,7 +132,7 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const SandboxObject& object,
 			const Transform& before,
 			const Transform& after,
@@ -145,7 +145,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const DirectionalLight& light,
 			const Transform& before,
 			const Transform& after,
@@ -167,7 +167,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const PointLight& light,
 			const Transform& before,
 			const Transform& after,
@@ -180,7 +180,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const SpotLight& light,
 			const Transform& before,
 			const Transform& after,
@@ -257,7 +257,7 @@ namespace ForgeSim::Sandbox
 			return;
 		}
 
-		SceneEdit edit = MakeEdit(
+		SceneTransformEdit edit = MakeEdit(
 			target,
 			before,
 			after,
@@ -455,8 +455,7 @@ namespace ForgeSim::Sandbox
 	{
 		if (m_PendingEdit)
 		{
-			m_History.RecordApplied(
-				std::move(*m_PendingEdit));
+            std::visit([this](auto& edit) { m_History.RecordApplied(std::move(edit)); }, *m_PendingEdit);
 
 			m_PendingEdit.reset();
 		}
@@ -484,25 +483,31 @@ namespace ForgeSim::Sandbox
         return !m_WasActive && !IsActive() && !m_PendingEdit && m_History.CanRedo();
     }
 
-	bool SceneTransformEditor::Undo(SandboxScene& scene)
+	bool SceneTransformEditor::Undo(SandboxScene& scene, SceneSelection* selection)
 	{
 		if (m_WasActive || IsActive())
 		{
 			return false;
 		}
 
-		return m_History.Undo(scene);
+		return m_History.Undo(scene, selection);
 	}
 
-	bool SceneTransformEditor::Redo(SandboxScene& scene)
+	bool SceneTransformEditor::Redo(SandboxScene& scene, SceneSelection* selection)
 	{
 		if (m_WasActive || IsActive())
 		{
 			return false;
 		}
 
-		return m_History.Redo(scene);
+		return m_History.Redo(scene, selection);
 	}
+
+    bool SceneTransformEditor::DeleteSelection(SandboxScene& scene, SceneSelection& selection)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit) return false;
+        return m_History.DeleteSelection(scene, selection);
+    }
 
 	void SceneTransformEditor::ClearHistory()
 	{

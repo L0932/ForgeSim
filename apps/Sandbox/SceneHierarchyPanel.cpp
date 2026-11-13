@@ -1,5 +1,6 @@
 #include "SceneHierarchyPanel.hpp"
 #include "SceneKeyboardShortcuts.hpp"
+#include "SceneEditHistory.hpp"
 #include "EditorSectionHeader.hpp"
 
 #include <algorithm>
@@ -68,12 +69,14 @@ namespace ForgeSim::Sandbox
     void SceneHierarchyPanel::Draw(const SceneHierarchyPanelContext& context)
     {
         m_FocusSelectionRequested = false;
+        m_DeleteSelectionRequested = false;
         if (!ImGui::Begin("Hierarchy"))
         {
             ImGui::End();
             return;
         }
         m_FocusSelectionRequested = FocusSelectionShortcutPressed(context.interactionDisabled);
+        m_DeleteSelectionRequested = DeleteSelectionShortcutPressed(context.interactionDisabled);
         // Compact list density belongs to the Hierarchy, independent of the
         // larger form controls in the Inspector and Debug panels.
         const auto padding = ImGui::GetStyle().FramePadding;
@@ -178,6 +181,15 @@ namespace ForgeSim::Sandbox
                     DrawLightEntry("Spot Light", light.id, light.enabled, context.selection, context.scene);
             }
         }
+        ImGui::Separator();
+        const bool directionalSelected = context.selection.IsLightSelected(context.scene.MainDirectionalLight().id);
+        ImGui::BeginDisabled(!CanDeleteSceneSelection(context.scene, context.selection));
+        if (ImGui::Button(directionalSelected ? "Disable directional light" : "Delete selection", ImVec2(-1, 0)))
+            m_DeleteSelectionRequested = true;
+        ImGui::SetItemTooltip(directionalSelected
+            ? "Delete disables the required main directional light. Undo restores it."
+            : "Remove the selected model instance or local light (Delete). Undo restores it.");
+        ImGui::EndDisabled();
         ImGui::EndDisabled();
         ImGui::PopStyleVar(2);
         ImGui::End();

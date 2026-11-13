@@ -1500,3 +1500,22 @@ target_compile_features(ForgeSimSelectionFocusTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimSelectionFocusTests)
 set_target_properties(ForgeSimSelectionFocusTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.SelectionFocus COMMAND ForgeSimSelectionFocusTests)
+
+add_executable(ForgeSimSceneDeletionTests SceneDeletionTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+target_include_directories(ForgeSimSceneDeletionTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSceneDeletionTests PRIVATE ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimSceneDeletionTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimSceneDeletionTests)
+set_target_properties(ForgeSimSceneDeletionTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SceneDeletion COMMAND ForgeSimSceneDeletionTests)

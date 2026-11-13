@@ -12,12 +12,13 @@ Update both when bindings change; list only implemented commands.
 | Camera | Ctrl while flying | Move at one tenth of fly speed | Scene navigation |
 | Selection | Left click | Select an object or light | Scene or Hierarchy; empty Scene space clears selection |
 | Selection | F | Focus selected object or light | Scene or Hierarchy focused; navigation stopped |
+| Selection | Delete | Delete selected model or local light | Scene or Hierarchy focused; main directional light is disabled |
 | Transforms | W | Move tool | Navigation stopped; no text entry or active edit |
 | Transforms | E | Rotate tool | Navigation stopped; no text entry or active edit |
 | Transforms | R | Scale tool | Navigation stopped; no text entry or active edit |
 | Transforms | X | Toggle world / local axes | Navigation stopped; no text entry or active edit |
-| History | Ctrl+Z | Undo transform or pivot edit | No text entry, active edit, or scene-change confirmation |
-| History | Ctrl+Y / Ctrl+Shift+Z | Redo transform or pivot edit | No text entry, active edit, or scene-change confirmation |
+| History | Ctrl+Z | Undo transform, pivot, or deletion | No text entry, active edit, or scene-change confirmation |
+| History | Ctrl+Y / Ctrl+Shift+Z | Redo transform, pivot, or deletion | No text entry, active edit, or scene-change confirmation |
 | Files | Ctrl+S | Save scene / choose destination | No text entry, active edit, navigation, or confirmation |
 | Panels | F1 | Show / hide ForgeSim Debug | No text entry or active control |
 | Console | Enter | Execute command | Console input focused |
@@ -43,5 +44,26 @@ with RMB, using modifier keys, or while a popup/scene-change dialog is open. It
 does not fire from the Console or from an unrelated panel. With no selection it
 does nothing. Internal-node focus will follow when node selection is implemented.
 
-Deletion and duplication shortcuts will be documented when those operations are
-implemented. They are not available in this first scene-authoring patch.
+## Deletion and undo
+
+With Scene or Hierarchy focused, press **Delete** to remove the selected complete
+model instance, point light, or spot light. The Hierarchy also provides a
+**Delete selection** button. Internal glTF nodes are not independently deletable.
+
+The required main directional light uses **Disable directional light** instead.
+Delete stops its illumination while retaining the singleton and its settings.
+Undo restores its previous enabled state.
+
+**Ctrl+Z** undoes deletion and selects the restored entity. **Ctrl+Y** or
+**Ctrl+Shift+Z** reapplies it. Undo restores IDs, authored properties, visibility,
+and original list position. Saving writes the current deleted/disabled state;
+undo history itself is not saved. Existing transform/pivot edits use the same
+history. New objects receive IDs that do not collide with deleted objects still
+retained by undo.
+
+Delete has the same typing, popup, modifier, navigation, and active-edit guards as
+F. Empty or stale selections do nothing. Deleted models' resources are retained
+for undo during the authoring session, including across further imports, and are
+released when a different scene is opened or a new scene is created.
+
+Duplicating entities will follow in the next scene-authoring patch.

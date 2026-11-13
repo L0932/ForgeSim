@@ -45,6 +45,15 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] const SandboxObject* FindObject(
 			SandboxObjectId objectId) const noexcept;
 
+        [[nodiscard]] bool HasAllocatedObjectIds() const noexcept { return m_LastObjectId != 0; }
+        // Restore trusted history snapshots without reassigning IDs.
+        [[nodiscard]] bool RemoveObject(SandboxObjectId id);
+        [[nodiscard]] bool RemovePointLight(SceneLightId id);
+        [[nodiscard]] bool RemoveSpotLight(SceneLightId id);
+        [[nodiscard]] bool RestoreObject(std::size_t index, const SandboxObject& object, bool visible);
+        [[nodiscard]] bool RestorePointLight(std::size_t index, const PointLight& light, bool visible);
+        [[nodiscard]] bool RestoreSpotLight(std::size_t index, const SpotLight& light, bool visible);
+
         [[nodiscard]] SandboxObjectId AddModelObject(std::string name, std::string modelPath);
 
 		[[nodiscard]] SceneLightId AddPointLight();
@@ -103,6 +112,7 @@ namespace ForgeSim::Sandbox
 
 	private:
 		std::vector<SandboxObject> m_Objects;
+        SandboxObjectId m_LastObjectId = 1;
         std::unordered_set<SandboxObjectId> m_HiddenObjects;
         std::unordered_set<SceneLightId> m_HiddenLights;
 		std::string m_Name = "Untitled";

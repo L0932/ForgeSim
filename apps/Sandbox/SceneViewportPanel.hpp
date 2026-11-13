@@ -16,6 +16,7 @@ namespace ForgeSim::Sandbox
 
         bool hovered = false;
         bool focusSelectionRequested = false;
+        bool deleteSelectionRequested = false;
 
         [[nodiscard]] bool IsDrawable() const noexcept
         {

@@ -2493,13 +2493,15 @@ namespace ForgeSim::Sandbox
         std::optional<Assets::GltfTexturePolicy> texturePolicy, bool reuseLoadedModels)
     {
         // Stage all resources. Failed imports leave the active bindings and GPU resources intact.
-        std::map<std::filesystem::path, std::shared_ptr<ModelResources>> models;
-        std::map<std::string, std::filesystem::path> bindings;
+        // Preserve resources referenced by deletion history during imports. A
+        // scene replacement clears history and prepares a fresh resource set.
+        auto models = reuseLoadedModels ? m_Models : decltype(m_Models){};
+        auto bindings = reuseLoadedModels ? m_ModelBindings : decltype(m_ModelBindings){};
         for (auto& object : objects)
         {
             const std::u8string reference(object.modelPath.begin(), object.modelPath.end());
             const auto path = std::filesystem::canonical(root / std::filesystem::path(reference));
-            bindings.emplace(object.modelPath, path);
+            bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
                 object.localBounds = m_ObjectLocalBounds;

@@ -44,8 +44,10 @@ namespace ForgeSim::Sandbox
         [[nodiscard]] bool CanUndo() const noexcept;
         [[nodiscard]] bool CanRedo() const noexcept;
 
-		[[nodiscard]] bool Undo(SandboxScene& scene);
-		[[nodiscard]] bool Redo(SandboxScene& scene);
+		[[nodiscard]] bool Undo(SandboxScene& scene, SceneSelection* selection = nullptr);
+		[[nodiscard]] bool Redo(SandboxScene& scene, SceneSelection* selection = nullptr);
+
+        [[nodiscard]] bool DeleteSelection(SandboxScene& scene, SceneSelection& selection);
 
 		// Call when replacing the scene, outside an active drag.
 		void ClearHistory();
@@ -67,7 +69,7 @@ namespace ForgeSim::Sandbox
 		GizmoInteraction m_Interaction;
 
 		SceneEditHistory m_History;
-		std::optional<SceneEdit> m_PendingEdit;
+		std::optional<SceneTransformEdit> m_PendingEdit;
 
 		bool m_WasActive = false;
 	};
