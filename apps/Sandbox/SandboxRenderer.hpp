@@ -1,4 +1,5 @@
 #pragma once
+#include "ModelMaterialInspection.hpp"
 #include <map>
 #include <memory>
 
@@ -128,7 +129,7 @@ namespace ForgeSim::Sandbox
 
 		void Render(
 			std::span<const SandboxObject> objects,
-			std::optional<SandboxObjectId> selectedObjectId,
+			std::span<const SandboxObjectId> selectedObjectIds,
 			const glm::mat4& view,
 			const glm::mat4& projection,
 			const glm::vec3& cameraPosition,
@@ -189,6 +190,9 @@ namespace ForgeSim::Sandbox
 		void ClearWindow(
 			std::uint32_t width,
 			std::uint32_t height);
+
+        [[nodiscard]] const Assets::SceneAsset* InspectModelHierarchy(const std::string& modelReference) const;
+        [[nodiscard]] ModelMaterialInspection InspectModelMaterials(const std::string& modelReference) const;
 
 	private:
 

@@ -29,6 +29,6 @@ namespace ForgeSim::Sandbox
 			std::span<const SandboxObject> objects,
 			std::span<const LightPickTarget> lightTargets,
 			SceneSelection& selection,
-			bool pickingSuppressed = false);
+			bool pickingSuppressed = false, bool ctrl = false, bool shift = false);
 	};
 }

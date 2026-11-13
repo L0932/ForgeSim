@@ -26,10 +26,12 @@ namespace ForgeSim::Sandbox
         m_CameraBookmarks = document.cameraBookmarks;
         m_RenderingSettings = document.rendering;
 
+        m_LastObjectId = 0;
         m_Objects.reserve(document.objects.size());
 
         for (const SceneObjectData& object : document.objects)
         {
+            m_LastObjectId = std::max(m_LastObjectId, object.id);
             m_Objects.push_back(
                 SandboxObject{
                     .id = object.id,
@@ -39,7 +41,8 @@ namespace ForgeSim::Sandbox
                 });
         }
 
-        m_DirectionalLight = document.directionalLight;
+        m_DirectionalLight = document.hasDirectionalLight ? document.directionalLight :
+            DirectionalLight{.id = InvalidSceneLightId, .enabled = false};
         m_PointLights = document.pointLights;
         m_SpotLights = document.spotLights;
 
@@ -89,6 +92,7 @@ namespace ForgeSim::Sandbox
                 });
         }
 
+        document.hasDirectionalLight = HasDirectionalLight();
         document.directionalLight = m_DirectionalLight;
         document.pointLights = m_PointLights;
         document.spotLights = m_SpotLights;

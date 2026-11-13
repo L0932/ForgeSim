@@ -68,6 +68,15 @@ namespace ForgeSim::Platform
             { 0x9a, 0x31, 0x29, 0x68, 0xf5, 0xc7, 0x28, 0x41 }
         };
 
+        constexpr GUID importDialogId{
+            0xa9a637e2, 0xc912, 0x47f3,
+            { 0xa8, 0x74, 0x9d, 0x62, 0x10, 0xb5, 0x38, 0x41 }
+        };
+        constexpr GUID recoveryDialogId{
+            0x92cb5d71, 0x1738, 0x4d95,
+            { 0xb1, 0x3d, 0x72, 0x6c, 0x83, 0xe0, 0x5f, 0x29 }
+        };
+
         constexpr GUID folderDialogId{
             0xa42d21c8, 0x81da, 0x4dd3,
             { 0xa5, 0xef, 0x5e, 0x76, 0x69, 0x54, 0x0d, 0x38 }
@@ -111,9 +120,11 @@ namespace ForgeSim::Platform
                 IID_PPV_ARGS(dialog.GetAddressOf())),
             "Create file dialog");
 
+        const GUID& historyId = saving ? saveDialogId : folder ? folderDialogId :
+            specification.purpose == FileDialogPurpose::ModelImport ? importDialogId :
+            specification.purpose == FileDialogPurpose::ModelRecovery ? recoveryDialogId : openDialogId;
         CheckResult(
-            dialog->SetClientGuid(
-                saving ? saveDialogId : folder ? folderDialogId : openDialogId),
+            dialog->SetClientGuid(historyId),
             "Set file dialog history");
 
         FILEOPENDIALOGOPTIONS options{};

@@ -832,6 +832,7 @@ add_executable(
     ForgeSimSceneEditHistoryTests
     SceneEditHistoryTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
@@ -1488,3 +1489,57 @@ target_compile_features(ForgeSimCameraNavigationTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimCameraNavigationTests)
 set_target_properties(ForgeSimCameraNavigationTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.CameraNavigation COMMAND ForgeSimCameraNavigationTests)
+
+add_executable(ForgeSimSelectionFocusTests SelectionFocusTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraFraming.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp)
+target_include_directories(ForgeSimSelectionFocusTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSelectionFocusTests PRIVATE ForgeSim::Platform ForgeSim::Renderer)
+target_compile_features(ForgeSimSelectionFocusTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimSelectionFocusTests)
+set_target_properties(ForgeSimSelectionFocusTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SelectionFocus COMMAND ForgeSimSelectionFocusTests)
+
+add_executable(ForgeSimSceneDeletionTests SceneDeletionTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/EditorSession.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneAssetRoot.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp)
+target_include_directories(ForgeSimSceneDeletionTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSceneDeletionTests PRIVATE ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimSceneDeletionTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimSceneDeletionTests)
+set_target_properties(ForgeSimSceneDeletionTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SceneDeletion COMMAND ForgeSimSceneDeletionTests)
+
+add_executable(ForgeSimObjectMultiSelectionTests ObjectMultiSelectionTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneTransformEditor.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/ViewportSelectionController.cpp)
+target_include_directories(ForgeSimObjectMultiSelectionTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimObjectMultiSelectionTests PRIVATE ForgeSim::PlatformGLFW ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimObjectMultiSelectionTests PRIVATE cxx_std_20)
+target_compile_definitions(ForgeSimObjectMultiSelectionTests PRIVATE GLM_ENABLE_EXPERIMENTAL)
+forgesim_set_project_warnings(ForgeSimObjectMultiSelectionTests)
+set_target_properties(ForgeSimObjectMultiSelectionTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ObjectMultiSelection COMMAND ForgeSimObjectMultiSelectionTests)

@@ -4,6 +4,8 @@
 
 namespace ForgeSim::Sandbox
 {
+    inline constexpr std::string_view BuiltinCubeReference = "@builtin/cube";
+
         [[nodiscard]] inline bool IsValidSceneAssetPath(std::string_view path)
         {
             if (path.empty())

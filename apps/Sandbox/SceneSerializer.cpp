@@ -623,7 +623,7 @@ namespace ForgeSim::Sandbox
             } },
             {
                 "directionalLight",
-                WriteLight(document.directionalLight)
+                document.hasDirectionalLight ? WriteLight(document.directionalLight) : Json(nullptr)
             },
             { "pointLights", pointLights },
             { "spotLights", spotLights }
@@ -725,9 +725,10 @@ namespace ForgeSim::Sandbox
                     "objects[" + std::to_string(index) + "]"));
         }
 
-        document.directionalLight = ReadDirectionalLight(
-            ReadMember(root, "directionalLight", ""),
-            "directionalLight");
+        const auto& directional = ReadMember(root, "directionalLight", "");
+        document.hasDirectionalLight = !directional.is_null();
+        if (document.hasDirectionalLight)
+            document.directionalLight = ReadDirectionalLight(directional, "directionalLight");
 
         const Json& pointLights = ReadArray(
             ReadMember(root, "pointLights", ""),

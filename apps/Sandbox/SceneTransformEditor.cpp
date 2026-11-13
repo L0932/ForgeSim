@@ -1,6 +1,7 @@
 #include "LightGizmoTransform.hpp"
 #include "SceneTransformEditor.hpp"
 #include "GizmoTransform.hpp"
+#include "ObjectTransformSelection.hpp"
 
 #include <type_traits>
 #include <utility>
@@ -132,7 +133,7 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const SandboxObject& object,
 			const Transform& before,
 			const Transform& after,
@@ -145,7 +146,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const DirectionalLight& light,
 			const Transform& before,
 			const Transform& after,
@@ -167,7 +168,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const PointLight& light,
 			const Transform& before,
 			const Transform& after,
@@ -180,7 +181,7 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
-		[[nodiscard]] SceneEdit MakeEdit(
+		[[nodiscard]] SceneTransformEdit MakeEdit(
 			const SpotLight& light,
 			const Transform& before,
 			const Transform& after,
@@ -209,7 +210,7 @@ namespace ForgeSim::Sandbox
 
     bool SceneTransformEditor::SetObjectPivot(SandboxObject& object, const glm::vec3& pivot)
     {
-        if (IsActive() || m_PendingEdit || object.transform.pivot == pivot)
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || object.transform.pivot == pivot)
             return false;
         Transform after = object.transform;
         if (!after.TrySetPivot(pivot)) return false;
@@ -217,6 +218,71 @@ namespace ForgeSim::Sandbox
             .objectId = object.id, .before = object.transform, .after = after});
         object.transform = after;
         return true;
+    }
+
+    void SceneTransformEditor::RecordObjectEdits(ObjectBatchEdit batch)
+    {
+        if (!batch.edits.empty()) m_History.RecordApplied(std::move(batch));
+    }
+
+    bool SceneTransformEditor::SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
+        const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter)
+    {
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        ObjectBatchEdit batch;
+        for (const auto id : selection.SelectedObjectIds())
+        {
+            const auto* object = scene.FindObject(id);
+            if (!object) return false;
+            const auto bounds = object->localBounds.value_or(fallbackBounds);
+            auto after = object->transform;
+            const auto pivot = boundsCenter ? bounds.minimum * 0.5f + bounds.maximum * 0.5f : glm::vec3{0.0f};
+            if (after.pivot == pivot) continue;
+            if (!after.TrySetPivot(pivot)) return false;
+            batch.edits.emplace_back(ObjectTransformEdit{id, object->transform, after});
+        }
+        return m_History.ApplyObjectBatch(scene, std::move(batch));
+    }
+
+    bool SceneTransformEditor::SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible)
+    {
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        ObjectBatchEdit batch;
+        for (const auto id : selection.SelectedObjectIds())
+            if (scene.FindObject(id) && scene.IsObjectVisible(id) != visible)
+                batch.edits.emplace_back(ObjectVisibilityEdit{id, scene.IsObjectVisible(id), visible});
+        return m_History.ApplyObjectBatch(scene, std::move(batch));
+    }
+
+    void SceneTransformEditor::EditObjectGroup(const SceneTransformEditorContext& context)
+    {
+        const auto& targets = m_PendingObjectEdits ? m_DragSelection : context.selection;
+        const auto active = targets.SelectedObjectId();
+        auto* object = active ? context.scene.FindObject(*active) : nullptr;
+        if (!object) return;
+        const auto before = object->transform;
+        auto matrix = before.GizmoMatrix();
+        m_Interaction = DrawGizmo(matrix, context, true);
+        auto after = before;
+        if (!m_Interaction.changed || !TryApplyGizmoTransform(after, matrix, context.operation)) return;
+        auto latest = BuildObjectTransformEdits(context.scene, targets, before, after, context.operation);
+        if (!latest) return;
+        if (!m_PendingObjectEdits)
+        {
+            m_DragSelection = targets;
+            m_PendingObjectEdits = *latest;
+        }
+        else
+        {
+            for (std::size_t i = 0; i < latest->edits.size(); ++i)
+                std::get<ObjectTransformEdit>(m_PendingObjectEdits->edits[i]).after =
+                    std::get<ObjectTransformEdit>(latest->edits[i]).after;
+        }
+        for (const auto& edit : latest->edits)
+        {
+            const auto& item = std::get<ObjectTransformEdit>(edit);
+            context.scene.FindObject(item.objectId)->transform = item.after;
+        }
     }
 
 	void SceneTransformEditor::BeginFrame()
@@ -257,7 +323,7 @@ namespace ForgeSim::Sandbox
 			return;
 		}
 
-		SceneEdit edit = MakeEdit(
+		SceneTransformEdit edit = MakeEdit(
 			target,
 			before,
 			after,
@@ -313,7 +379,11 @@ namespace ForgeSim::Sandbox
 		m_WasActive = m_Interaction.active;
 		m_Interaction = {};
 
-		if (m_PendingEdit)
+        if (m_PendingObjectEdits || (!m_PendingEdit && context.selection.SelectedObjectIds().size() > 1))
+        {
+            EditObjectGroup(context);
+        }
+        else if (m_PendingEdit)
 		{
 			// Continue editing the original target even
 			// if selection changes through another UI.
@@ -453,10 +523,15 @@ namespace ForgeSim::Sandbox
 
 	void SceneTransformEditor::FinishEdit()
 	{
+        if (m_PendingObjectEdits)
+        {
+            RecordObjectEdits(std::move(*m_PendingObjectEdits));
+            m_PendingObjectEdits.reset();
+            m_DragSelection.Clear();
+        }
 		if (m_PendingEdit)
 		{
-			m_History.RecordApplied(
-				std::move(*m_PendingEdit));
+            std::visit([this](auto& edit) { m_History.RecordApplied(std::move(edit)); }, *m_PendingEdit);
 
 			m_PendingEdit.reset();
 		}
@@ -476,37 +551,64 @@ namespace ForgeSim::Sandbox
 
     bool SceneTransformEditor::CanUndo() const noexcept
     {
-        return !m_WasActive && !IsActive() && !m_PendingEdit && m_History.CanUndo();
+        return !m_WasActive && !IsActive() && !m_PendingEdit && !m_PendingObjectEdits && m_History.CanUndo();
     }
 
     bool SceneTransformEditor::CanRedo() const noexcept
     {
-        return !m_WasActive && !IsActive() && !m_PendingEdit && m_History.CanRedo();
+        return !m_WasActive && !IsActive() && !m_PendingEdit && !m_PendingObjectEdits && m_History.CanRedo();
     }
 
-	bool SceneTransformEditor::Undo(SandboxScene& scene)
+	bool SceneTransformEditor::Undo(SandboxScene& scene, SceneSelection* selection)
 	{
 		if (m_WasActive || IsActive())
 		{
 			return false;
 		}
 
-		return m_History.Undo(scene);
+		return m_History.Undo(scene, selection);
 	}
 
-	bool SceneTransformEditor::Redo(SandboxScene& scene)
+	bool SceneTransformEditor::Redo(SandboxScene& scene, SceneSelection* selection)
 	{
 		if (m_WasActive || IsActive())
 		{
 			return false;
 		}
 
-		return m_History.Redo(scene);
+		return m_History.Redo(scene, selection);
 	}
+
+    bool SceneTransformEditor::DuplicateSelection(SandboxScene& scene, SceneSelection& selection)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        return m_History.DuplicateSelection(scene, selection);
+    }
+
+    bool SceneTransformEditor::CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        return m_History.CreateCube(scene, selection, position);
+    }
+
+    bool SceneTransformEditor::CreateLight(SandboxScene& scene, SceneSelection& selection,
+        SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        return m_History.CreateLight(scene, selection, type, position, direction, range);
+    }
+
+    bool SceneTransformEditor::DeleteSelection(SandboxScene& scene, SceneSelection& selection)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        return m_History.DeleteSelection(scene, selection);
+    }
 
 	void SceneTransformEditor::ClearHistory()
 	{
 		m_PendingEdit.reset();
+        m_PendingObjectEdits.reset();
+        m_DragSelection.Clear();
 		m_History.Clear();
 	}
 }

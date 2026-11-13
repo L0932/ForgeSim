@@ -32,6 +32,11 @@ namespace ForgeSim::Sandbox
 	public:
 		void BeginFrame();
 
+        void RecordObjectEdits(ObjectBatchEdit batch);
+        [[nodiscard]] bool SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
+            const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter);
+        [[nodiscard]] bool SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible);
+
         // Changes only the pivot, preserving placement and recording undo/redo.
         [[nodiscard]] bool SetObjectPivot(SandboxObject& object, const glm::vec3& pivot);
 
@@ -44,8 +49,14 @@ namespace ForgeSim::Sandbox
         [[nodiscard]] bool CanUndo() const noexcept;
         [[nodiscard]] bool CanRedo() const noexcept;
 
-		[[nodiscard]] bool Undo(SandboxScene& scene);
-		[[nodiscard]] bool Redo(SandboxScene& scene);
+		[[nodiscard]] bool Undo(SandboxScene& scene, SceneSelection* selection = nullptr);
+		[[nodiscard]] bool Redo(SandboxScene& scene, SceneSelection* selection = nullptr);
+
+        [[nodiscard]] bool DuplicateSelection(SandboxScene& scene, SceneSelection& selection);
+        [[nodiscard]] bool CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position);
+        [[nodiscard]] bool CreateLight(SandboxScene& scene, SceneSelection& selection,
+            SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range);
+        [[nodiscard]] bool DeleteSelection(SandboxScene& scene, SceneSelection& selection);
 
 		// Call when replacing the scene, outside an active drag.
 		void ClearHistory();
@@ -62,12 +73,15 @@ namespace ForgeSim::Sandbox
 			bool operationSupported);
 
 		void FinishEdit();
+        void EditObjectGroup(const SceneTransformEditorContext& context);
+        std::optional<ObjectBatchEdit> m_PendingObjectEdits;
+        SceneSelection m_DragSelection;
 
 		ViewportTransformGizmo m_Gizmo;
 		GizmoInteraction m_Interaction;
 
 		SceneEditHistory m_History;
-		std::optional<SceneEdit> m_PendingEdit;
+		std::optional<SceneTransformEdit> m_PendingEdit;
 
 		bool m_WasActive = false;
 	};

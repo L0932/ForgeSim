@@ -15,6 +15,13 @@ namespace ForgeSim::Platform
 		Save
 	};
 
+    enum class FileDialogPurpose
+    {
+        General,
+        ModelImport,
+        ModelRecovery
+    };
+
 	struct FileDialogSpecification
 	{
 		std::filesystem::path defaultDirectory;
@@ -24,6 +31,8 @@ namespace ForgeSim::Platform
 		std::wstring filterName = L"All files";
 		std::wstring filterPattern = L"*.*";
 		std::wstring defaultExtension;
+        // Stable purpose-specific Windows history, independent of the title/filter.
+        FileDialogPurpose purpose = FileDialogPurpose::General;
 	};
 
 	[[nodiscard]] std::optional<std::filesystem::path>

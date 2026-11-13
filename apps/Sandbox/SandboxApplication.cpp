@@ -1,3 +1,4 @@
+#include "SceneAssetPath.hpp"
 #include "FreeCameraController.hpp"
 #include "BundledSamples.hpp"
 #include "ExternalSample.hpp"
@@ -21,6 +22,7 @@
 #include "SceneTransformEditor.hpp"
 #include "SceneViewportPanel.hpp"
 #include "SceneSelection.hpp"
+#include "SelectionFocus.hpp"
 #include "SceneSelectionValidation.hpp"
 #include "TransformEditorUIState.hpp"
 #include "ViewportSelectionController.hpp"
@@ -205,7 +207,7 @@ namespace ForgeSim::Sandbox
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
-        Core::LogInfo("Scene loaded: " + document.name);
+        Core::LogInfo("Scene loaded: " + m_EditorSession->DisplayName());
 	}
 
 	void SandboxApplication::Run(std::optional<std::chrono::steady_clock::time_point> startupStart)
@@ -250,10 +252,9 @@ namespace ForgeSim::Sandbox
 			.maximum = glm::vec3{ 1.0f }
 		};
 
-		SceneCameraFraming initialFraming =
-			CreateSceneCameraFraming(
-				scene.Objects().empty() ? emptySceneBounds : bounds,
-				initialAspectRatio);
+        SceneCameraFraming initialFraming = scene.Objects().empty()
+            ? CreateEmptySceneCameraFraming(initialAspectRatio)
+            : CreateSceneCameraFraming(bounds, initialAspectRatio);
 
 		Renderer::PerspectiveCamera camera =
 			std::move(initialFraming.camera);
@@ -442,11 +443,15 @@ namespace ForgeSim::Sandbox
         std::vector<SpotLight> visibleSpotLights;
 		bool viewportNavigationActive = false;
 
+		// Empty workspaces use a fixed guide scale instead of tiny placeholder bounds.
+        const Renderer::AxisAlignedBoundingBox emptyLightDebugBounds{
+            glm::vec3{-2.5f}, glm::vec3{2.5f}};
+
 		// Light guides and their picking radius follow the transformed
 		// scene size, rather than the shared mesh's local dimensions.
 		Renderer::AxisAlignedBoundingBox lightDebugBounds =
 			scene.Objects().empty()
-			? emptySceneBounds
+			? emptyLightDebugBounds
 			: CalculateSceneBounds(
 				scene.Objects(),
 				m_Renderer.ObjectLocalBounds());
@@ -492,6 +497,8 @@ namespace ForgeSim::Sandbox
 				const LightDebugLayout layout =
 					CalculateLightDebugLayout(lightDebugBounds);
 
+                if (scene.HasDirectionalLight())
+                {
 				lightPickTargets.push_back(
 					LightPickTarget{
 						.id = scene.MainDirectionalLight().id,
@@ -500,6 +507,7 @@ namespace ForgeSim::Sandbox
 							.radius = layout.pickRadius
 						}
 					});
+                }
 
 				for (const PointLight& light : scene.PointLights())
 				{
@@ -547,7 +555,7 @@ namespace ForgeSim::Sandbox
 				!transformEditor.IsActive() &&
 				!input.GetMouseButtonState(
 					Platform::MouseButton::Right).held,
-				m_EditorSession->ScenePath().has_value());
+				m_EditorSession->ScenePath().has_value(), scene.HasDirectionalLight());
 
             SceneToolbarRequest toolbarRequest;
             const bool layoutReset = m_DebugUI.BeginWorkspace([&]
@@ -558,7 +566,7 @@ namespace ForgeSim::Sandbox
                     .hasScenePath = m_EditorSession->ScenePath().has_value(),
                     .canUndo = transformEditor.CanUndo(),
                     .canRedo = transformEditor.CanRedo(),
-                    .sceneName = scene.Name(),
+                    .sceneName = m_EditorSession->DisplayName(),
                     .dirty = m_EditorSession->HasUnsavedChanges()
                 });
             });
@@ -573,7 +581,7 @@ namespace ForgeSim::Sandbox
 			}
 
 			std::string scenePathText;
-			std::string sceneDisplayName = scene.Name();
+			std::string sceneDisplayName = m_EditorSession->DisplayName();
 
 			if (m_EditorSession->ScenePath())
 			{
@@ -633,7 +641,9 @@ namespace ForgeSim::Sandbox
 						changePending ||
 						transformEditor.IsActive() ||
 						input.GetMouseButtonState(
-							Platform::MouseButton::Right).held
+							Platform::MouseButton::Right).held,
+                    .inspectModel = [this](const std::string& reference)
+                    { return m_Renderer.InspectModelHierarchy(reference); }
 				});
 
 			const auto windowExtent = m_Window.GetWindowExtent();
@@ -747,10 +757,9 @@ namespace ForgeSim::Sandbox
 
 					const float framingAspectRatio = aspectRatio;
 
-					SceneCameraFraming framing =
-						CreateSceneCameraFraming(
-							framingBounds,
-							framingAspectRatio);
+                    SceneCameraFraming framing = scene.Objects().empty()
+                        ? CreateEmptySceneCameraFraming(framingAspectRatio)
+                        : CreateSceneCameraFraming(framingBounds, framingAspectRatio);
 
 					if (const auto& savedCamera = scene.SavedCamera())
 					{
@@ -860,10 +869,16 @@ namespace ForgeSim::Sandbox
 				selection,
 				scene);
 
+            if (const auto visible = hierarchyPanel.SelectionVisibilityRequested();
+                visible && !changePending && !transformEditor.IsActive())
+                static_cast<void>(transformEditor.SetSelectionVisible(scene, selection, *visible));
+
             // Keep the Inspector selection when hiding an object, but omit its gizmo.
             SceneSelection gizmoSelection = selection;
-            if (const auto id = selection.SelectedObjectId(); id && !scene.IsObjectVisible(*id))
-                gizmoSelection.Clear();
+            // Hidden members still participate when another selected object has a visible gizmo.
+            const bool anyVisibleObject = std::any_of(selection.SelectedObjectIds().begin(),
+                selection.SelectedObjectIds().end(), [&](auto id) { return scene.IsObjectVisible(id); });
+            if (!selection.SelectedObjectIds().empty() && !anyVisibleObject) gizmoSelection.Clear();
             if (const auto id = selection.SelectedLightId(); id && !scene.IsLightVisible(*id))
                 gizmoSelection.Clear();
 
@@ -882,14 +897,69 @@ namespace ForgeSim::Sandbox
 					.navigationActive = changePending|| rightMouseDown
 				});
 
+            bool sceneEntitiesChanged = false;
 			if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.undoRequested || toolbarRequest.undo))
 			{
-				static_cast<void>(transformEditor.Undo(scene));
+				sceneEntitiesChanged = transformEditor.Undo(scene, &selection);
 			}
 			else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && (editorUI.redoRequested || toolbarRequest.redo))
 			{
-				static_cast<void>(transformEditor.Redo(scene));
+				sceneEntitiesChanged = transformEditor.Redo(scene, &selection);
 			}
+
+            else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && !rightMouseDown &&
+                (viewport.duplicateSelectionRequested || hierarchyPanel.DuplicateSelectionRequested()))
+            {
+                sceneEntitiesChanged = transformEditor.DuplicateSelection(scene, selection);
+                if (sceneEntitiesChanged) sceneFileMessage = "Selection duplicated at the same position. Use Move to separate the copy.";
+            }
+            else if (fileRequest.createCube && !changePending && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+            {
+                try
+                {
+                    // Prepare resources before mutating the active scene/history.
+                    SandboxScene prepared = scene;
+                    static_cast<void>(prepared.AddModelObject("Cube", std::string{BuiltinCubeReference}));
+                    m_Renderer.LoadSceneModels(m_EditorSession->ProjectRoot(), prepared.Objects(),
+                        ResolveSceneEnvironment(scene.RenderingSettings(), m_EditorSession->ProjectRoot(),
+                            BundledAssetDirectory() / "environments"));
+                    const auto position = camera.Position() + camera.ForwardDirection() * 3.0f;
+                    sceneEntitiesChanged = transformEditor.CreateCube(scene, selection, position);
+                    if (sceneEntitiesChanged) sceneFileMessage = "Cube created. Undo removes it.";
+                }
+                catch (const std::exception& error)
+                {
+                    sceneFileMessage = std::string{"Could not create cube: "} + error.what();
+                }
+            }
+            else if (fileRequest.createLight && !changePending && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+            {
+                const auto worldBounds = scene.Objects().empty() ? emptySceneBounds :
+                    CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+                const float radius = glm::length(worldBounds.maximum * 0.5f - worldBounds.minimum * 0.5f);
+                const float distance = std::clamp(radius * 0.25f, 0.01f, 10.0f);
+                const auto direction = camera.ForwardDirection();
+                const auto position = camera.Position() + direction * distance;
+                sceneEntitiesChanged = transformEditor.CreateLight(scene, selection, *fileRequest.createLight,
+                    position, direction, std::max(distance * 4.0f, 0.1f));
+                if (sceneEntitiesChanged) sceneFileMessage = "Light created. Undo removes it.";
+            }
+            else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && !rightMouseDown &&
+                (viewport.deleteSelectionRequested || hierarchyPanel.DeleteSelectionRequested()))
+            {
+                sceneEntitiesChanged = transformEditor.DeleteSelection(scene, selection);
+                if (sceneEntitiesChanged) sceneFileMessage = "Selection deleted. Undo restores it.";
+            }
+            if (sceneEntitiesChanged)
+            {
+                ClearMissingSceneSelection(selection, scene);
+                inspectorPanel.Reset();
+                lightPickTargets.clear();
+                lightDebugBounds = scene.Objects().empty() ? emptyLightDebugBounds :
+                    CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+            }
 
 			const bool pickingSuppressed =
 				!viewport.hovered ||
@@ -916,7 +986,7 @@ namespace ForgeSim::Sandbox
 				visibleObjects,
 				lightPickTargets,
 				selection,
-				pickingSuppressed);
+				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
 
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =
@@ -944,7 +1014,7 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.ShowObjectBounds(),
 
 				.showLights = m_DebugUI.ShowLights(),
-                .showDirectionalLightGuide = scene.IsLightVisible(scene.MainDirectionalLight().id),
+                .showDirectionalLightGuide = scene.HasDirectionalLight() && scene.IsLightVisible(scene.MainDirectionalLight().id),
 
 				.directionalShadows = scene.RenderingSettings().directionalShadows,
                 .fxaa = m_DebugUI.Fxaa(),
@@ -968,7 +1038,7 @@ namespace ForgeSim::Sandbox
 			};
 
             DirectionalLight visibleDirectional = scene.MainDirectionalLight();
-            visibleDirectional.enabled &= scene.IsLightVisible(visibleDirectional.id);
+            visibleDirectional.enabled &= scene.HasDirectionalLight() && scene.IsLightVisible(visibleDirectional.id);
             visiblePointLights.clear();
             for (const auto& light : scene.PointLights())
                 if (scene.IsLightVisible(light.id)) visiblePointLights.push_back(light);
@@ -978,7 +1048,7 @@ namespace ForgeSim::Sandbox
 
 			m_Renderer.Render(
 				visibleObjects,
-				selection.SelectedObjectId(),
+				selection.SelectedObjectIds(),
 				view,
 				projection,
 				camera.Position(),
@@ -990,6 +1060,22 @@ namespace ForgeSim::Sandbox
 				renderSettings);
 
 			sceneViewportPanel.End();
+
+            const auto focusSelection = [&]
+            {
+                const auto focusBounds = SelectionFocusBounds(scene.Objects(),
+                    SceneLightingView{scene.MainDirectionalLight(), scene.PointLights(), scene.SpotLights()},
+                    selection, m_Renderer.ObjectLocalBounds());
+                if (!focusBounds) return;
+                const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+                const auto focused = CreateSelectionFocusCamera(*focusBounds, sceneBounds, camera, aspectRatio);
+                cameraRestoreRequest = CaptureSceneCamera(focused);
+                // Focusing changes the viewpoint, never the fly-speed setting or scene data.
+            };
+            if ((viewport.focusSelectionRequested || hierarchyPanel.FocusSelectionRequested()) &&
+                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable())
+                focusSelection();
 
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
@@ -1008,23 +1094,13 @@ namespace ForgeSim::Sandbox
                         static_cast<std::uint32_t>(viewport.framebufferExtent.height) } }
                     : std::nullopt,
                 .cameraRestoreRequest = cameraRestoreRequest,
-                .canFocusSelection = selection.SelectedObjectId().has_value(),
-                .focusSelection = [&]
-                {
-                    const auto id = selection.SelectedObjectId();
-                    const auto* object = id ? scene.FindObject(*id) : nullptr;
-                    if (!object) return;
-                    auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
-                        std::span<const SandboxObject>{object, 1}, m_Renderer.ObjectLocalBounds()), aspectRatio);
-                    cameraRestoreRequest = CaptureSceneCamera(framing.camera);
-                    cameraController = std::move(framing.controller);
-                    if (scene.CameraMovementSpeed())
-                        cameraController.SetMovementSpeed(*scene.CameraMovementSpeed());
-                },
+                .canFocusSelection = !selection.Empty(),
+                .focusSelection = focusSelection,
                 .frameScene = [&]
                 {
-                    auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
-                        scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
+                    auto framing = scene.Objects().empty() ? CreateEmptySceneCameraFraming(aspectRatio) :
+                        CreateSceneCameraFraming(CalculateSceneBounds(
+                            scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
                     cameraRestoreRequest = CaptureSceneCamera(framing.camera);
                     cameraController = std::move(framing.controller);
                     if (scene.CameraMovementSpeed())
@@ -1056,7 +1132,10 @@ namespace ForgeSim::Sandbox
 						changePending ||
 						transformEditor.IsActive() ||
 						rightMouseDown,
-                    .transformEditor = &transformEditor
+                    .transformEditor = &transformEditor,
+                    .materials = selection.SelectedObjectId() && scene.FindObject(*selection.SelectedObjectId())
+                        ? m_Renderer.InspectModelMaterials(scene.FindObject(*selection.SelectedObjectId())->modelPath)
+                        : ModelMaterialInspection{}
 				});
 
 			bool openAfterFrame = false;
@@ -1077,7 +1156,8 @@ namespace ForgeSim::Sandbox
                                 .defaultDirectory = m_EditorSession->ProjectRoot(),
                                 .title = L"Import model into scene",
                                 .filterName = L"glTF models",
-                                .filterPattern = L"*.glb;*.gltf"
+                                .filterPattern = L"*.glb;*.gltf",
+                                .purpose = Platform::FileDialogPurpose::ModelImport
                             });
                         static_cast<void>(timer.Restart());
                         break;
@@ -1180,7 +1260,7 @@ namespace ForgeSim::Sandbox
 						}
 
 						sceneFileMessage = "Scene saved.";
-                        Core::LogInfo("Scene saved: " + scene.Name());
+                        Core::LogInfo("Scene saved: " + m_EditorSession->DisplayName());
 						break;
 					}
 
@@ -1201,7 +1281,7 @@ namespace ForgeSim::Sandbox
 
 						m_EditorSession->SaveAs(*path);
 						sceneFileMessage = "Scene saved.";
-                        Core::LogInfo("Scene saved: " + scene.Name());
+                        Core::LogInfo("Scene saved: " + m_EditorSession->DisplayName());
 						break;
 					}
 
@@ -1238,7 +1318,7 @@ namespace ForgeSim::Sandbox
 							m_EditorSession->SaveAs(*path);
 						}
 
-                        Core::LogInfo("Scene saved: " + scene.Name());
+                        Core::LogInfo("Scene saved: " + m_EditorSession->DisplayName());
 						completePendingAction = true;
 						break;
 					}
@@ -1263,7 +1343,8 @@ namespace ForgeSim::Sandbox
                                 .suggestedFileName = {},
                                 .title = L"Locate missing model",
                                 .filterName = L"glTF model",
-                                .filterPattern = L"*.glb;*.gltf"
+                                .filterPattern = L"*.glb;*.gltf",
+                                .purpose = Platform::FileDialogPurpose::ModelRecovery
                             });
                         static_cast<void>(timer.Restart());
                         if (!model) break;
@@ -1335,9 +1416,9 @@ namespace ForgeSim::Sandbox
 							EditorSession replacement =
 								m_EditorSession->PrepareNew();
 
-                            m_Renderer.LoadSceneResources(std::nullopt,
+                            m_Renderer.LoadSceneModels(replacement.ProjectRoot(), replacement.Scene().Objects(),
                                 ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
-                                    replacement.ProjectRoot(), BundledAssetDirectory() / "environments"));
+                                    replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), {}, std::nullopt, false);
 
 							// Keep the EditorSession and its SandboxScene
 							// at their existing addresses.
@@ -1348,7 +1429,7 @@ namespace ForgeSim::Sandbox
 
 							lightDebugBounds =
 								scene.Objects().empty()
-								? emptySceneBounds
+								? emptyLightDebugBounds
 								: CalculateSceneBounds(
 									scene.Objects(),
 									m_Renderer.ObjectLocalBounds());
@@ -1406,10 +1487,10 @@ namespace ForgeSim::Sandbox
                     if (!previous.empty())
                     {
                         const auto existing = CalculateSceneBounds(previous, m_Renderer.ObjectLocalBounds());
-                        const auto& bounds = *imported.localBounds;
+                        const auto& importedBounds = *imported.localBounds;
                         const float gap = std::max(existing.maximum.x - existing.minimum.x,
-                            bounds.maximum.x - bounds.minimum.x) * 0.1f;
-                        imported.transform.position.x = existing.maximum.x + gap - bounds.minimum.x;
+                            importedBounds.maximum.x - importedBounds.minimum.x) * 0.1f;
+                        imported.transform.position.x = existing.maximum.x + gap - importedBounds.minimum.x;
                     }
                     const auto id = imported.id;
                     *m_EditorSession = std::move(replacement);
@@ -1476,7 +1557,7 @@ namespace ForgeSim::Sandbox
 					cameraRestoreRequest.reset();
 
 					lightDebugBounds = scene.Objects().empty()
-						? emptySceneBounds
+						? emptyLightDebugBounds
 						: CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
 
 					selection.Clear();
@@ -1491,7 +1572,7 @@ namespace ForgeSim::Sandbox
 					pendingSample = false;
                     pendingTexturePolicy.reset();
 					sceneFileMessage = "Scene opened.";
-                    Core::LogInfo("Scene loaded: " + scene.Name());
+                    Core::LogInfo("Scene loaded: " + m_EditorSession->DisplayName());
                     logTiming("Scene open completed", loadStart);
 				}
                 catch (const MissingSceneAssets& missing)

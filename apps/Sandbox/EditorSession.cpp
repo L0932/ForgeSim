@@ -17,7 +17,7 @@ namespace ForgeSim::Sandbox
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (extension != ".glb" && extension != ".gltf")
             throw std::invalid_argument("Import Model supports .glb and .gltf files.");
-        const bool adoptRoot = m_Scene.Objects().empty() && !m_ScenePath &&
+        const bool adoptRoot = !m_Scene.HasAllocatedObjectIds() && !m_ScenePath &&
             m_Scene.RenderingSettings().environmentSource != SceneEnvironmentSource::ProjectAsset;
         ModelImportLocation location;
         try { location = ResolveModelImportLocation(path,
@@ -97,6 +97,13 @@ namespace ForgeSim::Sandbox
         EditorSession::ProjectRoot() const noexcept
     {
         return m_ProjectRoot;
+    }
+
+    std::string EditorSession::DisplayName() const
+    {
+        if (!m_ScenePath) return m_Scene.Name();
+        const auto filename = m_ScenePath->filename().generic_u8string();
+        return std::string(filename.begin(), filename.end());
     }
 
     bool EditorSession::HasUnsavedChanges() const

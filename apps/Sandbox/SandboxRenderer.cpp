@@ -1,3 +1,4 @@
+#include "BuiltinCube.hpp"
 #include "LightDebugLayout.hpp"
 #include "LightSubmission.hpp"
 #include "SandboxPaths.hpp"
@@ -1477,7 +1478,7 @@ namespace ForgeSim::Sandbox
 
 	void SandboxRenderer::Render(
 		std::span<const SandboxObject> objects,
-		std::optional<SandboxObjectId> selectedObjectId,
+		std::span<const SandboxObjectId> selectedObjectIds,
 		const glm::mat4& view,
 		const glm::mat4& projection,
 		const glm::vec3& cameraPosition,
@@ -1509,8 +1510,7 @@ namespace ForgeSim::Sandbox
 		for (const SandboxObject& object : objects)
 		{
 			const bool isSelected =
-				selectedObjectId &&
-				*selectedObjectId == object.id;
+				std::find(selectedObjectIds.begin(), selectedObjectIds.end(), object.id) != selectedObjectIds.end();
 
 			const glm::mat4 objectTransform =
 				object.transform.ModelMatrix();
@@ -2486,6 +2486,32 @@ namespace ForgeSim::Sandbox
 	}
 
 
+    const Assets::SceneAsset* SandboxRenderer::InspectModelHierarchy(const std::string& modelReference) const
+    {
+        const auto binding = m_ModelBindings.find(modelReference);
+        if (binding == m_ModelBindings.end()) return nullptr;
+        const auto cached = m_Models.find(binding->second);
+        return cached == m_Models.end() ? &m_ObjectSceneAsset : &cached->second->asset;
+    }
+
+    ModelMaterialInspection SandboxRenderer::InspectModelMaterials(const std::string& modelReference) const
+    {
+        const auto binding = m_ModelBindings.find(modelReference);
+        if (binding == m_ModelBindings.end()) return {};
+        const auto cached = m_Models.find(binding->second);
+        const auto* model = cached == m_Models.end() ? nullptr : cached->second.get();
+        ModelMaterialInspection result;
+        result.asset = model ? &model->asset : &m_ObjectSceneAsset;
+        const auto& materials = model ? model->materials : m_GpuMaterialResources;
+        const auto handle = [](const GpuTextureBinding& texture) -> std::uint32_t
+        { return texture.texture ? texture.texture->Handle() : 0; };
+        result.textureHandles.reserve(materials.size());
+        for (const auto& material : materials)
+            result.textureHandles.push_back({handle(material.baseColor), handle(material.metallicRoughness),
+                handle(material.normal), handle(material.occlusion), handle(material.emissive)});
+        return result;
+    }
+
     void SandboxRenderer::LoadSceneModels(const std::filesystem::path& root,
         std::span<SandboxObject> objects,
         const std::optional<std::filesystem::path>& environmentPath,
@@ -2493,13 +2519,17 @@ namespace ForgeSim::Sandbox
         std::optional<Assets::GltfTexturePolicy> texturePolicy, bool reuseLoadedModels)
     {
         // Stage all resources. Failed imports leave the active bindings and GPU resources intact.
-        std::map<std::filesystem::path, std::shared_ptr<ModelResources>> models;
-        std::map<std::string, std::filesystem::path> bindings;
+        // Preserve resources referenced by deletion history during imports. A
+        // scene replacement clears history and prepares a fresh resource set.
+        auto models = reuseLoadedModels ? m_Models : decltype(m_Models){};
+        auto bindings = reuseLoadedModels ? m_ModelBindings : decltype(m_ModelBindings){};
         for (auto& object : objects)
         {
             const std::u8string reference(object.modelPath.begin(), object.modelPath.end());
-            const auto path = std::filesystem::canonical(root / std::filesystem::path(reference));
-            bindings.emplace(object.modelPath, path);
+            const bool builtinCube = object.modelPath == BuiltinCubeReference;
+            const auto path = builtinCube ? std::filesystem::path{BuiltinCubeReference} :
+                std::filesystem::canonical(root / std::filesystem::path(reference));
+            bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
                 object.localBounds = m_ObjectLocalBounds;
@@ -2512,7 +2542,7 @@ namespace ForgeSim::Sandbox
                 else
                 {
                     auto model = std::make_shared<ModelResources>();
-                    model->asset = LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
+                    model->asset = builtinCube ? CreateBuiltinCubeAsset() : LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
                         m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages,
                         m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
                     model->bounds = CalculateSceneBounds(model->asset);

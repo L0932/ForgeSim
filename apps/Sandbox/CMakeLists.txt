@@ -108,12 +108,18 @@ target_sources(
         SceneAssetRecovery.hpp
         SceneAssetRoot.hpp
         SceneAssetRoot.cpp
+        EditorShortcutContext.hpp
+        SceneKeyboardShortcuts.hpp
+        SelectionFocus.hpp
+        KeyboardControls.hpp
+        KeyboardControlsPanel.hpp
         ExternalSample.hpp
         BundledSamples.hpp
 		SceneFilePanel.hpp
         SceneFilePanel.cpp
 		SceneHierarchyPanel.hpp
 		SceneHierarchyPanel.cpp
+        ModelMaterialInspection.hpp
 		SceneInspectorPanel.hpp
 		SceneInspectorPanel.cpp
 		SceneLightEditing.hpp
@@ -132,6 +138,7 @@ target_sources(
 		FreeCameraController.hpp
 		FreeCameraController.cpp
 		GizmoTransform.hpp
+        ObjectTransformSelection.hpp
 		GizmoTransform.cpp
 		LightSubmission.hpp
 		LightSubmission.cpp

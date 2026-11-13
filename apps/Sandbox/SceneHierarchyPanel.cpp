@@ -1,4 +1,6 @@
 #include "SceneHierarchyPanel.hpp"
+#include "SceneKeyboardShortcuts.hpp"
+#include "SceneEditHistory.hpp"
 #include "EditorSectionHeader.hpp"
 
 #include <algorithm>
@@ -13,6 +15,49 @@ namespace ForgeSim::Sandbox
             return std::string(typeName) + " " + std::to_string(id) +
                 (enabled ? "" : " (disabled)");
         }
+        void DrawAssetNode(const Assets::SceneAsset& asset, std::size_t index,
+            std::vector<bool>& ancestors, std::size_t depth)
+        {
+            if (index >= asset.nodes.size()) { ImGui::TextDisabled("Invalid node reference"); return; }
+            if (ancestors[index] || depth >= 128) { ImGui::TextDisabled("Hierarchy depth/cycle limit"); return; }
+            const auto& node = asset.nodes[index];
+            ImGui::PushID(static_cast<int>(index));
+            const auto name = node.name.empty() ? "Node " + std::to_string(index) : node.name;
+            auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+            if (node.childIndices.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+            const auto label = name + (node.meshIndex ? " [Mesh " + std::to_string(*node.meshIndex) + "]" : " [Node]");
+            const bool expanded = ImGui::TreeNodeEx("##AssetNode", flags, "%s", label.c_str());
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("Read-only asset node; editing acts on the model instance.");
+                ImGui::Text("Node index: %zu   Children: %zu", index, node.childIndices.size());
+                if (node.localTransform.matrix) ImGui::TextUnformatted("Local transform: authored matrix");
+                else ImGui::Text("Local translation: %.4f, %.4f, %.4f", node.localTransform.translation[0],
+                    node.localTransform.translation[1], node.localTransform.translation[2]);
+                if (node.meshIndex && *node.meshIndex < asset.meshes.size())
+                {
+                    const auto& mesh = asset.meshes[*node.meshIndex];
+                    ImGui::Text("Mesh: %s (%zu primitives)", mesh.name.c_str(), mesh.primitives.size());
+                    for (std::size_t primitive = 0; primitive < mesh.primitives.size(); ++primitive)
+                    {
+                        const auto& item = mesh.primitives[primitive];
+                        if (item.materialIndex) ImGui::Text("Primitive %zu: Material %zu", primitive, *item.materialIndex + 1);
+                        else ImGui::Text("Primitive %zu: Default material", primitive);
+                    }
+                }
+                ImGui::EndTooltip();
+            }
+            if (expanded)
+            {
+                ancestors[index] = true;
+                for (const auto child : node.childIndices) DrawAssetNode(asset, child, ancestors, depth + 1);
+                ancestors[index] = false;
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
+
         struct HierarchyRowAction { bool select = false; bool toggle = false; };
 
         HierarchyRowAction DrawVisibilityRow(const std::string& label, const std::string& buttonId,
@@ -66,11 +111,18 @@ namespace ForgeSim::Sandbox
 
     void SceneHierarchyPanel::Draw(const SceneHierarchyPanelContext& context)
     {
+        m_SelectionVisibilityRequested.reset();
+        m_FocusSelectionRequested = false;
+        m_DeleteSelectionRequested = false;
+        m_DuplicateSelectionRequested = false;
         if (!ImGui::Begin("Hierarchy"))
         {
             ImGui::End();
             return;
         }
+        m_FocusSelectionRequested = FocusSelectionShortcutPressed(context.interactionDisabled);
+        m_DeleteSelectionRequested = DeleteSelectionShortcutPressed(context.interactionDisabled);
+        m_DuplicateSelectionRequested = DuplicateSelectionShortcutPressed(context.interactionDisabled);
         // Compact list density belongs to the Hierarchy, independent of the
         // larger form controls in the Inspector and Debug panels.
         const auto padding = ImGui::GetStyle().FramePadding;
@@ -106,6 +158,11 @@ namespace ForgeSim::Sandbox
                 { return term.b != term.e && term.b[0] == '-'; });
         }
         const bool filtering = m_Filter.IsActive();
+        std::vector<SandboxObjectId> rangeOrder;
+        for (const auto& object : context.scene.Objects())
+            if (m_Filter.PassFilter(object.name.c_str())) rangeOrder.push_back(object.id);
+        if (context.selection.SelectedObjectIds().size() > 1)
+            ImGui::Text("%zu objects selected", context.selection.SelectedObjectIds().size());
         if (context.scene.HasHiddenObjects() && ImGui::Button("Show all objects", ImVec2(-1,0)))
             context.scene.ShowAllObjects();
         if (context.scene.HasHiddenLights() && ImGui::Button("Show all lights", ImVec2(-1,0)))
@@ -115,11 +172,13 @@ namespace ForgeSim::Sandbox
         // changes selection, including a selected item hidden by the query.
         std::size_t objectMatches = 0, lightMatches = 0;
         bool selectedMatches = context.selection.Empty();
+        std::size_t selectedObjectMatches = 0;
         for (const auto& object : context.scene.Objects())
         {
             if (!m_Filter.PassFilter(object.name.c_str())) continue;
             ++objectMatches;
             selectedMatches |= context.selection.IsObjectSelected(object.id);
+            if (context.selection.IsObjectSelected(object.id)) ++selectedObjectMatches;
         }
         const auto countLight = [&](const char* type, const auto& light)
         {
@@ -129,14 +188,14 @@ namespace ForgeSim::Sandbox
             selectedMatches |= context.selection.IsLightSelected(light.id);
         };
         const auto& directional = context.scene.MainDirectionalLight();
-        countLight("Directional Light", directional);
+        if (context.scene.HasDirectionalLight()) countLight("Directional Light", directional);
         for (const auto& light : context.scene.PointLights()) countLight("Point Light", light);
         for (const auto& light : context.scene.SpotLights()) countLight("Spot Light", light);
 
-        if (filtering && !selectedMatches)
+        if (filtering && (!selectedMatches || selectedObjectMatches < context.selection.SelectedObjectIds().size()))
         {
             ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
-            ImGui::TextWrapped("Selected item is hidden by the filter.");
+            ImGui::TextWrapped("Some selected items are hidden by the filter. Operations still affect the full selection.");
             ImGui::PopStyleColor();
         }
         if (ImGui::Selectable("None", context.selection.Empty())) context.selection.Clear();
@@ -149,6 +208,7 @@ namespace ForgeSim::Sandbox
             if (changed && filtering) ImGui::SetNextItemOpen(true);
             if (EditorSectionHeader("Objects", ImGuiTreeNodeFlags_DefaultOpen))
             {
+                ImGui::Indent();
                 if (context.scene.Objects().empty()) ImGui::TextDisabled("No objects.");
                 for (const auto& object : context.scene.Objects())
                 {
@@ -156,11 +216,37 @@ namespace ForgeSim::Sandbox
                     const auto id = std::to_string(object.id);
                     const auto label = object.name + "###Object_" + id;
                     const bool visible = context.scene.IsObjectVisible(object.id);
+                    const auto* asset = context.inspectModel ? context.inspectModel(object.modelPath) : nullptr;
+                    ImGui::PushID(id.c_str());
+                    bool expanded = false;
+                    if (asset && !asset->rootNodeIndices.empty())
+                    {
+                        expanded = ImGui::TreeNodeEx("##ModelHierarchy", ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
+                        ImGui::SameLine();
+                    }
                     const auto action = DrawVisibilityRow(label, "##VisibilityObject_" + id,
                         context.selection.IsObjectSelected(object.id), visible);
-                    if (action.select) context.selection.SelectObject(object.id);
-                    if (action.toggle) context.scene.SetObjectVisible(object.id, !visible);
+                    if (action.select)
+                        context.selection.ClickObject(object.id, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift, rangeOrder);
+                    if (action.toggle)
+                    {
+                        if (context.selection.IsObjectSelected(object.id)) m_SelectionVisibilityRequested = !visible;
+                        else context.scene.SetObjectVisible(object.id, !visible);
+                    }
+                    if (expanded)
+                    {
+                        // NoTreePushOnOpen leaves indentation to us. Offset asset
+                        // arrows beneath the model label, rather than its arrow.
+                        const float assetIndent = ImGui::GetTreeNodeToLabelSpacing() * 1.5f;
+                        ImGui::Indent(assetIndent);
+                        std::vector<bool> ancestors(asset->nodes.size(), false);
+                        for (const auto root : asset->rootNodeIndices) DrawAssetNode(*asset, root, ancestors, 0);
+                        ImGui::Unindent(assetIndent);
+                    }
+                    ImGui::PopID();
                 }
+                ImGui::Unindent();
             }
         }
         if (!filtering || lightMatches > 0)
@@ -168,13 +254,35 @@ namespace ForgeSim::Sandbox
             if (changed && filtering) ImGui::SetNextItemOpen(true);
             if (EditorSectionHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                DrawLightEntry("Directional Light", directional.id, directional.enabled, context.selection, context.scene);
+                ImGui::Indent();
+                if (context.scene.HasDirectionalLight())
+                    DrawLightEntry("Directional Light", directional.id, directional.enabled, context.selection, context.scene);
+                if (lightMatches == 0) ImGui::TextDisabled("No lights.");
                 for (const auto& light : context.scene.PointLights())
                     DrawLightEntry("Point Light", light.id, light.enabled, context.selection, context.scene);
                 for (const auto& light : context.scene.SpotLights())
                     DrawLightEntry("Spot Light", light.id, light.enabled, context.selection, context.scene);
+                ImGui::Unindent();
             }
         }
+        ImGui::Separator();
+        if (!context.selection.SelectedObjectIds().empty())
+        {
+            if (ImGui::Button("Show selection")) m_SelectionVisibilityRequested = true;
+            ImGui::SameLine();
+            if (ImGui::Button("Hide selection")) m_SelectionVisibilityRequested = false;
+        }
+        ImGui::BeginDisabled(!CanDuplicateSceneSelection(context.scene, context.selection));
+        if (ImGui::Button("Duplicate selection", ImVec2(-1, 0)))
+            m_DuplicateSelectionRequested = true;
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Duplicate at the same position (Ctrl+D), then use Move. One directional light is supported; it cannot be duplicated.");
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(!CanDeleteSceneSelection(context.scene, context.selection));
+        if (ImGui::Button("Delete selection", ImVec2(-1, 0)))
+            m_DeleteSelectionRequested = true;
+        ImGui::SetItemTooltip("Remove the selected model instance or light (Delete). Undo restores it.");
+        ImGui::EndDisabled();
         ImGui::EndDisabled();
         ImGui::PopStyleVar(2);
         ImGui::End();

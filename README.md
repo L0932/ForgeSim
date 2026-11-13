@@ -240,6 +240,7 @@ ForgeSim performs scene lighting in linear color space.
 
 ## Documentation
 
+- [Keyboard controls](docs/KeyboardControls.md) — also available under Help in the editor
 - [Architecture](docs/Architecture.md)
 - [Roadmap](docs/Roadmap.md)
 
