@@ -14,6 +14,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Fit selection focus to the current view for tighter framing of long, flat models;
+  retain scene-wide far clipping after focusing lights or small objects.
+
 - Reset camera navigation from the active scene after New, Open, and model import,
   including when viewpoint restoration bypasses automatic framing.
 

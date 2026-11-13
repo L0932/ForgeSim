@@ -998,8 +998,9 @@ namespace ForgeSim::Sandbox
                     SceneLightingView{scene.MainDirectionalLight(), scene.PointLights(), scene.SpotLights()},
                     selection, m_Renderer.ObjectLocalBounds());
                 if (!focusBounds) return;
-                const auto framing = CreateSceneCameraFraming(*focusBounds, aspectRatio);
-                cameraRestoreRequest = CaptureSceneCamera(framing.camera);
+                const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+                const auto focused = CreateSelectionFocusCamera(*focusBounds, sceneBounds, camera, aspectRatio);
+                cameraRestoreRequest = CaptureSceneCamera(focused);
                 // Focusing changes the viewpoint, never the fly-speed setting or scene data.
             };
             if ((viewport.focusSelectionRequested || hierarchyPanel.FocusSelectionRequested()) &&

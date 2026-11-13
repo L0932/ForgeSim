@@ -19,6 +19,13 @@ namespace ForgeSim::Sandbox
         const Renderer::AxisAlignedBoundingBox& bounds,
         std::optional<float> savedMovementSpeed = std::nullopt);
 
+    // Fit the selected bounds in the current view; clipping still covers the scene.
+    [[nodiscard]] Renderer::PerspectiveCamera CreateSelectionFocusCamera(
+        const Renderer::AxisAlignedBoundingBox& selectionBounds,
+        const Renderer::AxisAlignedBoundingBox& sceneBounds,
+        const Renderer::PerspectiveCamera& currentCamera,
+        float aspectRatio);
+
     [[nodiscard]] SceneCameraFraming CreateSceneCameraFraming(
         const Renderer::AxisAlignedBoundingBox& bounds,
         float aspectRatio);

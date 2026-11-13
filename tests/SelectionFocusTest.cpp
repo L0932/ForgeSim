@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <glm/vec4.hpp>
 
 using namespace ForgeSim;
 using namespace ForgeSim::Sandbox;
@@ -69,6 +70,45 @@ int main()
             if (blocked == 4) context.modifierHeld = true;
             Require(!AllowSceneShortcut(context), "Editing, typing, popups, and modifiers must suppress scene shortcuts");
         }
+        const Renderer::AxisAlignedBoundingBox ground{{-40,-0.001f,-10}, {40,0.001f,10}};
+        const Renderer::AxisAlignedBoundingBox fullScene{{-40,-2,-10}, {500,80,90}};
+        const Renderer::PerspectiveCamera original{{0,30,35}, {0,0,0}, {0,1,0}, 0.9f, 0.05f, 10.0f};
+        for (float aspect : {0.5f, 2.4f})
+        {
+            const auto focusedCamera = CreateSelectionFocusCamera(ground, fullScene, original, aspect);
+            Require(Near(focusedCamera.ForwardDirection(), original.ForwardDirection()),
+                "Focus must preserve the viewing direction for flat models");
+            Require(focusedCamera.VerticalFieldOfViewRadians() == original.VerticalFieldOfViewRadians(),
+                "Focus must preserve the user's field of view");
+            const auto projectionView = focusedCamera.ProjectionMatrix(aspect) * focusedCamera.ViewMatrix();
+            for (unsigned int corner = 0; corner < 8; ++corner)
+            {
+                const glm::vec3 point{(corner & 1u) ? ground.maximum.x : ground.minimum.x,
+                    (corner & 2u) ? ground.maximum.y : ground.minimum.y,
+                    (corner & 4u) ? ground.maximum.z : ground.minimum.z};
+                const auto clip = projectionView * glm::vec4{point, 1.0f};
+                Require(clip.w > 0 && std::abs(clip.x / clip.w) < 1 && std::abs(clip.y / clip.w) < 1 &&
+                    clip.z / clip.w > -1 && clip.z / clip.w < 1,
+                    "Focus must fit every selection corner in wide and portrait viewports");
+            }
+        }
+        const auto fittedGround = CreateSelectionFocusCamera(ground, fullScene, original, 2.4f);
+        const auto oldGround = CreateSceneCameraFraming(ground, 2.4f).camera;
+        Require(glm::length(fittedGround.Position()) < glm::length(oldGround.Position()) * 0.8f,
+            "Long flat models should frame more tightly than the old bounding sphere");
+        const Renderer::AxisAlignedBoundingBox lightBounds{{-0.1f,2,-0.1f}, {0.1f,2.2f,0.1f}};
+        const auto lightCamera = CreateSelectionFocusCamera(lightBounds, fullScene, original, 2.4f);
+        for (unsigned int corner = 0; corner < 8; ++corner)
+        {
+            const glm::vec3 point{(corner & 1u) ? fullScene.maximum.x : fullScene.minimum.x,
+                (corner & 2u) ? fullScene.maximum.y : fullScene.minimum.y,
+                (corner & 4u) ? fullScene.maximum.z : fullScene.minimum.z};
+            Require(glm::length(point - lightCamera.Position()) < lightCamera.FarClippingPlane(),
+                "Focusing a tiny light must retain far clipping for the whole scene in every direction");
+        }
+        Require(lightCamera.NearClippingPlane() <= original.NearClippingPlane() &&
+            lightCamera.FarClippingPlane() >= original.FarClippingPlane(),
+            "Selection focus must not narrow the existing clipping range");
         std::cout << "Selection bounds, light focus, stale selections, and shortcut contexts passed\n";
     }
     catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

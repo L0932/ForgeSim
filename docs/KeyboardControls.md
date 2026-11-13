@@ -32,7 +32,9 @@ model instance or light. This changes only the live camera viewpoint. It preserv
 fly speed and does not mark the scene modified or overwrite a saved viewpoint.
 The Camera panel's **Focus selection (F)** button performs the same operation.
 
-Model focus uses its own transformed bounds, including its pivot and scale.
+Model focus fits its own transformed bounds, including its pivot and scale,
+while preserving the current viewing direction and field of view. Far clipping
+covers the complete scene so rotating after light focus does not cut off models.
 Directional lights frame their editor marker; point and spot lights frame a
 neighborhood of their position sized from their range and the scene scale.
 
