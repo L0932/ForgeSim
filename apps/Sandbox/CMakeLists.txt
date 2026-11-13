@@ -139,6 +139,7 @@ target_sources(
 		FreeCameraController.cpp
 		GizmoTransform.hpp
         ObjectTransformSelection.hpp
+        ModelNodeQuery.hpp
 		GizmoTransform.cpp
 		LightSubmission.hpp
 		LightSubmission.cpp

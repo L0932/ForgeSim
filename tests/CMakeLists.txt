@@ -1543,3 +1543,18 @@ target_compile_definitions(ForgeSimObjectMultiSelectionTests PRIVATE GLM_ENABLE_
 forgesim_set_project_warnings(ForgeSimObjectMultiSelectionTests)
 set_target_properties(ForgeSimObjectMultiSelectionTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.ObjectMultiSelection COMMAND ForgeSimObjectMultiSelectionTests)
+
+add_executable(ForgeSimModelNodeSelectionTests ModelNodeSelectionTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/ViewportSelectionController.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp)
+target_include_directories(ForgeSimModelNodeSelectionTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimModelNodeSelectionTests PRIVATE ForgeSim::Assets ForgeSim::Renderer ForgeSim::PlatformGLFW)
+target_compile_features(ForgeSimModelNodeSelectionTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimModelNodeSelectionTests)
+set_target_properties(ForgeSimModelNodeSelectionTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ModelNodeSelection COMMAND ForgeSimModelNodeSelectionTests)

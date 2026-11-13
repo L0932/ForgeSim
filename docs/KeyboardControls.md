@@ -11,6 +11,7 @@ Update both when bindings change; list only implemented commands.
 | Camera | RMB + wheel | Increase / decrease fly speed | Scene navigation; saved with scene |
 | Camera | Ctrl while flying | Move at one tenth of fly speed | Scene navigation |
 | Selection | Left click | Select an object or light | Scene or Hierarchy; empty Scene space clears selection |
+| Selection | Alt+Left click | Select the nearest imported mesh node | Scene; triangle geometry, not texture alpha |
 | Selection | Ctrl+Left click | Toggle object membership; last selected object is active | Scene or Hierarchy |
 | Selection | Shift+Left click | Select a visible range from the anchor / add an object | Hierarchy range / Scene add |
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
@@ -131,3 +132,23 @@ Show/Hide selection and the eye button of any selected row apply to the group;
 undo restores each member's previous visibility. An unselected row's eye button
 continues to affect that row only. Saving stores the resulting object states;
 selection and the range anchor are temporary editor state.
+
+## Imported node selection
+
+Click a node label in the expanded model hierarchy, or Alt-click its geometry in
+Scene, to select one imported node in one model instance. Expansion arrows only
+expand/collapse the tree. Ordinary clicks and Ctrl/Shift gestures retain their
+whole-object selection behavior. Alt-click uses double-sided triangle picking;
+it does not evaluate texture alpha, so the transparent part of a leaf card can
+still be picked. Light markers retain their existing picking priority.
+
+A node selection highlights its own geometry and descendants. F frames the
+subtree's world bounds, preserving camera orientation and movement speed. Empty
+nodes without descendant geometry have no framing bounds. The Inspector shows
+read-only local transforms (including authored matrices), parent information,
+world bounds, mesh/primitive references and the subtree's associated materials.
+
+Node transforms, pivots, deletion and duplication are unavailable in this first
+step. Select the model's main row to edit the complete instance. Node editing and
+saved per-instance overrides will follow separately under #123. Selection is
+editor state and does not change the scene document.

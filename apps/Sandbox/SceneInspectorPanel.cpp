@@ -84,6 +84,10 @@ namespace ForgeSim::Sandbox
                 "Select an object or light to inspect.");
             ImGui::PopTextWrapPos();
         }
+        else if (context.selection.SelectedNode())
+        {
+            DrawNode(context);
+        }
         else if (context.selection.SelectedObjectId())
         {
             DrawObject(context);
@@ -95,6 +99,77 @@ namespace ForgeSim::Sandbox
 
         ImGui::EndDisabled();
         ImGui::End();
+    }
+
+    void SceneInspectorPanel::DrawNode(const SceneInspectorPanelContext& context)
+    {
+        const auto& selected = *context.selection.SelectedNode();
+        const auto* asset = context.materials.asset;
+        const auto* owner = context.scene.FindObject(selected.objectId);
+        const auto* record = context.nodeQuery ? context.nodeQuery->Find(selected.nodeIndex) : nullptr;
+        if (!asset || !owner || !record || selected.nodeIndex >= asset->nodes.size())
+        { ImGui::TextWrapped("Selected node is unavailable."); return; }
+        const auto& node = asset->nodes[selected.nodeIndex];
+        const auto name = node.name.empty() ? "Node " + std::to_string(selected.nodeIndex) : node.name;
+        ImGui::TextWrapped("%s", name.c_str());
+        ImGui::TextWrapped("Model instance: %s", owner->name.c_str());
+        ImGui::Text("Node index: %zu   Children: %zu", selected.nodeIndex, node.childIndices.size());
+        if (record->parent)
+        {
+            const auto& parent = asset->nodes[*record->parent];
+            ImGui::TextWrapped("Parent: %s (node %zu)", parent.name.empty() ? "Unnamed" : parent.name.c_str(), *record->parent);
+        }
+        else ImGui::TextUnformatted("Parent: model instance");
+        ImGui::TextWrapped("Read-only node inspection. Use the model row for instance transforms, deletion, and duplication. Node editing and persistence follow separately.");
+        if (EditorSectionHeader("Local Transform", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            const auto& t = node.localTransform;
+            if (t.matrix)
+            {
+                ImGui::TextUnformatted("Authored matrix (rows):");
+                for (std::size_t row = 0; row < 4; ++row)
+                    ImGui::Text("%.4f  %.4f  %.4f  %.4f", (*t.matrix)[row], (*t.matrix)[4 + row],
+                        (*t.matrix)[8 + row], (*t.matrix)[12 + row]);
+            }
+            else
+            {
+                ImGui::TextWrapped("Translation: %.4f, %.4f, %.4f", t.translation[0], t.translation[1], t.translation[2]);
+                ImGui::TextWrapped("Rotation quaternion XYZW: %.4f, %.4f, %.4f, %.4f",
+                    t.rotation[0], t.rotation[1], t.rotation[2], t.rotation[3]);
+                ImGui::TextWrapped("Scale: %.4f, %.4f, %.4f", t.scale[0], t.scale[1], t.scale[2]);
+            }
+        }
+        if (EditorSectionHeader("World Bounds", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            const auto bounds = context.nodeQuery->WorldBounds(selected.nodeIndex, owner->transform.ModelMatrix());
+            if (!bounds) ImGui::TextWrapped("No geometry in this node or its descendants; nothing to frame.");
+            else
+            {
+                ImGui::TextWrapped("Min: %.4f, %.4f, %.4f", bounds->minimum.x, bounds->minimum.y, bounds->minimum.z);
+                ImGui::TextWrapped("Max: %.4f, %.4f, %.4f", bounds->maximum.x, bounds->maximum.y, bounds->maximum.z);
+            }
+        }
+        auto materials = context.materials;
+        materials.materialIndices.emplace();
+        bool hasDefault = false;
+        for (std::size_t index = 0; index < asset->nodes.size(); ++index)
+        {
+            if (!context.nodeQuery->Contains(selected.nodeIndex, index)) continue;
+            const auto meshIndex = asset->nodes[index].meshIndex;
+            if (!meshIndex || *meshIndex >= asset->meshes.size()) continue;
+            const auto& mesh = asset->meshes[*meshIndex];
+            ImGui::TextWrapped("Node %zu: Mesh %zu — %s (%zu primitives)", index, *meshIndex,
+                mesh.name.empty() ? "Unnamed" : mesh.name.c_str(), mesh.primitives.size());
+            for (const auto& primitive : mesh.primitives)
+            {
+                if (!primitive.materialIndex) { hasDefault = true; continue; }
+                auto& indices = *materials.materialIndices;
+                if (std::find(indices.begin(), indices.end(), *primitive.materialIndex) == indices.end())
+                    indices.push_back(*primitive.materialIndex);
+            }
+        }
+        if (hasDefault) ImGui::TextWrapped("Some primitives use the default glTF material.");
+        DrawMaterials(materials);
     }
 
     void SceneInspectorPanel::DrawObject(
@@ -205,9 +280,13 @@ namespace ForgeSim::Sandbox
             ImGui::TextWrapped("No authored materials. Uses the default glTF material (white, metallic 1, roughness 1).");
             return;
         }
-        ImGui::Text("%zu material(s)", asset.materials.size());
+        const auto count = inspection.materialIndices ? inspection.materialIndices->size() : asset.materials.size();
+        ImGui::Text("%zu material(s)", count);
+        if (count == 0) ImGui::TextWrapped("No authored materials associated with the selected subtree.");
         for (std::size_t index = 0; index < asset.materials.size(); ++index)
         {
+            if (inspection.materialIndices && std::find(inspection.materialIndices->begin(),
+                inspection.materialIndices->end(), index) == inspection.materialIndices->end()) continue;
             ImGui::PushID(static_cast<int>(index));
             const auto label = "Material " + std::to_string(index + 1);
             if (!ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))

@@ -869,6 +869,12 @@ namespace ForgeSim::Sandbox
 				selection,
 				scene);
 
+            if (const auto& node = selection.SelectedNode())
+            {
+                const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
+                if (!query || !query->Find(node->nodeIndex)) selection.Clear();
+            }
+
             if (const auto visible = hierarchyPanel.SelectionVisibilityRequested();
                 visible && !changePending && !transformEditor.IsActive())
                 static_cast<void>(transformEditor.SetSelectionVisible(scene, selection, *visible));
@@ -986,7 +992,13 @@ namespace ForgeSim::Sandbox
 				visibleObjects,
 				lightPickTargets,
 				selection,
-				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
+				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift, ImGui::GetIO().KeyAlt,
+                [this](const Renderer::Ray& ray, const SandboxObject& object) -> std::optional<ModelNodeHit>
+                {
+                    const auto* asset = m_Renderer.InspectModelHierarchy(object.modelPath);
+                    const auto* query = m_Renderer.InspectModelNodes(object.modelPath);
+                    return asset && query ? query->Pick(*asset, ray, object.transform.ModelMatrix()) : std::nullopt;
+                });
 
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =
@@ -1049,6 +1061,7 @@ namespace ForgeSim::Sandbox
 			m_Renderer.Render(
 				visibleObjects,
 				selection.SelectedObjectIds(),
+                selection.SelectedNode(),
 				view,
 				projection,
 				camera.Position(),
@@ -1063,9 +1076,15 @@ namespace ForgeSim::Sandbox
 
             const auto focusSelection = [&]
             {
-                const auto focusBounds = SelectionFocusBounds(scene.Objects(),
+                auto focusBounds = SelectionFocusBounds(scene.Objects(),
                     SceneLightingView{scene.MainDirectionalLight(), scene.PointLights(), scene.SpotLights()},
                     selection, m_Renderer.ObjectLocalBounds());
+                if (const auto& node = selection.SelectedNode())
+                {
+                    const auto* owner = scene.FindObject(node->objectId);
+                    const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
+                    if (owner && query) focusBounds = query->WorldBounds(node->nodeIndex, owner->transform.ModelMatrix());
+                }
                 if (!focusBounds) return;
                 const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
                 const auto focused = CreateSelectionFocusCamera(*focusBounds, sceneBounds, camera, aspectRatio);
@@ -1133,9 +1152,15 @@ namespace ForgeSim::Sandbox
 						transformEditor.IsActive() ||
 						rightMouseDown,
                     .transformEditor = &transformEditor,
-                    .materials = selection.SelectedObjectId() && scene.FindObject(*selection.SelectedObjectId())
-                        ? m_Renderer.InspectModelMaterials(scene.FindObject(*selection.SelectedObjectId())->modelPath)
-                        : ModelMaterialInspection{}
+                    .materials = [&]
+                    {
+                        const auto ownerId = selection.SelectedNode() ? std::optional{selection.SelectedNode()->objectId}
+                            : selection.SelectedObjectId();
+                        const auto* owner = ownerId ? scene.FindObject(*ownerId) : nullptr;
+                        return owner ? m_Renderer.InspectModelMaterials(owner->modelPath) : ModelMaterialInspection{};
+                    }(),
+                    .nodeQuery = selection.SelectedNode()
+                        ? m_Renderer.InspectModelNodes(selection.SelectedNode()->modelReference) : nullptr
 				});
 
 			bool openAfterFrame = false;

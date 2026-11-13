@@ -5,10 +5,20 @@
 #include <algorithm>
 #include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace ForgeSim::Sandbox
 {
+    struct ModelNodeHit { std::size_t nodeIndex; float distance; };
+
+    struct ModelNodeSelection
+    {
+        SandboxObjectId objectId;
+        std::size_t nodeIndex;
+        std::string modelReference;
+    };
+
     // Objects form an ordered set. The last selected object is the active target.
     // Lights retain single selection until mixed object/light editing is supported.
     class SceneSelection final
@@ -16,12 +26,14 @@ namespace ForgeSim::Sandbox
     public:
         void SelectObject(SandboxObjectId id)
         {
+            m_Node.reset();
             m_Objects.assign(1, id);
             m_Light.reset();
             m_Anchor = id;
         }
         void AddObject(SandboxObjectId id)
         {
+            m_Node.reset();
             m_Light.reset();
             std::erase(m_Objects, id);
             m_Objects.push_back(id);
@@ -29,6 +41,7 @@ namespace ForgeSim::Sandbox
         }
         void RemoveObject(SandboxObjectId id) noexcept
         {
+            if (m_Node && m_Node->objectId == id) m_Node.reset();
             std::erase(m_Objects, id);
             if (m_Anchor == id) m_Anchor = SelectedObjectId();
         }
@@ -49,13 +62,21 @@ namespace ForgeSim::Sandbox
             else if (ctrl || shift) AddObject(id);
             else SelectObject(id);
         }
+        void SelectNode(SandboxObjectId id, std::size_t index, std::string reference)
+        {
+            Clear();
+            m_Node = ModelNodeSelection{id, index, std::move(reference)};
+        }
+        [[nodiscard]] const std::optional<ModelNodeSelection>& SelectedNode() const noexcept { return m_Node; }
+        [[nodiscard]] bool IsNodeSelected(SandboxObjectId id, std::size_t index) const noexcept
+        { return m_Node && m_Node->objectId == id && m_Node->nodeIndex == index; }
         void SelectLight(SceneLightId id) noexcept
         {
             Clear();
             if (id != InvalidSceneLightId) m_Light = id;
         }
-        void Clear() noexcept { m_Objects.clear(); m_Light.reset(); m_Anchor.reset(); }
-        [[nodiscard]] bool Empty() const noexcept { return m_Objects.empty() && !m_Light; }
+        void Clear() noexcept { m_Objects.clear(); m_Light.reset(); m_Anchor.reset(); m_Node.reset(); }
+        [[nodiscard]] bool Empty() const noexcept { return m_Objects.empty() && !m_Light && !m_Node; }
         [[nodiscard]] std::optional<SandboxObjectId> SelectedObjectId() const noexcept
         { return m_Objects.empty() ? std::nullopt : std::optional{m_Objects.back()}; }
         [[nodiscard]] std::span<const SandboxObjectId> SelectedObjectIds() const noexcept { return m_Objects; }
@@ -69,6 +90,7 @@ namespace ForgeSim::Sandbox
             if (m_Anchor && !IsObjectSelected(*m_Anchor)) m_Anchor = SelectedObjectId();
         }
     private:
+        std::optional<ModelNodeSelection> m_Node;
         std::vector<SandboxObjectId> m_Objects;
         std::optional<SceneLightId> m_Light;
         std::optional<SandboxObjectId> m_Anchor;

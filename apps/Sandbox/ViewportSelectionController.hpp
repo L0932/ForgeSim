@@ -2,6 +2,7 @@
 
 #pragma once
 #include "LightPicking.hpp"
+#include <functional>
 #include "SandboxObject.hpp"
 #include "SceneSelection.hpp"
 
@@ -29,6 +30,8 @@ namespace ForgeSim::Sandbox
 			std::span<const SandboxObject> objects,
 			std::span<const LightPickTarget> lightTargets,
 			SceneSelection& selection,
-			bool pickingSuppressed = false, bool ctrl = false, bool shift = false);
+			bool pickingSuppressed = false, bool ctrl = false, bool shift = false,
+            bool selectNode = false,
+            const std::function<std::optional<ModelNodeHit>(const Renderer::Ray&, const SandboxObject&)>& pickNode = {});
 	};
 }

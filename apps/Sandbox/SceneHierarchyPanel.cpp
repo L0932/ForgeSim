@@ -16,7 +16,7 @@ namespace ForgeSim::Sandbox
                 (enabled ? "" : " (disabled)");
         }
         void DrawAssetNode(const Assets::SceneAsset& asset, std::size_t index,
-            std::vector<bool>& ancestors, std::size_t depth)
+            std::vector<bool>& ancestors, std::size_t depth, const SandboxObject& object, SceneSelection& selection)
         {
             if (index >= asset.nodes.size()) { ImGui::TextDisabled("Invalid node reference"); return; }
             if (ancestors[index] || depth >= 128) { ImGui::TextDisabled("Hierarchy depth/cycle limit"); return; }
@@ -25,12 +25,15 @@ namespace ForgeSim::Sandbox
             const auto name = node.name.empty() ? "Node " + std::to_string(index) : node.name;
             auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
             if (node.childIndices.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+            if (selection.IsNodeSelected(object.id, index)) flags |= ImGuiTreeNodeFlags_Selected;
             const auto label = name + (node.meshIndex ? " [Mesh " + std::to_string(*node.meshIndex) + "]" : " [Node]");
             const bool expanded = ImGui::TreeNodeEx("##AssetNode", flags, "%s", label.c_str());
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+                selection.SelectNode(object.id, index, object.modelPath);
             if (ImGui::IsItemHovered())
             {
                 ImGui::BeginTooltip();
-                ImGui::TextUnformatted("Read-only asset node; editing acts on the model instance.");
+                ImGui::TextUnformatted("Select to inspect or focus. Node transforms are read-only in this step.");
                 ImGui::Text("Node index: %zu   Children: %zu", index, node.childIndices.size());
                 if (node.localTransform.matrix) ImGui::TextUnformatted("Local transform: authored matrix");
                 else ImGui::Text("Local translation: %.4f, %.4f, %.4f", node.localTransform.translation[0],
@@ -51,7 +54,7 @@ namespace ForgeSim::Sandbox
             if (expanded)
             {
                 ancestors[index] = true;
-                for (const auto child : node.childIndices) DrawAssetNode(asset, child, ancestors, depth + 1);
+                for (const auto child : node.childIndices) DrawAssetNode(asset, child, ancestors, depth + 1, object, selection);
                 ancestors[index] = false;
                 ImGui::TreePop();
             }
@@ -177,7 +180,8 @@ namespace ForgeSim::Sandbox
         {
             if (!m_Filter.PassFilter(object.name.c_str())) continue;
             ++objectMatches;
-            selectedMatches |= context.selection.IsObjectSelected(object.id);
+            selectedMatches |= context.selection.IsObjectSelected(object.id) ||
+                (context.selection.SelectedNode() && context.selection.SelectedNode()->objectId == object.id);
             if (context.selection.IsObjectSelected(object.id)) ++selectedObjectMatches;
         }
         const auto countLight = [&](const char* type, const auto& light)
@@ -241,7 +245,7 @@ namespace ForgeSim::Sandbox
                         const float assetIndent = ImGui::GetTreeNodeToLabelSpacing() * 1.5f;
                         ImGui::Indent(assetIndent);
                         std::vector<bool> ancestors(asset->nodes.size(), false);
-                        for (const auto root : asset->rootNodeIndices) DrawAssetNode(*asset, root, ancestors, 0);
+                        for (const auto root : asset->rootNodeIndices) DrawAssetNode(*asset, root, ancestors, 0, object, context.selection);
                         ImGui::Unindent(assetIndent);
                     }
                     ImGui::PopID();
@@ -266,6 +270,8 @@ namespace ForgeSim::Sandbox
             }
         }
         ImGui::Separator();
+        if (context.selection.SelectedNode())
+            ImGui::TextWrapped("Node selected. F focuses its geometry. Select the model row for whole-instance editing.");
         if (!context.selection.SelectedObjectIds().empty())
         {
             if (ImGui::Button("Show selection")) m_SelectionVisibilityRequested = true;

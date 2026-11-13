@@ -7,6 +7,13 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Added
+
+- Select imported model nodes through Hierarchy labels or Alt-click geometry in
+  Scene. Highlight and focus the selected subtree, and inspect its local
+  transform, world bounds, mesh references and associated materials. Node editing
+  and saved overrides remain follow-up work under #123.
+
 ## [0.1.0-preview.9] - 2026-11-12
 
 ### Added
