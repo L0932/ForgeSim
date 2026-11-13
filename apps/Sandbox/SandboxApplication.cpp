@@ -1145,7 +1145,8 @@ namespace ForgeSim::Sandbox
                                 .defaultDirectory = m_EditorSession->ProjectRoot(),
                                 .title = L"Import model into scene",
                                 .filterName = L"glTF models",
-                                .filterPattern = L"*.glb;*.gltf"
+                                .filterPattern = L"*.glb;*.gltf",
+                                .purpose = Platform::FileDialogPurpose::ModelImport
                             });
                         static_cast<void>(timer.Restart());
                         break;
@@ -1331,7 +1332,8 @@ namespace ForgeSim::Sandbox
                                 .suggestedFileName = {},
                                 .title = L"Locate missing model",
                                 .filterName = L"glTF model",
-                                .filterPattern = L"*.glb;*.gltf"
+                                .filterPattern = L"*.glb;*.gltf",
+                                .purpose = Platform::FileDialogPurpose::ModelRecovery
                             });
                         static_cast<void>(timer.Restart());
                         if (!model) break;

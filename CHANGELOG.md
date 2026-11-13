@@ -109,3 +109,5 @@ contains the detailed implementation record.
 - Add Ctrl+D and Hierarchy duplication for model instances, cubes, point lights, and spot lights, with selection and undo/redo.
 
 - Number duplicated object names instead of accumulating Copy suffixes.
+
+- Remember model-import and missing-model dialog folders independently from scene Open and Save As across Windows sessions.
