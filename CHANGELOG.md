@@ -18,6 +18,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Scene and full-editor PNG screenshots through Capture, F9 and Ctrl+F9, with
+  selectable output folder, unique filenames, and feedback after readback.
+  Shift+Space maximizes/restores Scene without changing the dock layout.
+
 - Per-scene vertical environment flipping, applied consistently to the HDRI
   background, diffuse lighting and specular reflections. The Environment asset
   section now groups orientation and background visibility with source controls.

@@ -13,24 +13,41 @@ namespace ForgeSim::Sandbox
     {
         m_State = {};
 
-        ImGui::SetNextWindowSize(
-            ImVec2{ 800.0f, 600.0f },
-            ImGuiCond_FirstUseEver);
+        if(m_Maximized)
+        {
+            // Keep the docked Scene alive behind a temporary, unsaved window.
+            // Maximizing must not rewrite the user's dock layout.
+            ImGui::Begin("Scene",nullptr,ImGuiWindowFlags_NoInputs|ImGuiWindowFlags_NoCollapse);
+            ImGui::End();
+            const auto* viewport=ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            ImGui::SetNextWindowSize(viewport->WorkSize);
+            ImGui::SetNextWindowViewport(viewport->ID);
+        }
+        else
+        {
+            ImGui::SetNextWindowSize(
+                ImVec2{ 800.0f, 600.0f },
+                ImGuiCond_FirstUseEver);
 
-        const float maximumSize =
-            std::numeric_limits<float>::max();
+            const float maximumSize =
+                std::numeric_limits<float>::max();
 
-        ImGui::SetNextWindowSizeConstraints(
-            ImVec2{ 240.0f, 160.0f },
-            ImVec2{ maximumSize, maximumSize });
+            ImGui::SetNextWindowSizeConstraints(
+                ImVec2{ 240.0f, 160.0f },
+                ImVec2{ maximumSize, maximumSize });
+        }
+        if(m_FocusRequested) { ImGui::SetNextWindowFocus();m_FocusRequested=false; }
 
         ImGui::PushStyleVar(
             ImGuiStyleVar_WindowPadding,
             ImVec2{ 0.0f, 0.0f });
 
         const bool visible = ImGui::Begin(
-            "Scene",
+            m_Maximized ? "Scene (maximized)###ForgeSimMaximizedScene" : "Scene",
             nullptr,
+            (m_Maximized ? ImGuiWindowFlags_NoDocking|ImGuiWindowFlags_NoSavedSettings|
+                ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize : 0) |
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse |
             ImGuiWindowFlags_NoCollapse);
@@ -42,9 +59,11 @@ namespace ForgeSim::Sandbox
             return m_State;
         }
 
+        const bool restoreMaximized=m_Maximized && ExitOrbitShortcutPressed();
+        m_ToggleMaximizeAfterFrame=restoreMaximized || SceneShortcutPressed(ImGuiKey_Space,false,false,true);
         m_State.focusSelectionRequested = FocusSelectionShortcutPressed();
         m_State.orbitSelectionRequested = OrbitSelectionShortcutPressed();
-        m_State.exitOrbitRequested = ExitOrbitShortcutPressed();
+        m_State.exitOrbitRequested = !restoreMaximized && ExitOrbitShortcutPressed();
         m_State.toggleSelectionHighlightRequested = ToggleSelectionHighlightShortcutPressed();
         m_State.deleteSelectionRequested = DeleteSelectionShortcutPressed();
         m_State.duplicateSelectionRequested = DuplicateSelectionShortcutPressed();
@@ -114,5 +133,6 @@ namespace ForgeSim::Sandbox
     void SceneViewportPanel::End()
     {
         ImGui::End();
+        if(m_ToggleMaximizeAfterFrame) { SetMaximized(!m_Maximized);m_ToggleMaximizeAfterFrame=false; }
     }
 }

@@ -36,9 +36,13 @@ namespace ForgeSim::Sandbox
             const glm::vec2& framebufferScale);
 
         void DrawImage(unsigned int textureHandle);
+        [[nodiscard]] bool Maximized() const noexcept { return m_Maximized; }
+        void SetMaximized(bool maximized) noexcept
+        { if(m_Maximized!=maximized) { m_Maximized=maximized;m_FocusRequested=true; } }
         void End();
 
     private:
         SceneViewportState m_State;
+        bool m_Maximized=false,m_ToggleMaximizeAfterFrame=false,m_FocusRequested=false;
     };
 }

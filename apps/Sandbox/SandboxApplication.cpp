@@ -21,6 +21,7 @@
 #include "SceneInspectorPanel.hpp"
 #include "SceneTransformEditor.hpp"
 #include "SceneViewportPanel.hpp"
+#include "ScreenshotTools.hpp"
 #include "SceneSelection.hpp"
 #include "SelectionFocus.hpp"
 #include "SelectionFocusToggle.hpp"
@@ -411,6 +412,8 @@ namespace ForgeSim::Sandbox
 		SceneHierarchyPanel hierarchyPanel;
 		SceneInspectorPanel inspectorPanel;
 		SceneViewportPanel sceneViewportPanel;
+        ScreenshotTools screenshotTools;
+        screenshotTools.Initialize();
 		std::string sceneFileMessage;
 
 		enum class PendingSceneAction
@@ -567,6 +570,9 @@ namespace ForgeSim::Sandbox
 					Platform::MouseButton::Right).held,
 				m_EditorSession->ScenePath().has_value(), scene.HasDirectionalLight());
 
+            screenshotTools.DrawMenu(sceneViewportPanel,!changePending && !transformEditor.IsActive() &&
+                !input.GetMouseButtonState(Platform::MouseButton::Right).held);
+
             SceneToolbarRequest toolbarRequest;
             const bool layoutReset = m_DebugUI.BeginWorkspace([&]
             {
@@ -684,6 +690,8 @@ namespace ForgeSim::Sandbox
 					m_Renderer.SceneColorTexture());
 			}
 
+            screenshotTools.HandleShortcuts(changePending || transformEditor.IsActive() ||
+                input.GetMouseButtonState(Platform::MouseButton::Right).held);
             editorUI = m_DebugUI.DrawTransformEditorToolbar(viewport,
                 changePending || transformEditor.IsActive() ||
                 input.GetMouseButtonState(Platform::MouseButton::Right).held);
@@ -1579,9 +1587,24 @@ namespace ForgeSim::Sandbox
 				static_cast<std::uint32_t>(framebufferExtent.width),
 				static_cast<std::uint32_t>(framebufferExtent.height));
 
+            screenshotTools.DrawFeedback();
 			m_DebugUI.EndFrame();
+            screenshotTools.EndFrame(m_Renderer.SceneColorTexture(),static_cast<std::uint32_t>(framebufferExtent.width),
+                static_cast<std::uint32_t>(framebufferExtent.height),viewport.IsDrawable());
 
 			m_Window.SwapBuffers();
+            if(screenshotTools.TakeDirectoryRequest())
+            {
+                try
+                {
+                    const auto directory=Platform::ShowFileDialog(m_Window,Platform::FileDialogMode::SelectFolder,
+                        Platform::FileDialogSpecification{.defaultDirectory=screenshotTools.Directory(),.suggestedFileName={},
+                            .title=L"Choose screenshot output folder",.defaultExtension={}});
+                    if(directory) screenshotTools.SetDirectory(*directory);
+                }
+                catch(const std::exception& error) { Core::LogError(std::string{"Cannot change screenshot folder: "}+error.what()); }
+                static_cast<void>(timer.Restart());
+            }
 			if (startupStart && !firstFramePresented && framebufferExtent.width > 0 && framebufferExtent.height > 0)
 			{
 				firstFramePresented = true;

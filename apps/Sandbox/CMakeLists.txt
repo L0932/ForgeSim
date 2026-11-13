@@ -142,6 +142,14 @@ target_sources(
         ModelNodeQuery.hpp
         NodeTransformOverrides.hpp
         NodeGizmoTransform.hpp
+        ScreenshotImage.hpp
+        ScreenshotImage.cpp
+        ScreenshotCapture.hpp
+        ScreenshotCapture.cpp
+        ScreenshotRequest.hpp
+        ScreenshotPath.hpp
+        ScreenshotTools.hpp
+        ScreenshotTools.cpp
         SelectionFocusToggle.hpp
         SelectionOrbitController.hpp
 		GizmoTransform.cpp
@@ -178,6 +186,7 @@ target_link_libraries(
 		ForgeSim::Renderer
 		ForgeSim::RendererOpenGL
 		ForgeSim::Glad
+        ForgeSimStb
 		ForgeSim::ImGui
 		ForgeSim::ImGuizmo
 		glm::glm-header-only
