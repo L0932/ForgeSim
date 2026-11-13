@@ -15,6 +15,49 @@ namespace ForgeSim::Sandbox
             return std::string(typeName) + " " + std::to_string(id) +
                 (enabled ? "" : " (disabled)");
         }
+        void DrawAssetNode(const Assets::SceneAsset& asset, std::size_t index,
+            std::vector<bool>& ancestors, std::size_t depth)
+        {
+            if (index >= asset.nodes.size()) { ImGui::TextDisabled("Invalid node reference"); return; }
+            if (ancestors[index] || depth >= 128) { ImGui::TextDisabled("Hierarchy depth/cycle limit"); return; }
+            const auto& node = asset.nodes[index];
+            ImGui::PushID(static_cast<int>(index));
+            const auto name = node.name.empty() ? "Node " + std::to_string(index) : node.name;
+            auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+            if (node.childIndices.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+            const auto label = name + (node.meshIndex ? " [Mesh " + std::to_string(*node.meshIndex) + "]" : " [Node]");
+            const bool expanded = ImGui::TreeNodeEx("##AssetNode", flags, "%s", label.c_str());
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("Read-only asset node; editing acts on the model instance.");
+                ImGui::Text("Node index: %zu   Children: %zu", index, node.childIndices.size());
+                if (node.localTransform.matrix) ImGui::TextUnformatted("Local transform: authored matrix");
+                else ImGui::Text("Local translation: %.4f, %.4f, %.4f", node.localTransform.translation[0],
+                    node.localTransform.translation[1], node.localTransform.translation[2]);
+                if (node.meshIndex && *node.meshIndex < asset.meshes.size())
+                {
+                    const auto& mesh = asset.meshes[*node.meshIndex];
+                    ImGui::Text("Mesh: %s (%zu primitives)", mesh.name.c_str(), mesh.primitives.size());
+                    for (std::size_t primitive = 0; primitive < mesh.primitives.size(); ++primitive)
+                    {
+                        const auto& item = mesh.primitives[primitive];
+                        if (item.materialIndex) ImGui::Text("Primitive %zu: Material %zu", primitive, *item.materialIndex + 1);
+                        else ImGui::Text("Primitive %zu: Default material", primitive);
+                    }
+                }
+                ImGui::EndTooltip();
+            }
+            if (expanded)
+            {
+                ancestors[index] = true;
+                for (const auto child : node.childIndices) DrawAssetNode(asset, child, ancestors, depth + 1);
+                ancestors[index] = false;
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
+
         struct HierarchyRowAction { bool select = false; bool toggle = false; };
 
         HierarchyRowAction DrawVisibilityRow(const std::string& label, const std::string& buttonId,
@@ -157,6 +200,7 @@ namespace ForgeSim::Sandbox
             if (changed && filtering) ImGui::SetNextItemOpen(true);
             if (EditorSectionHeader("Objects", ImGuiTreeNodeFlags_DefaultOpen))
             {
+                ImGui::Indent();
                 if (context.scene.Objects().empty()) ImGui::TextDisabled("No objects.");
                 for (const auto& object : context.scene.Objects())
                 {
@@ -164,11 +208,32 @@ namespace ForgeSim::Sandbox
                     const auto id = std::to_string(object.id);
                     const auto label = object.name + "###Object_" + id;
                     const bool visible = context.scene.IsObjectVisible(object.id);
+                    const auto* asset = context.inspectModel ? context.inspectModel(object.modelPath) : nullptr;
+                    ImGui::PushID(id.c_str());
+                    bool expanded = false;
+                    if (asset && !asset->rootNodeIndices.empty())
+                    {
+                        expanded = ImGui::TreeNodeEx("##ModelHierarchy", ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
+                        ImGui::SameLine();
+                    }
                     const auto action = DrawVisibilityRow(label, "##VisibilityObject_" + id,
                         context.selection.IsObjectSelected(object.id), visible);
                     if (action.select) context.selection.SelectObject(object.id);
                     if (action.toggle) context.scene.SetObjectVisible(object.id, !visible);
+                    if (expanded)
+                    {
+                        // NoTreePushOnOpen leaves indentation to us. Offset asset
+                        // arrows beneath the model label, rather than its arrow.
+                        const float assetIndent = ImGui::GetTreeNodeToLabelSpacing() * 1.5f;
+                        ImGui::Indent(assetIndent);
+                        std::vector<bool> ancestors(asset->nodes.size(), false);
+                        for (const auto root : asset->rootNodeIndices) DrawAssetNode(*asset, root, ancestors, 0);
+                        ImGui::Unindent(assetIndent);
+                    }
+                    ImGui::PopID();
                 }
+                ImGui::Unindent();
             }
         }
         if (!filtering || lightMatches > 0)
@@ -176,6 +241,7 @@ namespace ForgeSim::Sandbox
             if (changed && filtering) ImGui::SetNextItemOpen(true);
             if (EditorSectionHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
             {
+                ImGui::Indent();
                 if (context.scene.HasDirectionalLight())
                     DrawLightEntry("Directional Light", directional.id, directional.enabled, context.selection, context.scene);
                 if (lightMatches == 0) ImGui::TextDisabled("No lights.");
@@ -183,6 +249,7 @@ namespace ForgeSim::Sandbox
                     DrawLightEntry("Point Light", light.id, light.enabled, context.selection, context.scene);
                 for (const auto& light : context.scene.SpotLights())
                     DrawLightEntry("Spot Light", light.id, light.enabled, context.selection, context.scene);
+                ImGui::Unindent();
             }
         }
         ImGui::Separator();

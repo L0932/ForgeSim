@@ -2487,6 +2487,14 @@ namespace ForgeSim::Sandbox
 	}
 
 
+    const Assets::SceneAsset* SandboxRenderer::InspectModelHierarchy(const std::string& modelReference) const
+    {
+        const auto binding = m_ModelBindings.find(modelReference);
+        if (binding == m_ModelBindings.end()) return nullptr;
+        const auto cached = m_Models.find(binding->second);
+        return cached == m_Models.end() ? &m_ObjectSceneAsset : &cached->second->asset;
+    }
+
     ModelMaterialInspection SandboxRenderer::InspectModelMaterials(const std::string& modelReference) const
     {
         const auto binding = m_ModelBindings.find(modelReference);

@@ -191,6 +191,7 @@ namespace ForgeSim::Sandbox
 			std::uint32_t width,
 			std::uint32_t height);
 
+        [[nodiscard]] const Assets::SceneAsset* InspectModelHierarchy(const std::string& modelReference) const;
         [[nodiscard]] ModelMaterialInspection InspectModelMaterials(const std::string& modelReference) const;
 
 	private:

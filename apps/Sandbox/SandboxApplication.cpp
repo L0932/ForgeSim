@@ -641,7 +641,9 @@ namespace ForgeSim::Sandbox
 						changePending ||
 						transformEditor.IsActive() ||
 						input.GetMouseButtonState(
-							Platform::MouseButton::Right).held
+							Platform::MouseButton::Right).held,
+                    .inspectModel = [this](const std::string& reference)
+                    { return m_Renderer.InspectModelHierarchy(reference); }
 				});
 
 			const auto windowExtent = m_Window.GetWindowExtent();

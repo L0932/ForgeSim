@@ -11,6 +11,8 @@ contains the detailed implementation record.
 
 ### Added
 
+- Expand model instances in Hierarchy to browse read-only glTF nodes, meshes,
+  primitive counts, and material references.
 - Scene authoring controls: GameObject menus for built-in cubes and directional,
   point, and spot lights; deletion with Delete; and duplication with Ctrl+D for
   model instances, cubes, point lights, and spot lights. Creation, deletion, and

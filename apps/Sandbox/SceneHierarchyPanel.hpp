@@ -4,6 +4,8 @@
 #include "SceneSelection.hpp"
 
 #include <imgui.h>
+#include <functional>
+#include <ForgeSim/Assets/SceneAsset.hpp>
 
 namespace ForgeSim::Sandbox
 {
@@ -13,6 +15,8 @@ namespace ForgeSim::Sandbox
         SceneSelection& selection;
 
         bool interactionDisabled = false;
+        // Borrow only during Draw; scene replacements invalidate asset pointers.
+        std::function<const Assets::SceneAsset*(const std::string&)> inspectModel;
     };
 
     class SceneHierarchyPanel final
