@@ -1,3 +1,4 @@
+#include "SceneAssetPath.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneSerializer.hpp"
 
@@ -44,6 +45,8 @@ namespace ForgeSim::Sandbox
             {
                 const SceneObjectData& object =
                     document.objects[index];
+
+                if (object.modelPath == BuiltinCubeReference) continue;
 
                 const fs::path resolvedPath =
                     projectRoot / ModelPathFromUtf8(object.modelPath);

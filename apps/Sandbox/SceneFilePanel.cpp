@@ -79,6 +79,11 @@ namespace ForgeSim::Sandbox
         if (ImGui::BeginMenu("GameObject"))
         {
             ImGui::BeginDisabled(!actionsAllowed);
+            if (ImGui::BeginMenu("3D Object"))
+            {
+                if (ImGui::MenuItem("Cube")) m_CreateCubeRequest = true;
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Light"))
             {
                 if (ImGui::MenuItem("Directional Light", nullptr, false, !hasDirectionalLight))
@@ -247,10 +252,12 @@ namespace ForgeSim::Sandbox
         const SceneFileAction menuAction =
             std::exchange(m_MenuAction, SceneFileAction::None);
 
+        const bool createCube = std::exchange(m_CreateCubeRequest, false);
         const auto createLight = std::exchange(m_CreateLightRequest, std::nullopt);
         if (actionsAllowed)
         {
             request.createLight = createLight;
+            request.createCube = createCube;
             request.action = menuAction;
             if (menuAction == SceneFileAction::OpenSample)
                 request.path = m_SampleFilename;

@@ -82,3 +82,12 @@ scene files with a directional-light object remain supported. Older builds that
 require the object cannot read the new null form.
 
 Duplicating entities will follow in the next scene-authoring patch.
+
+## Built-in cube
+
+Use **GameObject > 3D Object > Cube** to create a plain, one-unit cube three
+units in front of the camera. The new cube is selected and supports transforms,
+F focus, deletion, undo/redo, and scene saving. Repeated cubes share mesh resources.
+The reserved `@builtin/cube` model reference is generated internally when loading;
+it requires no external asset file or texture. Saved transforms remain independent
+for each cube. Existing imported models and environment lighting are preserved.

@@ -1,3 +1,4 @@
+#include "BuiltinCube.hpp"
 #include "LightDebugLayout.hpp"
 #include "LightSubmission.hpp"
 #include "SandboxPaths.hpp"
@@ -2500,7 +2501,9 @@ namespace ForgeSim::Sandbox
         for (auto& object : objects)
         {
             const std::u8string reference(object.modelPath.begin(), object.modelPath.end());
-            const auto path = std::filesystem::canonical(root / std::filesystem::path(reference));
+            const bool builtinCube = object.modelPath == BuiltinCubeReference;
+            const auto path = builtinCube ? std::filesystem::path{BuiltinCubeReference} :
+                std::filesystem::canonical(root / std::filesystem::path(reference));
             bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
@@ -2514,7 +2517,7 @@ namespace ForgeSim::Sandbox
                 else
                 {
                     auto model = std::make_shared<ModelResources>();
-                    model->asset = LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
+                    model->asset = builtinCube ? CreateBuiltinCubeAsset() : LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
                         m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages,
                         m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
                     model->bounds = CalculateSceneBounds(model->asset);

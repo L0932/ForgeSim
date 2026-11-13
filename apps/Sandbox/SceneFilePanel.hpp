@@ -53,6 +53,7 @@ namespace ForgeSim::Sandbox
         std::string path;
         bool allowTextureFallbacks = true;
         std::optional<SceneLightKind> createLight;
+        bool createCube = false;
     };
 
     struct SceneToolbarContext
@@ -99,6 +100,7 @@ namespace ForgeSim::Sandbox
         ImGuiTextFilter m_KeyboardControlsFilter;
         EditorConsole m_Console;
         std::optional<SceneLightKind> m_CreateLightRequest;
+        bool m_CreateCubeRequest = false;
         SceneFileAction m_MenuAction = SceneFileAction::None;
         std::string m_SampleFilename;
         std::array<SamplePreview, BundledSamples.size()> m_SamplePreviews;

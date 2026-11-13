@@ -1,3 +1,5 @@
+#include <cmath>
+#include "SceneAssetPath.hpp"
 #include "SceneEditHistory.hpp"
 #include "SceneLightValidation.hpp"
 #include <stdexcept>
@@ -109,6 +111,10 @@ namespace ForgeSim::Sandbox
 			return true;
 		}
 
+        bool ApplyEdit(SandboxScene& scene, const ObjectCreationEdit& edit, bool useAfter)
+        {
+            return useAfter ? scene.RestoreObject(edit.index, edit.object, edit.visible) : scene.RemoveObject(edit.object.id);
+        }
         bool ApplyEdit(SandboxScene& scene, const ObjectRemovalEdit& edit, bool useAfter)
         {
             return useAfter ? scene.RemoveObject(edit.object.id) :
@@ -157,9 +163,10 @@ namespace ForgeSim::Sandbox
                     using T = std::decay_t<decltype(concreteEdit)>;
                     if (selection)
                     {
-                        if constexpr (std::is_same_v<T, ObjectRemovalEdit>)
+                        if constexpr (std::is_same_v<T, ObjectRemovalEdit> || std::is_same_v<T, ObjectCreationEdit>)
                         {
-                            if (!useAfter) selection->SelectObject(concreteEdit.object.id);
+                            const bool restoring = std::is_same_v<T, ObjectCreationEdit> ? useAfter : !useAfter;
+                            if (restoring) selection->SelectObject(concreteEdit.object.id);
                             else if (selection->IsObjectSelected(concreteEdit.object.id)) selection->Clear();
                         }
                         else if constexpr (std::is_same_v<T, PointLightRemovalEdit> || std::is_same_v<T, SpotLightRemovalEdit> ||
@@ -189,6 +196,21 @@ namespace ForgeSim::Sandbox
             for (const auto& light : scene.SpotLights()) if (light.id == *id) return true;
         }
         return false;
+    }
+
+    bool SceneEditHistory::CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position)
+    {
+        if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return false;
+        SandboxScene prepared = scene;
+        const auto id = prepared.AddModelObject("Cube", std::string{BuiltinCubeReference});
+        auto object = *prepared.FindObject(id);
+        object.transform.position = position;
+        object.localBounds = Renderer::AxisAlignedBoundingBox{glm::vec3{-0.5f}, glm::vec3{0.5f}};
+        SceneEdit edit = ObjectCreationEdit{object, scene.Objects().size(), true};
+        m_Edits.reserve(m_Position + 1);
+        if (!ApplySceneEdit(scene, edit, true, &selection)) return false;
+        RecordApplied(std::move(edit));
+        return true;
     }
 
     bool SceneEditHistory::CreateLight(SandboxScene& scene, SceneSelection& selection,

@@ -101,3 +101,5 @@ contains the detailed implementation record.
 - Release numbering and tagging conventions documented in docs/Releasing.md.
 
 - Give empty-scene light guides and picking a consistent workspace size after New/Open.
+
+- Add GameObject > 3D Object > Cube with built-in geometry, selection, undo/redo, and portable scene persistence.

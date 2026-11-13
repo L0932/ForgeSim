@@ -24,6 +24,27 @@ namespace
         TemporaryDirectory() { fs::create_directories(path); }
         ~TemporaryDirectory() { std::error_code error; fs::remove_all(path, error); }
     };
+    void TestCubeCreation(const fs::path& root)
+    {
+        EditorSession session(SceneDocument{}, root);
+        SceneSelection selection;
+        SceneEditHistory history;
+        auto& scene = session.Scene();
+        Require(history.CreateCube(scene, selection, {0,2,0}), "Create cube in empty scene");
+        const auto id = *selection.SelectedObjectId();
+        Require(scene.Objects().size() == 1 && session.HasUnsavedChanges(), "Cube creation marks scene dirty");
+        Require(scene.FindObject(id)->transform.position.y == 2 && scene.FindObject(id)->localBounds.has_value(), "Cube has placement and picking bounds");
+        const auto path = root / "cube.scene.json";
+        SaveSceneDocument(scene.ToDocument(), path, root);
+        const auto reloaded = LoadSceneDocument(path, root);
+        Require(reloaded.objects.size() == 1 && reloaded.objects[0].modelPath == "@builtin/cube", "Cube reload needs no external model file");
+        Require(history.Undo(scene, &selection) && scene.Objects().empty() && selection.Empty(), "Undo cube creation");
+        Require(!session.HasUnsavedChanges(), "Undo restores clean scene");
+        Require(history.Redo(scene, &selection) && selection.IsObjectSelected(id), "Redo restores and selects same cube");
+        Require(history.DeleteSelection(scene, selection) && history.Undo(scene, &selection), "Cube deletion is undoable");
+        Require(history.CreateCube(scene, selection, {1,2,3}) && *selection.SelectedObjectId() != id, "Further cubes get unique IDs");
+    }
+
     void TestObjectDeletion(const fs::path& root)
     {
         SceneDocument document;
@@ -227,6 +248,7 @@ int main()
         TemporaryDirectory temporary;
         const auto root = temporary.path;
         std::ofstream(root / "model.glb") << "placeholder";
+        TestCubeCreation(root);
         TestObjectDeletion(root);
         TestLightDeletion(root);
         TestRootRetention(root);

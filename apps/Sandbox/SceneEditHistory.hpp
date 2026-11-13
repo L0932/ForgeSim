@@ -51,6 +51,7 @@ namespace ForgeSim::Sandbox
 		glm::vec3 after;
 	};
 
+    struct ObjectCreationEdit { SandboxObject object; std::size_t index; bool visible; };
     struct ObjectRemovalEdit { SandboxObject object; std::size_t index; bool visible; };
     struct PointLightRemovalEdit { PointLight light; std::size_t index; bool visible; };
     struct SpotLightRemovalEdit { SpotLight light; std::size_t index; bool visible; };
@@ -71,7 +72,7 @@ namespace ForgeSim::Sandbox
 		DirectionalLightDirectionEdit,
 		DirectionalLightPositionEdit, ObjectRemovalEdit, PointLightRemovalEdit,
         SpotLightRemovalEdit, DirectionalLightRemovalEdit, DirectionalLightCreationEdit,
-        PointLightCreationEdit, SpotLightCreationEdit>;
+        PointLightCreationEdit, SpotLightCreationEdit, ObjectCreationEdit>;
 
 	class SceneEditHistory final
 	{
@@ -86,6 +87,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool CanUndo() const noexcept;
 		[[nodiscard]] bool CanRedo() const noexcept;
 
+        [[nodiscard]] bool CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position);
         [[nodiscard]] bool CreateLight(SandboxScene& scene, SceneSelection& selection,
             SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range);
         [[nodiscard]] bool DeleteSelection(SandboxScene& scene, SceneSelection& selection);

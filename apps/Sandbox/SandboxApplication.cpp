@@ -1,3 +1,4 @@
+#include "SceneAssetPath.hpp"
 #include "FreeCameraController.hpp"
 #include "BundledSamples.hpp"
 #include "ExternalSample.hpp"
@@ -898,6 +899,26 @@ namespace ForgeSim::Sandbox
 				sceneEntitiesChanged = transformEditor.Redo(scene, &selection);
 			}
 
+            else if (fileRequest.createCube && !changePending && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+            {
+                try
+                {
+                    // Prepare resources before mutating the active scene/history.
+                    SandboxScene prepared = scene;
+                    static_cast<void>(prepared.AddModelObject("Cube", std::string{BuiltinCubeReference}));
+                    m_Renderer.LoadSceneModels(m_EditorSession->ProjectRoot(), prepared.Objects(),
+                        ResolveSceneEnvironment(scene.RenderingSettings(), m_EditorSession->ProjectRoot(),
+                            BundledAssetDirectory() / "environments"));
+                    const auto position = camera.Position() + camera.ForwardDirection() * 3.0f;
+                    sceneEntitiesChanged = transformEditor.CreateCube(scene, selection, position);
+                    if (sceneEntitiesChanged) sceneFileMessage = "Cube created. Undo removes it.";
+                }
+                catch (const std::exception& error)
+                {
+                    sceneFileMessage = std::string{"Could not create cube: "} + error.what();
+                }
+            }
             else if (fileRequest.createLight && !changePending && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard())
             {
