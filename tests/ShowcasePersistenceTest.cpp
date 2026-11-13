@@ -265,6 +265,48 @@ namespace
                 "Editor preference leaked into the authored scene schema.");
     }
 
+    void TestEnvironmentOrientation()
+    {
+        SceneDocument document;
+        Require(!document.rendering.flipEnvironmentVertically,"Default environment orientation changed.");
+        document.rendering.flipEnvironmentVertically=true;
+        document.rendering.showEnvironmentBackground=true;
+        for (const auto source : {SceneEnvironmentSource::BundledStudio,SceneEnvironmentSource::None,SceneEnvironmentSource::ProjectAsset})
+        {
+            document.rendering.environmentSource=source;
+            document.rendering.environmentAsset=source==SceneEnvironmentSource::ProjectAsset ? "environments/Studio.hdr" : "";
+            const auto restored=DeserializeSceneDocument(SerializeSceneDocument(document));
+            Require(restored.rendering.flipEnvironmentVertically && restored.rendering.showEnvironmentBackground &&
+                restored.rendering.environmentSource==source,"Environment orientation or background visibility did not round trip.");
+        }
+        auto legacy=Json::parse(SerializeSceneDocument(document));
+        legacy["rendering"]["environment"].erase("flipVertical");
+        const auto restoredLegacy=DeserializeSceneDocument(legacy.dump());
+        Require(!restoredLegacy.rendering.flipEnvironmentVertically && restoredLegacy.rendering.showEnvironmentBackground,
+            "Older scenes must retain unflipped orientation and their saved background setting.");
+        for (const auto& invalid : std::array<Json,5>{Json(1),Json("true"),Json(nullptr),Json::array(),Json::object()})
+        {
+            auto malformed=legacy;
+            malformed["rendering"]["environment"]["flipVertical"]=invalid;
+            ExpectFailure([&]{static_cast<void>(DeserializeSceneDocument(malformed.dump()));},"rendering.environment.flipVertical");
+        }
+        TemporaryDirectory directory;
+        EditorSession session{SceneDocument{},directory.Path()};
+        auto settings=session.Scene().RenderingSettings();
+        settings.flipEnvironmentVertically=true;settings.showEnvironmentBackground=true;
+        Require(!session.Scene().TrySetRenderingSettings(settings) && session.HasUnsavedChanges(),"Flipping the environment must mark the scene modified.");
+        session.SaveAs("Orientation.scene.json");
+        Require(!session.HasUnsavedChanges(),"Saving environment orientation did not reset dirty state.");
+        const auto reopened=session.PrepareOpen("Orientation.scene.json");
+        Require(reopened.Scene().RenderingSettings().flipEnvironmentVertically && reopened.Scene().RenderingSettings().showEnvironmentBackground,
+            "Environment orientation and visibility did not survive Save/reopen.");
+        settings.flipEnvironmentVertically=false;
+        Require(!session.Scene().TrySetRenderingSettings(settings) && session.HasUnsavedChanges(),"Turning flip off must mark the scene modified.");
+        session.Save();
+        Require(!session.PrepareOpen("Orientation.scene.json").Scene().RenderingSettings().flipEnvironmentVertically,
+            "Turning flip off did not survive Save/reopen.");
+    }
+
     void TestEnvironmentFiles()
     {
         TemporaryDirectory directory;
@@ -315,6 +357,7 @@ int main()
         TestShadowPersistenceAndDefaults();
         TestMalformedShowcaseData();
         TestEnvironmentFiles();
+        TestEnvironmentOrientation();
         return EXIT_SUCCESS;
     }
     catch (const std::exception& error)

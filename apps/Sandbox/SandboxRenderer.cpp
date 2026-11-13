@@ -356,6 +356,7 @@ namespace ForgeSim::Sandbox
 
 			constexpr std::string_view environmentIntensity =
 				"uEnvironmentIntensity";
+            constexpr std::string_view flipEnvironmentVertically = "uFlipEnvironmentVertically";
 
 			constexpr std::string_view prefilteredSpecularMap =
 				"uPrefilteredSpecularMap";
@@ -439,6 +440,7 @@ namespace ForgeSim::Sandbox
 				selectionColor,
 				diffuseIrradianceMap,
 				environmentIntensity,
+                flipEnvironmentVertically,
 				prefilteredSpecularMap,
 				brdfLookupTexture,
 				maximumSpecularLod,
@@ -1631,7 +1633,8 @@ namespace ForgeSim::Sandbox
 				m_EnvironmentCubemap,
 				view,
 				projection,
-				settings.environmentIntensity);
+				settings.environmentIntensity,
+                settings.flipEnvironmentVertically);
 		}
 
 		if (settings.showGrid)
@@ -1739,6 +1742,8 @@ namespace ForgeSim::Sandbox
 			SandboxRendererShaderUniform::
 			environmentIntensity,
 			settings.environmentIntensity);
+        m_ObjectShaderProgram.SetInt(SandboxRendererShaderUniform::flipEnvironmentVertically,
+            settings.flipEnvironmentVertically ? 1 : 0);
 
 		m_ObjectShaderProgram.SetMatrix4x4(
 			SandboxRendererShaderUniform::view,

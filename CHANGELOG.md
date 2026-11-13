@@ -18,6 +18,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Per-scene vertical environment flipping, applied consistently to the HDRI
+  background, diffuse lighting and specular reflections. The Environment asset
+  section now groups orientation and background visibility with source controls.
+
 - Scene gizmos for imported node adjustments: move, rotate and local-axis scale,
   world/local axes, one-step drag undo/redo, and the existing scene persistence.
   Parent transforms remain intact; unsupported shear-producing drags report feedback.

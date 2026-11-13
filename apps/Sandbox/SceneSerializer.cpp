@@ -95,6 +95,7 @@ namespace ForgeSim::Sandbox
                     WriteDirectionalShadows(settings.directionalShadows)
                 },
                 { "environment", {
+                    { "flipVertical", settings.flipEnvironmentVertically },
                     { "source", settings.environmentSource == SceneEnvironmentSource::BundledStudio
                         ? "bundledStudio" : settings.environmentSource == SceneEnvironmentSource::None
                             ? "none" : "projectAsset" },
@@ -439,6 +440,8 @@ namespace ForgeSim::Sandbox
             if (environment != value.end())
             {
                 const std::string parent = property + ".environment";
+                if (const auto flip=environment->find("flipVertical"); flip!=environment->end())
+                    settings.flipEnvironmentVertically=ReadBool(*flip,parent + ".flipVertical");
                 const std::string source = ReadString(
                     ReadMember(*environment, "source", parent), parent + ".source");
                 const Json& asset = ReadMember(*environment, "asset", parent);

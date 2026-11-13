@@ -1068,6 +1068,8 @@ namespace ForgeSim::Sandbox
 				.showEnvironmentBackground =
 					scene.RenderingSettings().showEnvironmentBackground,
 
+                .flipEnvironmentVertically = scene.RenderingSettings().flipEnvironmentVertically,
+
 				.showGrid = m_DebugUI.ShowGrid(),
 
 				.showObjectBounds =

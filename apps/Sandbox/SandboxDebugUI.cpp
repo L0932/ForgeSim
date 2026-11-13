@@ -542,10 +542,6 @@ namespace ForgeSim::Sandbox
         {
             ImGui::BeginDisabled(context.cameraEditingDisabled);
 
-            renderingChanged |= ImGui::Checkbox(
-                "Show environment background",
-                &rendering.showEnvironmentBackground);
-
             ImGui::BeginDisabled(
                 rendering.showEnvironmentBackground);
 
@@ -670,6 +666,18 @@ namespace ForgeSim::Sandbox
         if (EditorSectionHeader("Environment asset"))
         {
             ImGui::BeginDisabled(context.cameraEditingDisabled);
+            auto environmentSettings=context.scene.RenderingSettings();
+            bool environmentPresentationChanged=ImGui::Checkbox("Show environment background",
+                &environmentSettings.showEnvironmentBackground);
+            environmentPresentationChanged |= ImGui::Checkbox("Flip environment vertically",
+                &environmentSettings.flipEnvironmentVertically);
+            ImGui::SetItemTooltip("Flip the HDRI vertically for the background, lighting and reflections. Save the scene to keep it.");
+            if (environmentPresentationChanged)
+            {
+                if (const auto error=context.scene.TrySetRenderingSettings(environmentSettings))
+                    m_PresentationMessage=std::string(error->message);
+                else m_PresentationMessage="Environment display updated. Save the scene to keep it.";
+            }
             if (!m_EnvironmentInputInitialized)
             {
                 std::snprintf(m_EnvironmentAsset.data(), m_EnvironmentAsset.size(), "%s",

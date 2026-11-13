@@ -4,15 +4,18 @@ in vec3 vDirection;
 
 uniform samplerCube uEnvironmentMap;
 uniform float uEnvironmentIntensity;
+uniform bool uFlipEnvironmentVertically;
 
 out vec4 fragColor;
 
 void main()
 {
+    vec3 direction=normalize(vDirection);
+    if (uFlipEnvironmentVertically) direction.y=-direction.y;
 	vec3 environmentColor =
 		textureLod(
 			uEnvironmentMap,
-			normalize(vDirection),
+			direction,
 			0.0).rgb;
 
 	fragColor =
