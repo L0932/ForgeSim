@@ -1,6 +1,7 @@
 #include "LightGizmoTransform.hpp"
 #include "SceneTransformEditor.hpp"
 #include "GizmoTransform.hpp"
+#include "NodeGizmoTransform.hpp"
 #include "ObjectTransformSelection.hpp"
 
 #include <type_traits>
@@ -10,6 +11,11 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+        bool SameNodeAdjustment(const Transform& a, const Transform& b)
+        {
+            return a.position==b.position && a.rotationRadians==b.rotationRadians &&
+                a.scale==b.scale && a.pivot==b.pivot;
+        }
 		[[nodiscard]] Transform ReadTransform(
 			const SandboxObject& object)
 		{
@@ -210,7 +216,7 @@ namespace ForgeSim::Sandbox
 
     bool SceneTransformEditor::SetObjectPivot(SandboxObject& object, const glm::vec3& pivot)
     {
-        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || object.transform.pivot == pivot)
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit || object.transform.pivot == pivot)
             return false;
         Transform after = object.transform;
         if (!after.TrySetPivot(pivot)) return false;
@@ -228,7 +234,7 @@ namespace ForgeSim::Sandbox
     bool SceneTransformEditor::SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
         const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter)
     {
-        if (IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
         ObjectBatchEdit batch;
         for (const auto id : selection.SelectedObjectIds())
         {
@@ -246,7 +252,7 @@ namespace ForgeSim::Sandbox
 
     bool SceneTransformEditor::SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible)
     {
-        if (IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
         ObjectBatchEdit batch;
         for (const auto id : selection.SelectedObjectIds())
             if (scene.FindObject(id) && scene.IsObjectVisible(id) != visible)
@@ -288,7 +294,7 @@ namespace ForgeSim::Sandbox
     bool SceneTransformEditor::SetNodeOverride(SandboxObject& object, std::size_t nodeIndex,
         const std::optional<Transform>& value)
     {
-        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || (value && !ValidNodeOverride(*value))) return false;
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit || (value && !ValidNodeOverride(*value))) return false;
         const auto found = object.nodeOverrides.find(nodeIndex);
         const std::optional<Transform> before = found == object.nodeOverrides.end() ? std::nullopt : std::optional{found->second};
         if (!before && !value) return false;
@@ -298,6 +304,60 @@ namespace ForgeSim::Sandbox
         else object.nodeOverrides.erase(nodeIndex);
         m_History.RecordApplied(NodeTransformOverrideEdit{object.id,object.modelPath,nodeIndex,before,value});
         return true;
+    }
+
+    void SceneTransformEditor::EditNode(const SceneTransformEditorContext& context)
+    {
+        const ModelNodeSelection target = m_PendingNodeEdit
+            ? ModelNodeSelection{m_PendingNodeEdit->objectId,m_PendingNodeEdit->nodeIndex,m_PendingNodeEdit->modelPath}
+            : *context.selection.SelectedNode();
+        auto* owner = context.scene.FindObject(target.objectId);
+        if (!owner || owner->modelPath != target.modelReference)
+        { m_PendingNodeEdit.reset(); return; }
+        if (!context.scene.IsObjectVisible(owner->id) || !context.inspectNodes) return;
+        const auto* query = context.inspectNodes(target.modelReference);
+        if (!query || !query->Find(target.nodeIndex)) return;
+        try
+        {
+            const auto base = NodeGizmoBase(*query,target.nodeIndex,owner->transform.ModelMatrix(),owner->nodeOverrides);
+            if (!base) { m_NodeGizmoMessage="Node gizmo unavailable: the parent transform is singular or invalid."; return; }
+            const auto found = owner->nodeOverrides.find(target.nodeIndex);
+            const std::optional<Transform> original = found==owner->nodeOverrides.end()
+                ? std::nullopt : std::optional{found->second};
+            const auto before = original.value_or(Transform{});
+            auto after = before;
+            auto matrix = *base * before.GizmoMatrix();
+            const auto initialMatrix=matrix;
+            auto dragContext = context;
+            if (m_PendingNodeEdit)
+            { dragContext.operation=m_NodeDragOperation; dragContext.space=m_NodeDragSpace; }
+            m_Interaction=DrawGizmo(matrix,dragContext,true);
+            if (!m_Interaction.changed || matrix==initialMatrix) return;
+            const auto dragStart=m_PendingNodeEdit ? m_PendingNodeEdit->before.value_or(Transform{}) : before;
+            if (m_PendingNodeEdit && matrix==*base*dragStart.GizmoMatrix()) after=dragStart;
+            else if (!TryApplyNodeGizmoTransform(after,*base,matrix,dragContext.operation))
+            { m_NodeGizmoMessage="This drag would add shear to the node adjustment. Try local axes or the Inspector."; return; }
+            if (SameNodeAdjustment(after,before)) return;
+            auto candidate=owner->nodeOverrides;
+            candidate.insert_or_assign(target.nodeIndex,after);
+            const auto localBounds=query->ModelBounds(candidate);
+            static_cast<void>(query->WorldBounds(target.nodeIndex,owner->transform.ModelMatrix(),candidate));
+            if (!m_PendingNodeEdit)
+            {
+                m_PendingNodeEdit=NodeTransformOverrideEdit{owner->id,owner->modelPath,target.nodeIndex,original,after};
+                m_NodeDragOperation=dragContext.operation; m_NodeDragSpace=dragContext.space;
+            }
+            else m_PendingNodeEdit->after=after;
+            if (!m_PendingNodeEdit->before && SameNodeAdjustment(after,Transform{}))
+            {
+                candidate.erase(target.nodeIndex);
+                m_PendingNodeEdit->after.reset();
+            }
+            owner->nodeOverrides=std::move(candidate);
+            owner->localBounds=localBounds;
+        }
+        catch(const std::invalid_argument&)
+        { m_NodeGizmoMessage="Node gizmo edit rejected: the resulting hierarchy or bounds are invalid."; }
     }
 
 	void SceneTransformEditor::BeginFrame()
@@ -394,7 +454,12 @@ namespace ForgeSim::Sandbox
 		m_WasActive = m_Interaction.active;
 		m_Interaction = {};
 
-        if (m_PendingObjectEdits || (!m_PendingEdit && context.selection.SelectedObjectIds().size() > 1))
+        m_NodeGizmoMessage={};
+        if (m_PendingNodeEdit || (!m_PendingEdit && !m_PendingObjectEdits && context.selection.SelectedNode()))
+        {
+            EditNode(context);
+        }
+        else if (m_PendingObjectEdits || (!m_PendingEdit && context.selection.SelectedObjectIds().size() > 1))
         {
             EditObjectGroup(context);
         }
@@ -538,6 +603,15 @@ namespace ForgeSim::Sandbox
 
 	void SceneTransformEditor::FinishEdit()
 	{
+        if (m_PendingNodeEdit)
+        {
+            const auto& before=m_PendingNodeEdit->before;
+            const auto& after=m_PendingNodeEdit->after;
+            if (before.has_value()!=after.has_value() ||
+                (before && after && !SameNodeAdjustment(*before,*after)))
+                m_History.RecordApplied(std::move(*m_PendingNodeEdit));
+            m_PendingNodeEdit.reset();
+        }
         if (m_PendingObjectEdits)
         {
             RecordObjectEdits(std::move(*m_PendingObjectEdits));
@@ -566,12 +640,12 @@ namespace ForgeSim::Sandbox
 
     bool SceneTransformEditor::CanUndo() const noexcept
     {
-        return !m_WasActive && !IsActive() && !m_PendingEdit && !m_PendingObjectEdits && m_History.CanUndo();
+        return !m_WasActive && !IsActive() && !m_PendingEdit && !m_PendingObjectEdits && !m_PendingNodeEdit && m_History.CanUndo();
     }
 
     bool SceneTransformEditor::CanRedo() const noexcept
     {
-        return !m_WasActive && !IsActive() && !m_PendingEdit && !m_PendingObjectEdits && m_History.CanRedo();
+        return !m_WasActive && !IsActive() && !m_PendingEdit && !m_PendingObjectEdits && !m_PendingNodeEdit && m_History.CanRedo();
     }
 
 	bool SceneTransformEditor::Undo(SandboxScene& scene, SceneSelection* selection)
@@ -596,31 +670,33 @@ namespace ForgeSim::Sandbox
 
     bool SceneTransformEditor::DuplicateSelection(SandboxScene& scene, SceneSelection& selection)
     {
-        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
         return m_History.DuplicateSelection(scene, selection);
     }
 
     bool SceneTransformEditor::CreateCube(SandboxScene& scene, SceneSelection& selection, const glm::vec3& position)
     {
-        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
         return m_History.CreateCube(scene, selection, position);
     }
 
     bool SceneTransformEditor::CreateLight(SandboxScene& scene, SceneSelection& selection,
         SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range)
     {
-        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
         return m_History.CreateLight(scene, selection, type, position, direction, range);
     }
 
     bool SceneTransformEditor::DeleteSelection(SandboxScene& scene, SceneSelection& selection)
     {
-        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits) return false;
+        if (m_WasActive || IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
         return m_History.DeleteSelection(scene, selection);
     }
 
 	void SceneTransformEditor::ClearHistory()
 	{
+        m_PendingNodeEdit.reset();
+        m_NodeGizmoMessage={};
 		m_PendingEdit.reset();
         m_PendingObjectEdits.reset();
         m_DragSelection.Clear();

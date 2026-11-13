@@ -941,7 +941,8 @@ namespace ForgeSim::Sandbox
 					.operation = editorUI.operation,
 					.space = editorUI.space,
 					.showLights = m_DebugUI.ShowLights(),				
-					.navigationActive = changePending|| rightMouseDown
+					.navigationActive = changePending|| rightMouseDown,
+                    .inspectNodes = [this](const std::string& reference) { return m_Renderer.InspectModelNodes(reference); }
 				});
 
             bool sceneEntitiesChanged = false;
@@ -1118,6 +1119,10 @@ namespace ForgeSim::Sandbox
             if (selectionOrbit.Active() && viewport.IsDrawable())
                 ImGui::GetWindowDrawList()->AddText(ImVec2(viewport.position.x+12,viewport.position.y+viewport.size.y-24),
                     IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return | Esc: keep view");
+            if (!transformEditor.NodeGizmoMessage().empty() && viewport.IsDrawable())
+                ImGui::GetWindowDrawList()->AddText(nullptr,0,ImVec2(viewport.position.x+12,viewport.position.y+12),
+                    IM_COL32(255,210,130,255),transformEditor.NodeGizmoMessage().data(),nullptr,
+                    std::max(1.0f,viewport.size.x-24));
 			sceneViewportPanel.End();
 
             selectionFocusToggle.ObserveSelection(selection);

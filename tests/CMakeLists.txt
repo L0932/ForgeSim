@@ -1548,7 +1548,7 @@ add_executable(ForgeSimObjectMultiSelectionTests ObjectMultiSelectionTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/ViewportSelectionController.cpp)
 target_include_directories(ForgeSimObjectMultiSelectionTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
-target_link_libraries(ForgeSimObjectMultiSelectionTests PRIVATE ForgeSim::PlatformGLFW ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_link_libraries(ForgeSimObjectMultiSelectionTests PRIVATE ForgeSim::Assets ForgeSim::PlatformGLFW ForgeSim::Renderer nlohmann_json::nlohmann_json)
 target_compile_features(ForgeSimObjectMultiSelectionTests PRIVATE cxx_std_20)
 target_compile_definitions(ForgeSimObjectMultiSelectionTests PRIVATE GLM_ENABLE_EXPERIMENTAL)
 forgesim_set_project_warnings(ForgeSimObjectMultiSelectionTests)
@@ -1614,3 +1614,26 @@ target_compile_definitions(ForgeSimNodeTransformOverrideTests PRIVATE GLM_ENABLE
 forgesim_set_project_warnings(ForgeSimNodeTransformOverrideTests)
 set_target_properties(ForgeSimNodeTransformOverrideTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.NodeTransformOverrides COMMAND ForgeSimNodeTransformOverrideTests)
+
+add_executable(ForgeSimNodeGizmoTests NodeGizmoTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneTransformEditor.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/ViewportSelectionController.cpp)
+target_include_directories(ForgeSimNodeGizmoTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimNodeGizmoTests PRIVATE ForgeSim::Assets ForgeSim::PlatformGLFW ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimNodeGizmoTests PRIVATE cxx_std_20)
+target_compile_definitions(ForgeSimNodeGizmoTests PRIVATE GLM_ENABLE_EXPERIMENTAL)
+forgesim_set_project_warnings(ForgeSimNodeGizmoTests)
+set_target_properties(ForgeSimNodeGizmoTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.NodeGizmo COMMAND ForgeSimNodeGizmoTests)

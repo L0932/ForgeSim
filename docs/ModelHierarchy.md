@@ -47,9 +47,19 @@ those indices. Missing or unreachable referenced indices fail scene preparation
 rather than silently applying the edit elsewhere. Indices cannot detect a reordered
 asset that still contains the same indices; review adjustments after re-export.
 
-Gizmos, pivot edits, node deletion, and node duplication remain unavailable for
-node selections. Select the model row for whole-instance manipulation. Node gizmo
-editing is the next part of #123.
+Selected nodes also support Scene gizmos: W translates, E rotates, and R scales.
+X toggles world/local translation and rotation axes; scaling uses local axes.
+Handles sit at the node's authored origin plus its adjustment, rather than the
+subtree bounds center. Dragging a group affects its descendants. A complete drag
+is one undo step and saves through the same per-instance adjustment records.
+Navigation and hidden model instances suppress node gizmos. An active drag stays
+on its original target until release, even if selection changes.
+
+Authored matrices and parent adjustments are preserved. A singular parent disables
+the gizmo. A drag that would require shear in the local adjustment is rejected
+with feedback in Scene; use local axes or numeric Inspector fields instead.
+Node pivots, deletion and duplication remain unavailable. Select the model row
+for whole-instance pivot editing, deletion or duplication.
 
 Selection and tree expansion are temporary UI state. Scene replacement clears
 selection; deleted owners, changed model references, and unavailable node indices

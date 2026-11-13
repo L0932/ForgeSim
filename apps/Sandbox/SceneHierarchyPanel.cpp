@@ -38,7 +38,7 @@ namespace ForgeSim::Sandbox
             if (ImGui::IsItemHovered())
             {
                 ImGui::BeginTooltip();
-                ImGui::TextUnformatted("Select to adjust this node in the Inspector, inspect, or focus.");
+                ImGui::TextUnformatted("Select to edit this node with Scene gizmos or Inspector fields, inspect, or focus.");
                 ImGui::Text("Node index: %zu   Children: %zu", index, node.childIndices.size());
                 if (node.localTransform.matrix) ImGui::TextUnformatted("Local transform: authored matrix");
                 else ImGui::Text("Local translation: %.4f, %.4f, %.4f", node.localTransform.translation[0],

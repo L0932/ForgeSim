@@ -164,8 +164,9 @@ read-only local transforms (including authored matrices), parent information,
 world bounds, mesh/primitive references and the subtree's associated materials.
 
 Numeric node adjustments, Reset, undo/redo and scene persistence are supported
-through the Inspector. Node gizmos, pivots, deletion and duplication remain
-unavailable. Select the model's main row to manipulate the complete instance.
+through the Inspector. Node gizmos use W/E/R and X for world/local axes; a drag
+is one undo step. Node pivots, deletion and duplication remain unavailable.
+Select the model's main row to manipulate the complete instance.
 Selection itself is temporary editor state; node adjustments are authored scene data.
 
 ## Selection orbit mode
@@ -205,3 +206,8 @@ Instance Node Adjustment, edit position offsets, rotation offsets in degrees, or
 scale multipliers and press Enter. Reset node adjustment restores that node's
 original local transform while preserving descendant adjustments. Ctrl+Z/Ctrl+Y
 undo and redo these edits. Save the scene to retain the per-instance adjustments.
+
+Node gizmos use the same saved adjustments. Select a node and use W (move), E
+(rotate), or R (scale); X toggles world/local move and rotation axes. Scale uses
+local axes. A singular parent or a drag requiring local shear is rejected with
+feedback in Scene; numeric Inspector editing remains available.
