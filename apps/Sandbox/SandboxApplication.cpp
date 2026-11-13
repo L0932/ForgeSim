@@ -1156,6 +1156,10 @@ namespace ForgeSim::Sandbox
                 viewportNavigationActive=false;
                 m_Window.SetCursorMode(Platform::CursorMode::Normal);
             };
+            if ((viewport.toggleSelectionHighlightRequested || hierarchyPanel.ToggleSelectionHighlightRequested()) &&
+                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+                m_DebugUI.ToggleSelectionHighlight();
             if (selectionOrbit.Active() && (viewport.exitOrbitRequested || hierarchyPanel.ExitOrbitRequested()) &&
                 !changePending && !transformEditor.IsActive() && !sceneFilePanel.ConsoleWantsKeyboard())
             {

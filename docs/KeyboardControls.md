@@ -18,6 +18,7 @@ Update both when bindings change; list only implemented commands.
 | Camera | Ctrl+F | Toggle orbit mode around selection | Scene or Hierarchy focused; navigation stopped |
 | Camera | RMB drag / Wheel | Orbit / zoom around selection | Orbit mode active; wheel over Scene |
 | Camera | Esc | Exit orbit at current view | Scene or Hierarchy focused; no text entry or modal |
+| Selection | Shift+H | Show / hide selection highlight | Scene or Hierarchy focused; selection stays active |
 | Selection | F | Toggle selection focus / previous view | Scene or Hierarchy focused; navigation stopped |
 | Selection | Double-click label | Select and toggle focus on object, imported node, or light | Hierarchy |
 | Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
@@ -188,7 +189,7 @@ without geometry cannot start orbit mode.
   orbit is active. Outside orbit, the existing selection-focus/previous-view
   toggle remains available. Entering or explicitly toggling orbit resets that pair.
 
-Uncheck **Show selection highlight** in the Camera panel to hide the selection
+Press **Shift+H** with Scene or Hierarchy focused, or uncheck **Show selection highlight** in the Camera panel to hide the selection
 tint while retaining the selection, Inspector target, and editing controls.
 This shares the existing highlight setting under **ForgeSim Debug > Selection**.
 

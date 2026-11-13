@@ -15,6 +15,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Shift+H toggles selection highlighting from Scene or Hierarchy without clearing
+  the selection or changing the active editing target.
+
 - Ctrl+F selection orbit mode with RMB-drag rotation, wheel zoom, a Scene status
   hint, and Camera-panel controls. Ctrl+F, F or Hierarchy double-click restores
   the pre-orbit view; Esc keeps the current view. The Camera panel also exposes

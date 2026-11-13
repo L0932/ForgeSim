@@ -116,6 +116,7 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] bool ShowGrid() const noexcept;
         [[nodiscard]] const Renderer::FxaaSettings& Fxaa() const noexcept { return m_FxaaSettings; }
+        void ToggleSelectionHighlight() noexcept { m_SelectionHighlightEnabled = !m_SelectionHighlightEnabled; }
 		[[nodiscard]] bool ShowLights() const noexcept;
 
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
