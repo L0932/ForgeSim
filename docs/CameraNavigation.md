@@ -43,3 +43,8 @@ restoration. A manual speed remains attached to the current scene.
 
 Use **F** with Scene or Hierarchy focused to frame the selected model or light.
 See [Keyboard controls](KeyboardControls.md) for input contexts and shortcuts.
+
+New empty scenes use near/far clipping of **0.05 / 1000** to cover the editor
+reference grid and workspace. Loading an empty scene without a saved viewpoint
+and using Frame scene on an empty scene use the same defaults. Saved viewpoints
+retain their explicitly authored clipping values.

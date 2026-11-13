@@ -251,10 +251,9 @@ namespace ForgeSim::Sandbox
 			.maximum = glm::vec3{ 1.0f }
 		};
 
-		SceneCameraFraming initialFraming =
-			CreateSceneCameraFraming(
-				scene.Objects().empty() ? emptySceneBounds : bounds,
-				initialAspectRatio);
+        SceneCameraFraming initialFraming = scene.Objects().empty()
+            ? CreateEmptySceneCameraFraming(initialAspectRatio)
+            : CreateSceneCameraFraming(bounds, initialAspectRatio);
 
 		Renderer::PerspectiveCamera camera =
 			std::move(initialFraming.camera);
@@ -443,11 +442,15 @@ namespace ForgeSim::Sandbox
         std::vector<SpotLight> visibleSpotLights;
 		bool viewportNavigationActive = false;
 
+		// Empty workspaces use a fixed guide scale instead of tiny placeholder bounds.
+        const Renderer::AxisAlignedBoundingBox emptyLightDebugBounds{
+            glm::vec3{-2.5f}, glm::vec3{2.5f}};
+
 		// Light guides and their picking radius follow the transformed
 		// scene size, rather than the shared mesh's local dimensions.
 		Renderer::AxisAlignedBoundingBox lightDebugBounds =
 			scene.Objects().empty()
-			? emptySceneBounds
+			? emptyLightDebugBounds
 			: CalculateSceneBounds(
 				scene.Objects(),
 				m_Renderer.ObjectLocalBounds());
@@ -751,10 +754,9 @@ namespace ForgeSim::Sandbox
 
 					const float framingAspectRatio = aspectRatio;
 
-					SceneCameraFraming framing =
-						CreateSceneCameraFraming(
-							framingBounds,
-							framingAspectRatio);
+                    SceneCameraFraming framing = scene.Objects().empty()
+                        ? CreateEmptySceneCameraFraming(framingAspectRatio)
+                        : CreateSceneCameraFraming(framingBounds, framingAspectRatio);
 
 					if (const auto& savedCamera = scene.SavedCamera())
 					{
@@ -920,7 +922,7 @@ namespace ForgeSim::Sandbox
                 ClearMissingSceneSelection(selection, scene);
                 inspectorPanel.Reset();
                 lightPickTargets.clear();
-                lightDebugBounds = scene.Objects().empty() ? emptySceneBounds :
+                lightDebugBounds = scene.Objects().empty() ? emptyLightDebugBounds :
                     CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
             }
 
@@ -1061,8 +1063,9 @@ namespace ForgeSim::Sandbox
                 .focusSelection = focusSelection,
                 .frameScene = [&]
                 {
-                    auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
-                        scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
+                    auto framing = scene.Objects().empty() ? CreateEmptySceneCameraFraming(aspectRatio) :
+                        CreateSceneCameraFraming(CalculateSceneBounds(
+                            scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
                     cameraRestoreRequest = CaptureSceneCamera(framing.camera);
                     cameraController = std::move(framing.controller);
                     if (scene.CameraMovementSpeed())
@@ -1386,7 +1389,7 @@ namespace ForgeSim::Sandbox
 
 							lightDebugBounds =
 								scene.Objects().empty()
-								? emptySceneBounds
+								? emptyLightDebugBounds
 								: CalculateSceneBounds(
 									scene.Objects(),
 									m_Renderer.ObjectLocalBounds());
@@ -1514,7 +1517,7 @@ namespace ForgeSim::Sandbox
 					cameraRestoreRequest.reset();
 
 					lightDebugBounds = scene.Objects().empty()
-						? emptySceneBounds
+						? emptyLightDebugBounds
 						: CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
 
 					selection.Clear();

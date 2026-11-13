@@ -49,7 +49,8 @@ namespace ForgeSim::Sandbox
         // Zero or one directional light; absence is serialized as JSON null.
         bool hasDirectionalLight = true;
         DirectionalLight directionalLight{
-            .id = 1
+            .id = 1,
+            .position = {0.0f, 2.0f, 0.0f}
         };
 
         std::vector<PointLight> pointLights;

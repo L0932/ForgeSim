@@ -1,4 +1,5 @@
 #include "SceneCameraFraming.hpp"
+#include <ForgeSim/Renderer/DebugGeometry.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -39,6 +40,22 @@ int main()
         navigation = Sandbox::CreateSceneCameraController(prop);
         Require(navigation.MovementSpeed() == small.controller.MovementSpeed(),
             "Returning to a scene without a saved speed must restore the default 10");
+        auto workspace = Sandbox::CreateEmptySceneCameraFraming(1.6f);
+        Require(workspace.camera.NearClippingPlane() == 0.05f && workspace.camera.FarClippingPlane() == 1000.0f &&
+            workspace.controller.MovementSpeed() == 10.0f,
+            "Fresh scenes need workspace clipping and default navigation speed");
+        // Simulate replacing the previous scene's camera, including custom clips.
+        workspace.camera = Renderer::PerspectiveCamera{{0,0,5}, {0,0,0}, {0,1,0}, 0.9f, 2.0f, 3.0f};
+        workspace = Sandbox::CreateEmptySceneCameraFraming(0.5f);
+        Require(workspace.camera.NearClippingPlane() == 0.05f && workspace.camera.FarClippingPlane() == 1000.0f,
+            "New workspace must not inherit previous near/far values or depend on viewport aspect");
+        const Renderer::ReferenceGridSpecification grid;
+        const float halfExtent = static_cast<float>(grid.halfLineCount) * grid.spacing;
+        for (float x : {-halfExtent, halfExtent})
+            for (float z : {-halfExtent, halfExtent})
+                Require(glm::length(glm::vec3{x,grid.height,z} - workspace.camera.Position()) <
+                    workspace.camera.FarClippingPlane(),
+                    "The complete reference grid must remain inside far clipping when rotating");
         Platform::InputState input;
         input.SetKeyState(Platform::Key::W, true);
         auto normal = large.camera;

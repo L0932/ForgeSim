@@ -14,6 +14,8 @@ namespace ForgeSim::Sandbox
         FreeCameraController controller;
     };
 
+    [[nodiscard]] SceneCameraFraming CreateEmptySceneCameraFraming(float aspectRatio);
+
     // Restore navigation independently of the saved camera pose.
     [[nodiscard]] FreeCameraController CreateSceneCameraController(
         const Renderer::AxisAlignedBoundingBox& bounds,

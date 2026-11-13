@@ -14,6 +14,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Use workspace clipping defaults for empty scenes so the reference grid is not
+  cut off by the placeholder bounds used for camera positioning.
+
 - Fit selection focus to the current view for tighter framing of long, flat models;
   retain scene-wide far clipping after focusing lights or small objects.
 
@@ -96,3 +99,5 @@ contains the detailed implementation record.
 - Application version information generated from CMake configuration.
 - Version reporting in startup diagnostics and the Sandbox debug panel.
 - Release numbering and tagging conventions documented in docs/Releasing.md.
+
+- Give empty-scene light guides and picking a consistent workspace size after New/Open.

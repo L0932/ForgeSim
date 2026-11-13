@@ -69,6 +69,17 @@ namespace ForgeSim::Sandbox
             verticalFov, nearPlane, farPlane};
     }
 
+    SceneCameraFraming CreateEmptySceneCameraFraming(float aspectRatio)
+    {
+        const Renderer::AxisAlignedBoundingBox workspace{{-1,-1,-1}, {1,1,1}};
+        auto framing = CreateSceneCameraFraming(workspace, aspectRatio);
+        // Empty scenes have no asset scale. A workspace range must cover the
+        // reference grid and allow navigation instead of clipping at ~12 units.
+        framing.camera = Renderer::PerspectiveCamera{framing.camera.Position(), glm::vec3{0.0f},
+            framing.camera.UpDirection(), framing.camera.VerticalFieldOfViewRadians(), 0.05f, 1000.0f};
+        return framing;
+    }
+
     FreeCameraController CreateSceneCameraController(
         const Renderer::AxisAlignedBoundingBox& bounds,
         std::optional<float> savedMovementSpeed)
