@@ -11,16 +11,7 @@ namespace ForgeSim::Sandbox
 		SceneSelection& selection,
 		const SandboxScene& scene) noexcept
 	{
-		if (const auto objectId =
-			selection.SelectedObjectId())
-		{
-			if (scene.FindObject(*objectId) == nullptr)
-			{
-				selection.Clear();
-			}
-
-			return;
-		}
+        selection.RemoveObjectsIf([&](SandboxObjectId id) { return scene.FindObject(id) == nullptr; });
 
 		const auto lightId =
 			selection.SelectedLightId();

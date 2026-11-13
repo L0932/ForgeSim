@@ -15,3 +15,8 @@ Duplicated model instances browse the same asset while retaining independent
 instance transforms. Expansion is UI state and does not mark scenes modified.
 Resource pointers are borrowed for the current frame only. Invalid references,
 cycles and excessive depth are guarded in the tree display.
+
+Model-instance rows support Ctrl/Shift multi-selection. Internal asset nodes
+remain read-only browsing entries; they do not join the editable object selection.
+See [Keyboard controls](KeyboardControls.md#multiple-object-selection) for group
+operation and pivot behavior.

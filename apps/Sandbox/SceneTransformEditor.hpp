@@ -32,6 +32,11 @@ namespace ForgeSim::Sandbox
 	public:
 		void BeginFrame();
 
+        void RecordObjectEdits(ObjectBatchEdit batch);
+        [[nodiscard]] bool SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
+            const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter);
+        [[nodiscard]] bool SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible);
+
         // Changes only the pivot, preserving placement and recording undo/redo.
         [[nodiscard]] bool SetObjectPivot(SandboxObject& object, const glm::vec3& pivot);
 
@@ -68,6 +73,9 @@ namespace ForgeSim::Sandbox
 			bool operationSupported);
 
 		void FinishEdit();
+        void EditObjectGroup(const SceneTransformEditorContext& context);
+        std::optional<ObjectBatchEdit> m_PendingObjectEdits;
+        SceneSelection m_DragSelection;
 
 		ViewportTransformGizmo m_Gizmo;
 		GizmoInteraction m_Interaction;

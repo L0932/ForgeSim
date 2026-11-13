@@ -129,7 +129,7 @@ namespace ForgeSim::Sandbox
 
 		void Render(
 			std::span<const SandboxObject> objects,
-			std::optional<SandboxObjectId> selectedObjectId,
+			std::span<const SandboxObjectId> selectedObjectIds,
 			const glm::mat4& view,
 			const glm::mat4& projection,
 			const glm::vec3& cameraPosition,

@@ -1478,7 +1478,7 @@ namespace ForgeSim::Sandbox
 
 	void SandboxRenderer::Render(
 		std::span<const SandboxObject> objects,
-		std::optional<SandboxObjectId> selectedObjectId,
+		std::span<const SandboxObjectId> selectedObjectIds,
 		const glm::mat4& view,
 		const glm::mat4& projection,
 		const glm::vec3& cameraPosition,
@@ -1510,8 +1510,7 @@ namespace ForgeSim::Sandbox
 		for (const SandboxObject& object : objects)
 		{
 			const bool isSelected =
-				selectedObjectId &&
-				*selectedObjectId == object.id;
+				std::find(selectedObjectIds.begin(), selectedObjectIds.end(), object.id) != selectedObjectIds.end();
 
 			const glm::mat4 objectTransform =
 				object.transform.ModelMatrix();

@@ -26,7 +26,7 @@ namespace ForgeSim::Sandbox
 		std::span<const SandboxObject> objects,
 		std::span<const LightPickTarget> lightTargets,
 		SceneSelection& selection,
-		bool pickingSuppressed)
+		bool pickingSuppressed, bool ctrl, bool shift)
 	{
 		if (pickingSuppressed)
 		{
@@ -104,9 +104,9 @@ namespace ForgeSim::Sandbox
 
 		if (closestObjectId)
 		{
-			selection.SelectObject(*closestObjectId);
+			selection.ClickObject(*closestObjectId, ctrl, shift);
 		}
-		else
+		else if (!ctrl && !shift)
 		{
 			selection.Clear();
 		}

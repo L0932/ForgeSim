@@ -869,10 +869,16 @@ namespace ForgeSim::Sandbox
 				selection,
 				scene);
 
+            if (const auto visible = hierarchyPanel.SelectionVisibilityRequested();
+                visible && !changePending && !transformEditor.IsActive())
+                static_cast<void>(transformEditor.SetSelectionVisible(scene, selection, *visible));
+
             // Keep the Inspector selection when hiding an object, but omit its gizmo.
             SceneSelection gizmoSelection = selection;
-            if (const auto id = selection.SelectedObjectId(); id && !scene.IsObjectVisible(*id))
-                gizmoSelection.Clear();
+            // Hidden members still participate when another selected object has a visible gizmo.
+            const bool anyVisibleObject = std::any_of(selection.SelectedObjectIds().begin(),
+                selection.SelectedObjectIds().end(), [&](auto id) { return scene.IsObjectVisible(id); });
+            if (!selection.SelectedObjectIds().empty() && !anyVisibleObject) gizmoSelection.Clear();
             if (const auto id = selection.SelectedLightId(); id && !scene.IsLightVisible(*id))
                 gizmoSelection.Clear();
 
@@ -980,7 +986,7 @@ namespace ForgeSim::Sandbox
 				visibleObjects,
 				lightPickTargets,
 				selection,
-				pickingSuppressed);
+				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
 
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =
@@ -1042,7 +1048,7 @@ namespace ForgeSim::Sandbox
 
 			m_Renderer.Render(
 				visibleObjects,
-				selection.SelectedObjectId(),
+				selection.SelectedObjectIds(),
 				view,
 				projection,
 				camera.Position(),

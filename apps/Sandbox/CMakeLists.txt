@@ -138,6 +138,7 @@ target_sources(
 		FreeCameraController.hpp
 		FreeCameraController.cpp
 		GizmoTransform.hpp
+        ObjectTransformSelection.hpp
 		GizmoTransform.cpp
 		LightSubmission.hpp
 		LightSubmission.cpp

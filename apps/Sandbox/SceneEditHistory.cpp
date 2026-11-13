@@ -177,6 +177,31 @@ namespace ForgeSim::Sandbox
                 scene.RemoveSpotLight(edit.light.id);
         }
 
+        bool ApplyEdit(SandboxScene& scene, const ObjectVisibilityEdit& edit, bool useAfter)
+        {
+            if (!scene.FindObject(edit.objectId)) return false;
+            scene.SetObjectVisible(edit.objectId, useAfter ? edit.after : edit.before);
+            return true;
+        }
+        bool ApplyEdit(SandboxScene& scene, const ObjectBatchEdit& batch, bool useAfter)
+        {
+            // Prepare atomically, including allocations, IDs and removal ordering.
+            SandboxScene prepared = scene;
+            const auto apply = [&](const ObjectEdit& edit)
+            { return std::visit([&](const auto& item) { return ApplyEdit(prepared, item, useAfter); }, edit); };
+            if (useAfter)
+            {
+                for (const auto& edit : batch.edits) if (!apply(edit)) return false;
+            }
+            else
+            {
+                for (auto it = batch.edits.rbegin(); it != batch.edits.rend(); ++it)
+                    if (!apply(*it)) return false;
+            }
+            scene = std::move(prepared);
+            return true;
+        }
+
 		[[nodiscard]] bool ApplySceneEdit(
 			SandboxScene& scene,
 			const SceneEdit& edit,
@@ -189,11 +214,16 @@ namespace ForgeSim::Sandbox
                     using T = std::decay_t<decltype(concreteEdit)>;
                     if (selection)
                     {
-                        if constexpr (std::is_same_v<T, ObjectRemovalEdit> || std::is_same_v<T, ObjectCreationEdit>)
+                        if constexpr (std::is_same_v<T, ObjectBatchEdit>)
+                        {
+                            const auto& saved = useAfter ? concreteEdit.afterSelection : concreteEdit.beforeSelection;
+                            if (saved) *selection = *saved;
+                        }
+                        else if constexpr (std::is_same_v<T, ObjectRemovalEdit> || std::is_same_v<T, ObjectCreationEdit>)
                         {
                             const bool restoring = std::is_same_v<T, ObjectCreationEdit> ? useAfter : !useAfter;
                             if (restoring) selection->SelectObject(concreteEdit.object.id);
-                            else if (selection->IsObjectSelected(concreteEdit.object.id)) selection->Clear();
+                            else selection->RemoveObject(concreteEdit.object.id);
                         }
                         else if constexpr (std::is_same_v<T, PointLightRemovalEdit> || std::is_same_v<T, SpotLightRemovalEdit> ||
                             std::is_same_v<T, DirectionalLightRemovalEdit> || std::is_same_v<T, PointLightCreationEdit> ||
@@ -238,6 +268,26 @@ namespace ForgeSim::Sandbox
     bool SceneEditHistory::DuplicateSelection(SandboxScene& scene, SceneSelection& selection)
     {
         if (!CanDuplicateSceneSelection(scene, selection)) return false;
+        if (selection.SelectedObjectIds().size() > 1)
+        {
+            SandboxScene prepared = scene;
+            ObjectBatchEdit batch;
+            batch.beforeSelection = selection;
+            SceneSelection copies;
+            for (const auto id : selection.SelectedObjectIds())
+            {
+                const auto* source = scene.FindObject(id);
+                if (!source) return false;
+                auto copy = *source;
+                copy.name = NextCopyName(prepared, copy.name);
+                copy.id = prepared.AddModelObject(copy.name, copy.modelPath);
+                const auto index = prepared.Objects().size() - 1;
+                batch.edits.emplace_back(ObjectCreationEdit{copy, index, scene.IsObjectVisible(id)});
+                copies.AddObject(copy.id);
+            }
+            batch.afterSelection = std::move(copies);
+            return ApplyObjectBatch(scene, std::move(batch), &selection);
+        }
         SandboxScene prepared = scene;
         std::optional<SceneEdit> edit;
         if (const auto id = selection.SelectedObjectId())
@@ -247,20 +297,20 @@ namespace ForgeSim::Sandbox
             copy.name = NextCopyName(scene, copy.name);
             edit = ObjectCreationEdit{copy, scene.Objects().size(), scene.IsObjectVisible(*id)};
         }
-        else if (const auto id = selection.SelectedLightId())
+        else if (const auto lightId = selection.SelectedLightId())
         {
-            for (const auto& light : scene.PointLights()) if (light.id == *id)
+            for (const auto& light : scene.PointLights()) if (light.id == *lightId)
             {
                 auto copy = light;
                 copy.id = prepared.AddPointLight();
-                edit = PointLightCreationEdit{copy, scene.PointLights().size(), scene.IsLightVisible(*id)};
+                edit = PointLightCreationEdit{copy, scene.PointLights().size(), scene.IsLightVisible(*lightId)};
                 break;
             }
-            if (!edit) for (const auto& light : scene.SpotLights()) if (light.id == *id)
+            if (!edit) for (const auto& light : scene.SpotLights()) if (light.id == *lightId)
             {
                 auto copy = light;
                 copy.id = prepared.AddSpotLight();
-                edit = SpotLightCreationEdit{copy, scene.SpotLights().size(), scene.IsLightVisible(*id)};
+                edit = SpotLightCreationEdit{copy, scene.SpotLights().size(), scene.IsLightVisible(*lightId)};
                 break;
             }
         }
@@ -344,6 +394,20 @@ namespace ForgeSim::Sandbox
     bool SceneEditHistory::DeleteSelection(SandboxScene& scene, SceneSelection& selection)
     {
         if (!CanDeleteSceneSelection(scene, selection)) return false;
+        if (selection.SelectedObjectIds().size() > 1)
+        {
+            ObjectBatchEdit batch;
+            batch.beforeSelection = selection;
+            batch.afterSelection = SceneSelection{};
+            // Delete from the end so reverse replay restores original list positions.
+            const auto objects = scene.Objects();
+            for (std::size_t i = objects.size(); i > 0; --i)
+                if (selection.IsObjectSelected(objects[i - 1].id))
+                    batch.edits.emplace_back(ObjectRemovalEdit{objects[i - 1], i - 1,
+                        scene.IsObjectVisible(objects[i - 1].id)});
+            if (batch.edits.size() != selection.SelectedObjectIds().size()) return false;
+            return ApplyObjectBatch(scene, std::move(batch), &selection);
+        }
         std::optional<SceneEdit> edit;
         if (const auto id = selection.SelectedObjectId())
         {
@@ -367,6 +431,16 @@ namespace ForgeSim::Sandbox
         m_Edits.reserve(m_Position + 1);
         if (!ApplySceneEdit(scene, *edit, true, &selection)) return false;
         RecordApplied(std::move(*edit));
+        return true;
+    }
+
+    bool SceneEditHistory::ApplyObjectBatch(SandboxScene& scene, ObjectBatchEdit batch, SceneSelection* selection)
+    {
+        if (batch.edits.empty()) return false;
+        m_Edits.reserve(m_Position + 1);
+        SceneEdit edit = std::move(batch);
+        if (!ApplySceneEdit(scene, edit, true, selection)) return false;
+        RecordApplied(std::move(edit));
         return true;
     }
 

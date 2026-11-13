@@ -13,12 +13,21 @@ namespace ForgeSim::Sandbox
         std::span<const SandboxObject> objects, const SceneLightingView& lights,
         const SceneSelection& selection, const Renderer::AxisAlignedBoundingBox& fallbackModelBounds)
     {
-        if (const auto id = selection.SelectedObjectId())
+        if (!selection.SelectedObjectIds().empty())
         {
+            std::optional<Renderer::AxisAlignedBoundingBox> combined;
             for (const auto& object : objects)
-                if (object.id == *id)
-                    return CalculateSceneBounds(std::span<const SandboxObject>{&object, 1}, fallbackModelBounds);
-            return std::nullopt;
+            {
+                if (!selection.IsObjectSelected(object.id)) continue;
+                const auto bounds = CalculateSceneBounds(std::span<const SandboxObject>{&object, 1}, fallbackModelBounds);
+                if (!combined) combined = bounds;
+                else
+                {
+                    combined->minimum = glm::min(combined->minimum, bounds.minimum);
+                    combined->maximum = glm::max(combined->maximum, bounds.maximum);
+                }
+            }
+            return combined;
         }
         const auto id = selection.SelectedLightId();
         if (!id || *id == InvalidSceneLightId) return std::nullopt;

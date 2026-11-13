@@ -11,6 +11,9 @@ Update both when bindings change; list only implemented commands.
 | Camera | RMB + wheel | Increase / decrease fly speed | Scene navigation; saved with scene |
 | Camera | Ctrl while flying | Move at one tenth of fly speed | Scene navigation |
 | Selection | Left click | Select an object or light | Scene or Hierarchy; empty Scene space clears selection |
+| Selection | Ctrl+Left click | Toggle object membership; last selected object is active | Scene or Hierarchy |
+| Selection | Shift+Left click | Select a visible range from the anchor / add an object | Hierarchy range / Scene add |
+| Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
 | Selection | F | Focus selected object or light | Scene or Hierarchy focused; navigation stopped |
 | Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
 | Selection | Delete | Delete selected model or light | Scene or Hierarchy focused; navigation stopped |
@@ -103,3 +106,28 @@ transforms, IDs, and visibility. Light copies preserve all authored settings.
 Hidden and disabled states are preserved. Creation is undoable and redo restores
 the same copy and ID. Copies are included in normal scene saving.
 Directional-light duplication is disabled because the renderer supports one.
+
+## Multiple object selection
+
+Plain click replaces the object selection. Ctrl-click toggles membership, and the
+last selected member is active. Shift-click in Hierarchy selects the displayed
+range from the last non-range click; Ctrl+Shift-click adds that range. Filtering
+excludes rows from new ranges but does not clear existing selections. Shift-click
+in Scene adds the hit object, and modified clicks on empty space preserve the
+selection. Plain clicks on empty Scene space clear it. Lights remain single-select.
+
+All selected objects highlight in Scene. F frames their combined bounds, including
+hidden members. Move applies the active object's translation delta to every
+member. Rotate applies the same world rotation delta at each object's own pivot;
+Scale applies the active object's scale ratios in each member's local axes at its
+own pivot. Local/World still controls the gizmo axes. This preserves relative
+placement and avoids introducing shear. The Inspector shows active-object values
+and materials, with edits to position, rotation, scale and pivot applied to all
+selected objects. Each object's bounds-center pivot uses its own model bounds.
+
+Delete and Duplicate apply to the whole selection as a single undo/redo action.
+Duplication selects all copies, preserving member transforms and visibility.
+Show/Hide selection and the eye button of any selected row apply to the group;
+undo restores each member's previous visibility. An unselected row's eye button
+continues to affect that row only. Saving stores the resulting object states;
+selection and the range anchor are temporary editor state.

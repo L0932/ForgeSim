@@ -11,6 +11,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Ctrl/Shift multi-selection for model instances in Scene and Hierarchy, with
+  group highlighting, focus, transforms, pivots, visibility, deletion and
+  duplication. Group edits support one-step undo/redo; Inspector values and
+  materials describe the active member. Internal glTF nodes remain read-only.
 - Expand model instances in Hierarchy to browse read-only glTF nodes, meshes,
   primitive counts, and material references.
 - Scene authoring controls: GameObject menus for built-in cubes and directional,

@@ -111,6 +111,7 @@ namespace ForgeSim::Sandbox
 
     void SceneHierarchyPanel::Draw(const SceneHierarchyPanelContext& context)
     {
+        m_SelectionVisibilityRequested.reset();
         m_FocusSelectionRequested = false;
         m_DeleteSelectionRequested = false;
         m_DuplicateSelectionRequested = false;
@@ -157,6 +158,11 @@ namespace ForgeSim::Sandbox
                 { return term.b != term.e && term.b[0] == '-'; });
         }
         const bool filtering = m_Filter.IsActive();
+        std::vector<SandboxObjectId> rangeOrder;
+        for (const auto& object : context.scene.Objects())
+            if (m_Filter.PassFilter(object.name.c_str())) rangeOrder.push_back(object.id);
+        if (context.selection.SelectedObjectIds().size() > 1)
+            ImGui::Text("%zu objects selected", context.selection.SelectedObjectIds().size());
         if (context.scene.HasHiddenObjects() && ImGui::Button("Show all objects", ImVec2(-1,0)))
             context.scene.ShowAllObjects();
         if (context.scene.HasHiddenLights() && ImGui::Button("Show all lights", ImVec2(-1,0)))
@@ -166,11 +172,13 @@ namespace ForgeSim::Sandbox
         // changes selection, including a selected item hidden by the query.
         std::size_t objectMatches = 0, lightMatches = 0;
         bool selectedMatches = context.selection.Empty();
+        std::size_t selectedObjectMatches = 0;
         for (const auto& object : context.scene.Objects())
         {
             if (!m_Filter.PassFilter(object.name.c_str())) continue;
             ++objectMatches;
             selectedMatches |= context.selection.IsObjectSelected(object.id);
+            if (context.selection.IsObjectSelected(object.id)) ++selectedObjectMatches;
         }
         const auto countLight = [&](const char* type, const auto& light)
         {
@@ -184,10 +192,10 @@ namespace ForgeSim::Sandbox
         for (const auto& light : context.scene.PointLights()) countLight("Point Light", light);
         for (const auto& light : context.scene.SpotLights()) countLight("Spot Light", light);
 
-        if (filtering && !selectedMatches)
+        if (filtering && (!selectedMatches || selectedObjectMatches < context.selection.SelectedObjectIds().size()))
         {
             ImGui::PushStyleColor(ImGuiCol_Text, style.Colors[ImGuiCol_TextDisabled]);
-            ImGui::TextWrapped("Selected item is hidden by the filter.");
+            ImGui::TextWrapped("Some selected items are hidden by the filter. Operations still affect the full selection.");
             ImGui::PopStyleColor();
         }
         if (ImGui::Selectable("None", context.selection.Empty())) context.selection.Clear();
@@ -219,8 +227,13 @@ namespace ForgeSim::Sandbox
                     }
                     const auto action = DrawVisibilityRow(label, "##VisibilityObject_" + id,
                         context.selection.IsObjectSelected(object.id), visible);
-                    if (action.select) context.selection.SelectObject(object.id);
-                    if (action.toggle) context.scene.SetObjectVisible(object.id, !visible);
+                    if (action.select)
+                        context.selection.ClickObject(object.id, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift, rangeOrder);
+                    if (action.toggle)
+                    {
+                        if (context.selection.IsObjectSelected(object.id)) m_SelectionVisibilityRequested = !visible;
+                        else context.scene.SetObjectVisible(object.id, !visible);
+                    }
                     if (expanded)
                     {
                         // NoTreePushOnOpen leaves indentation to us. Offset asset
@@ -253,6 +266,12 @@ namespace ForgeSim::Sandbox
             }
         }
         ImGui::Separator();
+        if (!context.selection.SelectedObjectIds().empty())
+        {
+            if (ImGui::Button("Show selection")) m_SelectionVisibilityRequested = true;
+            ImGui::SameLine();
+            if (ImGui::Button("Hide selection")) m_SelectionVisibilityRequested = false;
+        }
         ImGui::BeginDisabled(!CanDuplicateSceneSelection(context.scene, context.selection));
         if (ImGui::Button("Duplicate selection", ImVec2(-1, 0)))
             m_DuplicateSelectionRequested = true;

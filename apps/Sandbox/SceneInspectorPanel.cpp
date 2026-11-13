@@ -5,6 +5,7 @@
 #include "SceneLightEditing.hpp"
 #include "SceneSelection.hpp"
 #include "SceneTransformEditor.hpp"
+#include "ObjectTransformSelection.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -44,11 +45,23 @@ namespace ForgeSim::Sandbox
     void SceneInspectorPanel::Reset() noexcept
     {
         m_LightValidationError.reset();
+        m_ObjectEdit.reset();
+        m_EditTargets.clear();
+    }
+
+    void SceneInspectorPanel::FinishObjectEdit(SceneTransformEditor* editor)
+    {
+        if (m_ObjectEdit && editor) editor->RecordObjectEdits(std::move(*m_ObjectEdit));
+        m_ObjectEdit.reset();
+        m_EditTargets.clear();
     }
 
     void SceneInspectorPanel::Draw(
         const SceneInspectorPanelContext& context)
     {
+        const auto ids = context.selection.SelectedObjectIds();
+        if (m_ObjectEdit && (!std::equal(ids.begin(), ids.end(), m_EditTargets.begin(), m_EditTargets.end()) ||
+            !ImGui::IsAnyItemActive())) FinishObjectEdit(context.transformEditor);
         if (!ImGui::Begin("Inspector"))
         {
             ImGui::End();
@@ -103,16 +116,17 @@ namespace ForgeSim::Sandbox
             return;
         }
 
-        const auto& objectBounds = object->localBounds.value_or(context.modelBounds);
-        ImGui::TextWrapped("%s", object->name.c_str());
-
-        ImGui::Text(
-            "Object ID: %llu",
-            static_cast<unsigned long long>(object->id));
-
-        ImGui::TextWrapped(
-            "Model: %s",
-            object->modelPath.c_str());
+        const auto objectBounds = object->localBounds.value_or(context.modelBounds);
+        const auto count = context.selection.SelectedObjectIds().size();
+        if (count > 1)
+        {
+            ImGui::Text("%zu objects selected", count);
+            ImGui::TextWrapped("Active: %s", object->name.c_str());
+            ImGui::TextWrapped("Transforms apply a shared delta to all selected objects. Rotation and scale use individual pivots. Values and materials below describe the active object.");
+        }
+        else ImGui::TextWrapped("%s", object->name.c_str());
+        ImGui::Text("Object ID: %llu", static_cast<unsigned long long>(object->id));
+        ImGui::TextWrapped("Model: %s", object->modelPath.c_str());
 
         if (context.transformEditor)
         {
@@ -120,46 +134,59 @@ namespace ForgeSim::Sandbox
             {
                 ImGui::TextWrapped("Pivot: %.4f, %.4f, %.4f",
                     object->transform.pivot.x, object->transform.pivot.y, object->transform.pivot.z);
-                if (ImGui::Button("Use bounds center", ImVec2(-1.0f, 0.0f)))
+                const bool center = ImGui::Button("Use bounds center", ImVec2(-1.0f, 0.0f));
+                const bool origin = ImGui::Button("Use authored origin", ImVec2(-1.0f, 0.0f));
+                if (center || origin)
                 {
-                    // Half each endpoint separately to avoid overflowing their sum.
-                    const glm::vec3 center = objectBounds.minimum * 0.5f +
-                        objectBounds.maximum * 0.5f;
-                    static_cast<void>(context.transformEditor->SetObjectPivot(*object, center));
+                    FinishObjectEdit(context.transformEditor);
+                    static_cast<void>(context.transformEditor->SetSelectedObjectPivots(
+                        context.scene, context.selection, context.modelBounds, center));
+                    return; // The atomic scene update invalidates borrowed object pointers.
                 }
-                if (ImGui::Button("Use authored origin", ImVec2(-1.0f, 0.0f)))
-                    static_cast<void>(context.transformEditor->SetObjectPivot(*object, glm::vec3{0.0f}));
-                ImGui::TextWrapped("Changing the pivot preserves placement. Position locates the pivot.");
+                ImGui::TextWrapped("Changing pivots preserves placement. Position locates each pivot.");
             }
         }
-
         if (EditorSectionHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
         {
-
-            InspectorUI::DragFloat3(
-                "##Position", "Position",
-                &object->transform.position.x,
-                CalculatePositionDragSpeed(objectBounds),
-                0.0f,
-                0.0f,
-                "%.6f",
-                ImGuiSliderFlags_NoRoundToFormat);
-
-            glm::vec3 rotationDegrees =
-                glm::degrees(object->transform.rotationRadians);
-
-            if (InspectorUI::DragFloat3(
-                "##Rotation", "Rotation",
-                &rotationDegrees.x,
-                1.0f,
-                0.0f,
-                0.0f,
-                "%.1f deg"))
+            const auto apply = [&](const Transform& before, const Transform& after, GizmoOperation operation)
             {
-                object->transform.rotationRadians =
-                    glm::radians(rotationDegrees);
+                auto batch = BuildObjectTransformEdits(context.scene, context.selection, before, after, operation);
+                if (!batch) return;
+                if (!m_ObjectEdit)
+                {
+                    m_ObjectEdit = *batch;
+                    const auto targets = context.selection.SelectedObjectIds();
+                    m_EditTargets.assign(targets.begin(), targets.end());
+                }
+                else
+                    for (std::size_t i = 0; i < batch->edits.size(); ++i)
+                        std::get<ObjectTransformEdit>(m_ObjectEdit->edits[i]).after =
+                            std::get<ObjectTransformEdit>(batch->edits[i]).after;
+                for (const auto& edit : batch->edits)
+                {
+                    const auto& item = std::get<ObjectTransformEdit>(edit);
+                    context.scene.FindObject(item.objectId)->transform = item.after;
+                }
+            };
+            auto before = object->transform;
+            auto after = before;
+            if (InspectorUI::DragFloat3("##Position", "Position", &after.position.x,
+                CalculatePositionDragSpeed(objectBounds), 0.0f, 0.0f, "%.6f", ImGuiSliderFlags_NoRoundToFormat))
+                apply(before, after, GizmoOperation::Translate);
+            before = object->transform;
+            after = before;
+            auto degrees = glm::degrees(before.rotationRadians);
+            if (InspectorUI::DragFloat3("##Rotation", "Rotation", &degrees.x, 1.0f, 0.0f, 0.0f, "%.1f deg"))
+            {
+                after.rotationRadians = glm::radians(degrees);
+                apply(before, after, GizmoOperation::Rotate);
             }
+            before = object->transform;
+            after = before;
+            if (InspectorUI::DragFloat3("##Scale", "Scale", &after.scale.x, 0.01f))
+                apply(before, after, GizmoOperation::Scale);
         }
+        if (!ImGui::IsAnyItemActive()) FinishObjectEdit(context.transformEditor);
         DrawMaterials(context.materials);
     }
 

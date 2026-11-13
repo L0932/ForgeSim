@@ -60,6 +60,15 @@ namespace ForgeSim::Sandbox
     struct PointLightCreationEdit { PointLight light; std::size_t index; bool visible; };
     struct SpotLightCreationEdit { SpotLight light; std::size_t index; bool visible; };
 
+    struct ObjectVisibilityEdit { SandboxObjectId objectId; bool before; bool after; };
+    using ObjectEdit = std::variant<ObjectTransformEdit, ObjectCreationEdit, ObjectRemovalEdit, ObjectVisibilityEdit>;
+    struct ObjectBatchEdit
+    {
+        std::vector<ObjectEdit> edits;
+        std::optional<SceneSelection> beforeSelection;
+        std::optional<SceneSelection> afterSelection;
+    };
+
     [[nodiscard]] bool CanDuplicateSceneSelection(const SandboxScene& scene, const SceneSelection& selection);
     [[nodiscard]] bool CanDeleteSceneSelection(const SandboxScene& scene, const SceneSelection& selection);
 
@@ -73,7 +82,7 @@ namespace ForgeSim::Sandbox
 		DirectionalLightDirectionEdit,
 		DirectionalLightPositionEdit, ObjectRemovalEdit, PointLightRemovalEdit,
         SpotLightRemovalEdit, DirectionalLightRemovalEdit, DirectionalLightCreationEdit,
-        PointLightCreationEdit, SpotLightCreationEdit, ObjectCreationEdit>;
+        PointLightCreationEdit, SpotLightCreationEdit, ObjectCreationEdit, ObjectBatchEdit>;
 
 	class SceneEditHistory final
 	{
@@ -81,6 +90,7 @@ namespace ForgeSim::Sandbox
 		// The caller has already applied the edit to the scene.
 		// Recording a new edit discards the redo branch.
 		void RecordApplied(SceneEdit edit);
+        [[nodiscard]] bool ApplyObjectBatch(SandboxScene& scene, ObjectBatchEdit batch, SceneSelection* selection = nullptr);
 
 		[[nodiscard]] bool Undo(SandboxScene& scene, SceneSelection* selection = nullptr);
 		[[nodiscard]] bool Redo(SandboxScene& scene, SceneSelection* selection = nullptr);
