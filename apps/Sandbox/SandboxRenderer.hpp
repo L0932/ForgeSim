@@ -1,5 +1,7 @@
 #pragma once
 #include "ModelMaterialInspection.hpp"
+#include "ModelNodeQuery.hpp"
+#include "SceneSelection.hpp"
 #include <map>
 #include <memory>
 
@@ -130,6 +132,7 @@ namespace ForgeSim::Sandbox
 		void Render(
 			std::span<const SandboxObject> objects,
 			std::span<const SandboxObjectId> selectedObjectIds,
+            const std::optional<ModelNodeSelection>& selectedNode,
 			const glm::mat4& view,
 			const glm::mat4& projection,
 			const glm::vec3& cameraPosition,
@@ -191,6 +194,7 @@ namespace ForgeSim::Sandbox
 			std::uint32_t width,
 			std::uint32_t height);
 
+        [[nodiscard]] const ModelNodeQuery* InspectModelNodes(const std::string& modelReference) const;
         [[nodiscard]] const Assets::SceneAsset* InspectModelHierarchy(const std::string& modelReference) const;
         [[nodiscard]] ModelMaterialInspection InspectModelMaterials(const std::string& modelReference) const;
 
@@ -209,7 +213,9 @@ namespace ForgeSim::Sandbox
 			const glm::mat4& objectTransform,
 			bool isSelected, const Assets::SceneAsset& asset,
             const std::vector<GpuPrimitiveResource>& primitives,
-            const std::vector<GpuMaterialResource>& materials);
+            const std::vector<GpuMaterialResource>& materials,
+            std::optional<std::size_t> selectedNode = std::nullopt,
+            const NodeTransformOverrides& overrides = {});
 
 		void UploadPointLights(
 			std::span<const PointLight> lights);
@@ -284,6 +290,7 @@ namespace ForgeSim::Sandbox
             std::vector<GpuMaterialResource> materials;
         };
         std::map<std::filesystem::path, std::shared_ptr<ModelResources>> m_Models;
+        mutable std::map<const Assets::SceneAsset*, ModelNodeQuery> m_NodeQueries;
         std::map<std::string, std::filesystem::path> m_ModelBindings;
 
 		void UploadObjectModelResources(

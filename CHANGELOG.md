@@ -7,6 +7,41 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Fixed
+
+- Refresh owning model bounds immediately after node undo/redo so whole-model
+  picking and directional shadow fitting match the current geometry in the same frame.
+
+- Default startup opens the bundled Material Gallery scene document, restoring
+  its saved camera speed, view, lighting and rendering settings instead of
+  importing the gallery model with generic defaults.
+
+### Added
+
+- Scene gizmos for imported node adjustments: move, rotate and local-axis scale,
+  world/local axes, one-step drag undo/redo, and the existing scene persistence.
+  Parent transforms remain intact; unsupported shear-producing drags report feedback.
+
+- Per-instance node adjustments in the Inspector: local position/rotation offsets,
+  scale multipliers, Reset, undo/redo, and version 5 scene persistence. Rendering,
+  shadows, picking, bounds and focus follow the adjusted hierarchy. Model copies
+  retain independent adjustments; shared source assets stay unchanged.
+
+- Shift+H toggles selection highlighting from Scene or Hierarchy without clearing
+  the selection or changing the active editing target.
+
+- Ctrl+F selection orbit mode with RMB-drag rotation, wheel zoom, a Scene status
+  hint, and Camera-panel controls. Ctrl+F, F or Hierarchy double-click restores
+  the pre-orbit view; Esc keeps the current view. The Camera panel also exposes
+  the selection highlight toggle without clearing the selection.
+- Toggle between framing the selection and the previous camera view with F,
+  Hierarchy label double-clicks, or the Camera-panel action. Supports objects,
+  groups, imported node subtrees and lights; return state resets on selection or
+  scene changes and refocuses after manual camera movement.
+- Select imported model nodes through Hierarchy labels or Alt-click geometry in
+  Scene. Highlight and focus the selected subtree, and inspect its local
+  transform, world bounds, mesh references and associated materials.
+
 ## [0.1.0-preview.9] - 2026-11-12
 
 ### Added

@@ -43,6 +43,9 @@ namespace ForgeSim::Sandbox
         }
 
         m_State.focusSelectionRequested = FocusSelectionShortcutPressed();
+        m_State.orbitSelectionRequested = OrbitSelectionShortcutPressed();
+        m_State.exitOrbitRequested = ExitOrbitShortcutPressed();
+        m_State.toggleSelectionHighlightRequested = ToggleSelectionHighlightShortcutPressed();
         m_State.deleteSelectionRequested = DeleteSelectionShortcutPressed();
         m_State.duplicateSelectionRequested = DuplicateSelectionShortcutPressed();
 

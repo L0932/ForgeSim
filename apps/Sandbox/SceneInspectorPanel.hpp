@@ -1,10 +1,12 @@
 #pragma once
 #include "ModelMaterialInspection.hpp"
 #include "SceneEditHistory.hpp"
+#include "ModelNodeQuery.hpp"
 
 #include "SceneLightValidation.hpp"
 
 #include <optional>
+#include <string>
 
 namespace ForgeSim::Renderer
 {
@@ -26,6 +28,7 @@ namespace ForgeSim::Sandbox
 		bool editingDisabled = false;
         SceneTransformEditor* transformEditor = nullptr;
         ModelMaterialInspection materials;
+        const ModelNodeQuery* nodeQuery = nullptr;
 	};
 
 	class SceneInspectorPanel final
@@ -37,6 +40,8 @@ namespace ForgeSim::Sandbox
 	private:
 		void DrawLights(const SceneInspectorPanelContext& context);
 		void DrawObject(const SceneInspectorPanelContext& context);
+        void DrawNode(const SceneInspectorPanelContext& context);
+        std::string m_NodeEditError;
         std::optional<ObjectBatchEdit> m_ObjectEdit;
         std::vector<SandboxObjectId> m_EditTargets;
         void FinishObjectEdit(SceneTransformEditor* editor);

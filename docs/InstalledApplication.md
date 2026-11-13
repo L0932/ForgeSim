@@ -81,6 +81,15 @@ manifest discovery. Use `project.root.auto` to clear the override for future
 editor opens. Bundled sample menu actions always use their bundled assets.
 
 Load saved scene documents with `--scene "C:/MyProject/scenes/Example.scene.json"`.
+Without a model path or `--scene`, startup opens the bundled
+`assets/scenes/MaterialGallery.scene.json` beside the executable, including its
+saved camera position, movement speed, lighting and rendering settings. This
+bundled startup uses its own asset root even when `--project-root` is supplied.
+To update it in a source build, replace
+`apps/Sandbox/assets/scenes/MaterialGallery.scene.json` and rebuild; the build
+copies it beside the executable. Keep its asset references relative to the
+Sandbox project root. The installed version uses the scene shipped in its package.
+
 A positional `.glb` or `.gltf` path imports a model instead. Saving a model as a
 scene does not create a project manifest or copy its assets.
 

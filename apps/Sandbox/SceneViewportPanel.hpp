@@ -16,6 +16,9 @@ namespace ForgeSim::Sandbox
 
         bool hovered = false;
         bool focusSelectionRequested = false;
+        bool orbitSelectionRequested = false;
+        bool exitOrbitRequested = false;
+        bool toggleSelectionHighlightRequested = false;
         bool deleteSelectionRequested = false;
         bool duplicateSelectionRequested = false;
 

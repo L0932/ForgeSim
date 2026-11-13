@@ -11,6 +11,11 @@ namespace ForgeSim::Sandbox
 		SceneSelection& selection,
 		const SandboxScene& scene) noexcept
 	{
+        if (const auto& node = selection.SelectedNode())
+        {
+            const auto* owner = scene.FindObject(node->objectId);
+            if (!owner || owner->modelPath != node->modelReference) selection.Clear();
+        }
         selection.RemoveObjectsIf([&](SandboxObjectId id) { return scene.FindObject(id) == nullptr; });
 
 		const auto lightId =

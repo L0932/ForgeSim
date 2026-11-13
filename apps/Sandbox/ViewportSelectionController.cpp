@@ -26,7 +26,8 @@ namespace ForgeSim::Sandbox
 		std::span<const SandboxObject> objects,
 		std::span<const LightPickTarget> lightTargets,
 		SceneSelection& selection,
-		bool pickingSuppressed, bool ctrl, bool shift)
+		bool pickingSuppressed, bool ctrl, bool shift, bool selectNode,
+        const std::function<std::optional<ModelNodeHit>(const Renderer::Ray&, const SandboxObject&)>& pickNode)
 	{
 		if (pickingSuppressed)
 		{
@@ -81,6 +82,20 @@ namespace ForgeSim::Sandbox
 			selection.SelectLight(lightHit->id);
 			return;
 		}
+
+        if (selectNode && pickNode)
+        {
+            const SandboxObject* owner = nullptr;
+            std::optional<ModelNodeHit> closest;
+            for (const auto& object : objects)
+            {
+                const auto hit = pickNode(pickingRay, object);
+                if (hit && (!closest || hit->distance < closest->distance)) { owner = &object; closest = hit; }
+            }
+            if (owner) selection.SelectNode(owner->id, closest->nodeIndex, owner->modelPath);
+            else selection.Clear();
+            return;
+        }
 
 		std::optional<SandboxObjectId> closestObjectId;
 		float closestDistance =

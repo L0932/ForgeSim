@@ -979,7 +979,8 @@ namespace ForgeSim::Sandbox
 		const glm::mat4& objectTransform,
 		bool isSelected, const Assets::SceneAsset& asset,
         const std::vector<GpuPrimitiveResource>& primitives,
-        const std::vector<GpuMaterialResource>& materials)
+        const std::vector<GpuMaterialResource>& materials, std::optional<std::size_t> selectedNode,
+        const NodeTransformOverrides& overrides)
 	{
 		if (nodeIndex >= asset.nodes.size())
 		{
@@ -993,7 +994,9 @@ namespace ForgeSim::Sandbox
 		const glm::mat4 nodeTransform =
 			parentNodeTransform *
 			CreateSceneNodeLocalMatrix(
-				node.localTransform);
+				node.localTransform) * NodeOverrideMatrix(overrides,nodeIndex);
+
+        const bool subtreeSelected = isSelected || selectedNode == nodeIndex;
 
 		if (node.meshIndex)
 		{
@@ -1020,7 +1023,7 @@ namespace ForgeSim::Sandbox
 						.modelTransform =
 							objectTransform *
 							nodeTransform,
-						.isSelected = isSelected,
+						.isSelected = subtreeSelected,
 						.castsDirectionalShadows = node.castsDirectionalShadows
 					});
 			}
@@ -1033,7 +1036,7 @@ namespace ForgeSim::Sandbox
 				childIndex,
 				nodeTransform,
 				objectTransform,
-				isSelected, asset, primitives, materials);
+				subtreeSelected, asset, primitives, materials, selectedNode, overrides);
 		}
 	}
 
@@ -1479,6 +1482,7 @@ namespace ForgeSim::Sandbox
 	void SandboxRenderer::Render(
 		std::span<const SandboxObject> objects,
 		std::span<const SandboxObjectId> selectedObjectIds,
+        const std::optional<ModelNodeSelection>& selectedNode,
 		const glm::mat4& view,
 		const glm::mat4& projection,
 		const glm::vec3& cameraPosition,
@@ -1527,7 +1531,9 @@ namespace ForgeSim::Sandbox
 					rootNodeIndex,
 					glm::mat4{ 1.0f },
 					objectTransform,
-					isSelected, asset, primitives, materials);
+					isSelected, asset, primitives, materials,
+                        selectedNode && selectedNode->objectId == object.id && selectedNode->modelReference == object.modelPath
+                            ? std::optional{selectedNode->nodeIndex} : std::nullopt, object.nodeOverrides);
 			}
 
 			if (settings.showObjectBounds)
@@ -2472,6 +2478,7 @@ namespace ForgeSim::Sandbox
 		using std::swap;
 
 		m_ObjectModelPath.swap(replacementPath);
+        m_NodeQueries.clear();
 		swap(m_ObjectSceneAsset, replacementScene);
 		m_ObjectLocalBounds = replacementBounds;
 
@@ -2485,6 +2492,13 @@ namespace ForgeSim::Sandbox
 		m_BoundsVertices.clear();
 	}
 
+
+    const ModelNodeQuery* SandboxRenderer::InspectModelNodes(const std::string& modelReference) const
+    {
+        const auto* asset = InspectModelHierarchy(modelReference);
+        if (!asset) return nullptr;
+        return &m_NodeQueries.try_emplace(asset, *asset).first->second;
+    }
 
     const Assets::SceneAsset* SandboxRenderer::InspectModelHierarchy(const std::string& modelReference) const
     {
@@ -2532,7 +2546,7 @@ namespace ForgeSim::Sandbox
             bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
-                object.localBounds = m_ObjectLocalBounds;
+                object.localBounds = ModelNodeQuery{m_ObjectSceneAsset}.ModelBounds(object.nodeOverrides);
                 continue;
             }
             if (!models.contains(path))
@@ -2551,11 +2565,12 @@ namespace ForgeSim::Sandbox
                     models.emplace(path, std::move(model));
                 }
             }
-            object.localBounds = models.at(path)->bounds;
+            object.localBounds = ModelNodeQuery{models.at(path)->asset}.ModelBounds(object.nodeOverrides);
         }
         LoadSceneResources(std::nullopt, environmentPath, drawProgress, texturePolicy);
         m_RenderSubmissions.clear();
         m_ModelBindings.swap(bindings);
+        m_NodeQueries.clear();
         m_Models.swap(models);
         // Release the initial model when a replacement scene no longer uses it.
         // Bounds remain available as the empty-scene fallback.

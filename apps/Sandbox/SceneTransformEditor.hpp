@@ -5,9 +5,12 @@
 #include "ViewportTransformGizmo.hpp"
 
 #include <optional>
+#include <functional>
+#include <string_view>
 
 namespace ForgeSim::Sandbox
 {
+    class ModelNodeQuery;
 	struct SceneTransformEditorContext
 	{
 		SandboxScene& scene;
@@ -25,6 +28,7 @@ namespace ForgeSim::Sandbox
 
 		bool showLights = true;
 		bool navigationActive = false;
+        std::function<const ModelNodeQuery*(const std::string&)> inspectNodes;
 	};
 
 	class SceneTransformEditor final
@@ -33,6 +37,8 @@ namespace ForgeSim::Sandbox
 		void BeginFrame();
 
         void RecordObjectEdits(ObjectBatchEdit batch);
+        [[nodiscard]] bool SetNodeOverride(SandboxObject& object, std::size_t nodeIndex,
+            const std::optional<Transform>& value);
         [[nodiscard]] bool SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
             const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter);
         [[nodiscard]] bool SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible);
@@ -46,6 +52,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool IsActive() const noexcept;
 		[[nodiscard]] bool SuppressesPicking() const noexcept;
 
+        [[nodiscard]] std::string_view NodeGizmoMessage() const noexcept { return m_NodeGizmoMessage; }
         [[nodiscard]] bool CanUndo() const noexcept;
         [[nodiscard]] bool CanRedo() const noexcept;
 
@@ -74,6 +81,11 @@ namespace ForgeSim::Sandbox
 
 		void FinishEdit();
         void EditObjectGroup(const SceneTransformEditorContext& context);
+        void EditNode(const SceneTransformEditorContext& context);
+        std::optional<NodeTransformOverrideEdit> m_PendingNodeEdit;
+        GizmoOperation m_NodeDragOperation = GizmoOperation::Translate;
+        GizmoSpace m_NodeDragSpace = GizmoSpace::World;
+        std::string_view m_NodeGizmoMessage;
         std::optional<ObjectBatchEdit> m_PendingObjectEdits;
         SceneSelection m_DragSelection;
 

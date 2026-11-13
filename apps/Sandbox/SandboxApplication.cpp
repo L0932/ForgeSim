@@ -23,6 +23,8 @@
 #include "SceneViewportPanel.hpp"
 #include "SceneSelection.hpp"
 #include "SelectionFocus.hpp"
+#include "SelectionFocusToggle.hpp"
+#include "SelectionOrbitController.hpp"
 #include "SceneSelectionValidation.hpp"
 #include "TransformEditorUIState.hpp"
 #include "ViewportSelectionController.hpp"
@@ -438,9 +440,16 @@ namespace ForgeSim::Sandbox
 		bool cameraFramingRequested = true;
         bool sceneNavigationResetRequested = true;
         std::optional<SceneCameraData> cameraRestoreRequest;
+        SelectionFocusToggle selectionFocusToggle;
+        SelectionOrbitController selectionOrbit;
         std::vector<SandboxObject> visibleObjects;
         std::vector<PointLight> visiblePointLights;
         std::vector<SpotLight> visibleSpotLights;
+        const auto refreshNodeBounds=[&]
+        {
+            RefreshModelNodeBounds(scene.Objects(),[this](const std::string& reference)
+                { return m_Renderer.InspectModelNodes(reference); });
+        };
 		bool viewportNavigationActive = false;
 
 		// Empty workspaces use a fixed guide scale instead of tiny placeholder bounds.
@@ -549,6 +558,7 @@ namespace ForgeSim::Sandbox
 
 			m_DebugUI.BeginFrame();
 			transformEditor.BeginFrame();
+            refreshNodeBounds();
 
 			sceneFilePanel.DrawMenu(
 				!changePending &&
@@ -686,6 +696,20 @@ namespace ForgeSim::Sandbox
 				input.GetMouseButtonState(
 					Platform::MouseButton::Right).held;
 
+            const auto getSelectionBounds = [&]() -> std::optional<Renderer::AxisAlignedBoundingBox>
+            {
+                if (const auto& node = selection.SelectedNode())
+                {
+                    const auto* owner = scene.FindObject(node->objectId);
+                    const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
+                    return owner && query ? query->WorldBounds(node->nodeIndex,owner->transform.ModelMatrix(),owner->nodeOverrides) : std::nullopt;
+                }
+                return SelectionFocusBounds(scene.Objects(),
+                    SceneLightingView{scene.MainDirectionalLight(),scene.PointLights(),scene.SpotLights()},
+                    selection,m_Renderer.ObjectLocalBounds());
+            };
+            selectionOrbit.ObserveSelection(selection);
+
 			const bool previouslyNavigating = viewportNavigationActive;
 
 			if (!rightMouseDown ||
@@ -725,6 +749,8 @@ namespace ForgeSim::Sandbox
             // so it always belongs to the new scene, including empty scenes/imports.
             if (sceneNavigationResetRequested)
             {
+                selectionFocusToggle.Reset();
+                selectionOrbit.Stop();
                 const auto navigationBounds = scene.Objects().empty() ? emptySceneBounds :
                     CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
                 cameraController = CreateSceneCameraController(navigationBounds, scene.CameraMovementSpeed());
@@ -735,6 +761,7 @@ namespace ForgeSim::Sandbox
 
             if (cameraRestoreRequest && viewport.IsDrawable())
             {
+                selectionOrbit.Stop();
                 camera = CreateSceneCamera(*cameraRestoreRequest);
                 cameraRestoreRequest.reset();
                 cameraFramingRequested = false;
@@ -846,6 +873,23 @@ namespace ForgeSim::Sandbox
 					" ms");
 			}
 
+            if (selectionOrbit.Active())
+            {
+                const auto orbitBounds = getSelectionBounds();
+                if (!orbitBounds) selectionOrbit.Stop();
+                else if (!changePending && viewport.IsDrawable() && !sceneFilePanel.ConsoleWantsKeyboard() &&
+                    !transformEditor.IsActive() && !leftMouseDown && !ImGui::IsAnyItemActive() &&
+                    !ImGui::GetIO().WantTextInput && !ImGui::IsPopupOpen(nullptr,
+                        ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
+                {
+                    const auto delta = input.GetCursorDelta();
+                    const double wheel = viewport.hovered || viewportNavigationActive ? input.GetScrollDelta() : 0.0;
+                    camera = selectionOrbit.Update(*orbitBounds,
+                        CalculateSceneBounds(scene.Objects(),m_Renderer.ObjectLocalBounds()),camera,
+                        viewportNavigationActive ? delta.x : 0.0, viewportNavigationActive ? delta.y : 0.0,wheel);
+                }
+            }
+            else
 			if (viewportNavigationActive &&
 				!changePending &&
 				!transformEditor.IsActive() &&
@@ -868,6 +912,12 @@ namespace ForgeSim::Sandbox
 			ClearMissingSceneSelection(
 				selection,
 				scene);
+
+            if (const auto& node = selection.SelectedNode())
+            {
+                const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
+                if (!query || !query->Find(node->nodeIndex)) selection.Clear();
+            }
 
             if (const auto visible = hierarchyPanel.SelectionVisibilityRequested();
                 visible && !changePending && !transformEditor.IsActive())
@@ -894,7 +944,8 @@ namespace ForgeSim::Sandbox
 					.operation = editorUI.operation,
 					.space = editorUI.space,
 					.showLights = m_DebugUI.ShowLights(),				
-					.navigationActive = changePending|| rightMouseDown
+					.navigationActive = changePending|| rightMouseDown,
+                    .inspectNodes = [this](const std::string& reference) { return m_Renderer.InspectModelNodes(reference); }
 				});
 
             bool sceneEntitiesChanged = false;
@@ -954,6 +1005,7 @@ namespace ForgeSim::Sandbox
             }
             if (sceneEntitiesChanged)
             {
+                refreshNodeBounds();
                 ClearMissingSceneSelection(selection, scene);
                 inspectorPanel.Reset();
                 lightPickTargets.clear();
@@ -986,7 +1038,15 @@ namespace ForgeSim::Sandbox
 				visibleObjects,
 				lightPickTargets,
 				selection,
-				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift);
+				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift, ImGui::GetIO().KeyAlt,
+                [this](const Renderer::Ray& ray, const SandboxObject& object) -> std::optional<ModelNodeHit>
+                {
+                    const auto* asset = m_Renderer.InspectModelHierarchy(object.modelPath);
+                    const auto* query = m_Renderer.InspectModelNodes(object.modelPath);
+                    return asset && query ? query->Pick(*asset, ray, object.transform.ModelMatrix(),object.nodeOverrides) : std::nullopt;
+                });
+
+            selectionOrbit.ObserveSelection(selection);
 
 			const SandboxRenderSettings renderSettings{
 				.framebufferWidth =
@@ -1049,6 +1109,7 @@ namespace ForgeSim::Sandbox
 			m_Renderer.Render(
 				visibleObjects,
 				selection.SelectedObjectIds(),
+                selection.SelectedNode(),
 				view,
 				projection,
 				camera.Position(),
@@ -1059,16 +1120,29 @@ namespace ForgeSim::Sandbox
 				},
 				renderSettings);
 
+            if (selectionOrbit.Active() && viewport.IsDrawable())
+                ImGui::GetWindowDrawList()->AddText(ImVec2(viewport.position.x+12,viewport.position.y+viewport.size.y-24),
+                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return | Esc: keep view");
+            if (!transformEditor.NodeGizmoMessage().empty() && viewport.IsDrawable())
+                ImGui::GetWindowDrawList()->AddText(nullptr,0,ImVec2(viewport.position.x+12,viewport.position.y+12),
+                    IM_COL32(255,210,130,255),transformEditor.NodeGizmoMessage().data(),nullptr,
+                    std::max(1.0f,viewport.size.x-24));
 			sceneViewportPanel.End();
 
+            selectionFocusToggle.ObserveSelection(selection);
             const auto focusSelection = [&]
             {
-                const auto focusBounds = SelectionFocusBounds(scene.Objects(),
-                    SceneLightingView{scene.MainDirectionalLight(), scene.PointLights(), scene.SpotLights()},
-                    selection, m_Renderer.ObjectLocalBounds());
+                if (selectionOrbit.Active())
+                {
+                    cameraRestoreRequest = CaptureSceneCamera(selectionOrbit.RestorePreviousView(camera));
+                    selectionFocusToggle.Reset();
+                    return;
+                }
+                const auto focusBounds = getSelectionBounds();
                 if (!focusBounds) return;
                 const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
-                const auto focused = CreateSelectionFocusCamera(*focusBounds, sceneBounds, camera, aspectRatio);
+                selectionOrbit.Stop();
+                const auto focused = selectionFocusToggle.Toggle(selection, *focusBounds, sceneBounds, camera, aspectRatio);
                 cameraRestoreRequest = CaptureSceneCamera(focused);
                 // Focusing changes the viewpoint, never the fly-speed setting or scene data.
             };
@@ -1076,6 +1150,38 @@ namespace ForgeSim::Sandbox
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable())
                 focusSelection();
+
+            const auto toggleOrbit = [&]
+            {
+                if (selectionOrbit.Active())
+                {
+                    camera = selectionOrbit.RestorePreviousView(camera);
+                    cameraRestoreRequest.reset();
+                }
+                else if (const auto orbitBounds = getSelectionBounds())
+                {
+                    camera = selectionOrbit.Start(selection,*orbitBounds,
+                        CalculateSceneBounds(scene.Objects(),m_Renderer.ObjectLocalBounds()),camera,aspectRatio);
+                    cameraRestoreRequest.reset();
+                }
+                selectionFocusToggle.Reset();
+                viewportNavigationActive=false;
+                m_Window.SetCursorMode(Platform::CursorMode::Normal);
+            };
+            if ((viewport.toggleSelectionHighlightRequested || hierarchyPanel.ToggleSelectionHighlightRequested()) &&
+                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+                m_DebugUI.ToggleSelectionHighlight();
+            if (selectionOrbit.Active() && (viewport.exitOrbitRequested || hierarchyPanel.ExitOrbitRequested()) &&
+                !changePending && !transformEditor.IsActive() && !sceneFilePanel.ConsoleWantsKeyboard())
+            {
+                selectionOrbit.Stop();
+                viewportNavigationActive=false;
+                m_Window.SetCursorMode(Platform::CursorMode::Normal);
+            }
+            if ((viewport.orbitSelectionRequested || hierarchyPanel.OrbitSelectionRequested()) &&
+                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable()) toggleOrbit();
 
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
@@ -1096,8 +1202,12 @@ namespace ForgeSim::Sandbox
                 .cameraRestoreRequest = cameraRestoreRequest,
                 .canFocusSelection = !selection.Empty(),
                 .focusSelection = focusSelection,
+                .orbitActive = selectionOrbit.Active(),
+                .toggleOrbit = toggleOrbit,
                 .frameScene = [&]
                 {
+                    selectionFocusToggle.Reset();
+                    selectionOrbit.Stop();
                     auto framing = scene.Objects().empty() ? CreateEmptySceneCameraFraming(aspectRatio) :
                         CreateSceneCameraFraming(CalculateSceneBounds(
                             scene.Objects(), m_Renderer.ObjectLocalBounds()), aspectRatio);
@@ -1133,9 +1243,15 @@ namespace ForgeSim::Sandbox
 						transformEditor.IsActive() ||
 						rightMouseDown,
                     .transformEditor = &transformEditor,
-                    .materials = selection.SelectedObjectId() && scene.FindObject(*selection.SelectedObjectId())
-                        ? m_Renderer.InspectModelMaterials(scene.FindObject(*selection.SelectedObjectId())->modelPath)
-                        : ModelMaterialInspection{}
+                    .materials = [&]
+                    {
+                        const auto ownerId = selection.SelectedNode() ? std::optional{selection.SelectedNode()->objectId}
+                            : selection.SelectedObjectId();
+                        const auto* owner = ownerId ? scene.FindObject(*ownerId) : nullptr;
+                        return owner ? m_Renderer.InspectModelMaterials(owner->modelPath) : ModelMaterialInspection{};
+                    }(),
+                    .nodeQuery = selection.SelectedNode()
+                        ? m_Renderer.InspectModelNodes(selection.SelectedNode()->modelReference) : nullptr
 				});
 
 			bool openAfterFrame = false;

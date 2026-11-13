@@ -68,6 +68,8 @@ namespace ForgeSim::Sandbox
         std::optional<SceneCameraData>& cameraRestoreRequest;
         bool canFocusSelection = false;
         std::function<void()> focusSelection;
+        bool orbitActive = false;
+        std::function<void()> toggleOrbit;
         std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
@@ -114,6 +116,7 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] bool ShowGrid() const noexcept;
         [[nodiscard]] const Renderer::FxaaSettings& Fxaa() const noexcept { return m_FxaaSettings; }
+        void ToggleSelectionHighlight() noexcept { m_SelectionHighlightEnabled = !m_SelectionHighlightEnabled; }
 		[[nodiscard]] bool ShowLights() const noexcept;
 
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
