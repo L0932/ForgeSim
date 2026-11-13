@@ -99,6 +99,13 @@ namespace ForgeSim::Sandbox
         return m_ProjectRoot;
     }
 
+    std::string EditorSession::DisplayName() const
+    {
+        if (!m_ScenePath) return m_Scene.Name();
+        const auto filename = m_ScenePath->filename().generic_u8string();
+        return std::string(filename.begin(), filename.end());
+    }
+
     bool EditorSession::HasUnsavedChanges() const
     {
         try

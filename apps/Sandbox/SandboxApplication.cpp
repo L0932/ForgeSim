@@ -207,7 +207,7 @@ namespace ForgeSim::Sandbox
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
-        Core::LogInfo("Scene loaded: " + document.name);
+        Core::LogInfo("Scene loaded: " + m_EditorSession->DisplayName());
 	}
 
 	void SandboxApplication::Run(std::optional<std::chrono::steady_clock::time_point> startupStart)
@@ -566,7 +566,7 @@ namespace ForgeSim::Sandbox
                     .hasScenePath = m_EditorSession->ScenePath().has_value(),
                     .canUndo = transformEditor.CanUndo(),
                     .canRedo = transformEditor.CanRedo(),
-                    .sceneName = scene.Name(),
+                    .sceneName = m_EditorSession->DisplayName(),
                     .dirty = m_EditorSession->HasUnsavedChanges()
                 });
             });
@@ -581,7 +581,7 @@ namespace ForgeSim::Sandbox
 			}
 
 			std::string scenePathText;
-			std::string sceneDisplayName = scene.Name();
+			std::string sceneDisplayName = m_EditorSession->DisplayName();
 
 			if (m_EditorSession->ScenePath())
 			{
@@ -1242,7 +1242,7 @@ namespace ForgeSim::Sandbox
 						}
 
 						sceneFileMessage = "Scene saved.";
-                        Core::LogInfo("Scene saved: " + scene.Name());
+                        Core::LogInfo("Scene saved: " + m_EditorSession->DisplayName());
 						break;
 					}
 
@@ -1263,7 +1263,7 @@ namespace ForgeSim::Sandbox
 
 						m_EditorSession->SaveAs(*path);
 						sceneFileMessage = "Scene saved.";
-                        Core::LogInfo("Scene saved: " + scene.Name());
+                        Core::LogInfo("Scene saved: " + m_EditorSession->DisplayName());
 						break;
 					}
 
@@ -1300,7 +1300,7 @@ namespace ForgeSim::Sandbox
 							m_EditorSession->SaveAs(*path);
 						}
 
-                        Core::LogInfo("Scene saved: " + scene.Name());
+                        Core::LogInfo("Scene saved: " + m_EditorSession->DisplayName());
 						completePendingAction = true;
 						break;
 					}
@@ -1553,7 +1553,7 @@ namespace ForgeSim::Sandbox
 					pendingSample = false;
                     pendingTexturePolicy.reset();
 					sceneFileMessage = "Scene opened.";
-                    Core::LogInfo("Scene loaded: " + scene.Name());
+                    Core::LogInfo("Scene loaded: " + m_EditorSession->DisplayName());
                     logTiming("Scene open completed", loadStart);
 				}
                 catch (const MissingSceneAssets& missing)

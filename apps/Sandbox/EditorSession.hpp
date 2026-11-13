@@ -33,6 +33,7 @@ namespace ForgeSim::Sandbox
         [[nodiscard]]
         const std::filesystem::path& ProjectRoot() const noexcept;
 
+        [[nodiscard]] std::string DisplayName() const;
         [[nodiscard]] bool HasUnsavedChanges() const;
 
         // Accept the current scene as the starting state without saving it.

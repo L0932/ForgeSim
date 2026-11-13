@@ -36,6 +36,12 @@ namespace
         Require(scene.FindObject(id)->transform.position.y == 2 && scene.FindObject(id)->localBounds.has_value(), "Cube has placement and picking bounds");
         const auto path = root / "cube.scene.json";
         SaveSceneDocument(scene.ToDocument(), path, root);
+        Require(session.DisplayName() == "Untitled", "Unsaved scenes retain their name");
+        auto saved = session;
+        saved.SaveAs(path);
+        Require(saved.DisplayName() == "cube.scene.json", "Saved display name uses filename instead of internal Untitled");
+        auto opened = saved.PrepareOpen(path);
+        Require(opened.DisplayName() == "cube.scene.json" && !opened.HasUnsavedChanges(), "Opened scene displays its filename without becoming dirty");
         const auto reloaded = LoadSceneDocument(path, root);
         Require(reloaded.objects.size() == 1 && reloaded.objects[0].modelPath == "@builtin/cube", "Cube reload needs no external model file");
         Require(history.Undo(scene, &selection) && scene.Objects().empty() && selection.Empty(), "Undo cube creation");

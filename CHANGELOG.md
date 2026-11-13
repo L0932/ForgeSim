@@ -103,3 +103,5 @@ contains the detailed implementation record.
 - Give empty-scene light guides and picking a consistent workspace size after New/Open.
 
 - Add GameObject > 3D Object > Cube with built-in geometry, selection, undo/redo, and portable scene persistence.
+
+- Identify saved scenes by filename in the toolbar and load/save messages instead of the internal Untitled name.
