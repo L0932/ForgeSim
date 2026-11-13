@@ -832,6 +832,7 @@ add_executable(
     ForgeSimSceneEditHistoryTests
     SceneEditHistoryTest.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
     ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp

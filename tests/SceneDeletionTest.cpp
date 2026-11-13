@@ -8,6 +8,8 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <limits>
+#include <nlohmann/json.hpp>
 
 namespace fs = std::filesystem;
 using namespace ForgeSim::Sandbox;
@@ -96,17 +98,22 @@ namespace
         Require(loaded.Scene().PointLights().empty() && loaded.Scene().SpotLights().empty(), "Local-light deletion persists");
         selection.SelectLight(scene.MainDirectionalLight().id);
         const auto directionalId = scene.MainDirectionalLight().id;
-        Require(history.DeleteSelection(scene, selection) && !scene.MainDirectionalLight().enabled &&
-            scene.MainDirectionalLight().id == directionalId && selection.Empty(), "Delete disables required directional singleton");
+        scene.MainDirectionalLight().enabled = false;
+        scene.SetLightVisible(directionalId, false);
+        Require(history.DeleteSelection(scene, selection) && !scene.HasDirectionalLight() &&
+            !scene.HasHiddenLights() && selection.Empty(), "Delete must remove even a disabled/hidden directional light");
         selection.SelectLight(directionalId);
-        Require(!history.DeleteSelection(scene, selection), "Already-disabled directional light must not add history");
-        Require(history.Undo(scene, &selection) && scene.MainDirectionalLight().enabled && selection.IsLightSelected(directionalId),
-            "Undo must restore directional enablement and selection");
-        Require(history.Redo(scene, &selection) && selection.Empty() && !scene.MainDirectionalLight().enabled,
-            "Redo must disable directional light again");
+        Require(!history.DeleteSelection(scene, selection), "Deleted directional selection is a no-op");
+        Require(history.Undo(scene, &selection) && scene.HasDirectionalLight() &&
+            !scene.MainDirectionalLight().enabled && !scene.IsLightVisible(directionalId) && selection.IsLightSelected(directionalId),
+            "Undo must restore directional properties, visibility, and selection");
+        Require(history.Redo(scene, &selection) && selection.Empty() && !scene.HasDirectionalLight(),
+            "Redo must remove directional light again");
         session.Save();
-        Require(!session.PrepareOpen(root / "lights.scene.json", root).Scene().MainDirectionalLight().enabled,
-            "Disabled directional light persists through save/reopen");
+        const auto withoutDirectional = session.PrepareOpen(root / "lights.scene.json", root);
+        Require(!withoutDirectional.Scene().HasDirectionalLight(), "Directional absence persists through save/reopen");
+        Require(nlohmann::json::parse(SerializeSceneDocument(scene.ToDocument())).at("directionalLight").is_null(),
+            "A deleted directional light must be saved as null, not as a disabled entity");
     }
     void TestMixedTransformAndDeletion(const fs::path& root)
     {
@@ -131,6 +138,70 @@ namespace
             "Redo transform before replaying deletion");
         Require(history.Redo(scene, &selection) && !scene.FindObject(1) && selection.Empty(),
             "Redo deletion after transform replay");
+    }
+    void TestLightCreation(const fs::path& root)
+    {
+        SceneDocument document;
+        document.hasDirectionalLight = false;
+        EditorSession session(document, root);
+        auto& scene = session.Scene();
+        SceneEditHistory history;
+        SceneSelection selection;
+        const auto baseline = SerializeSceneDocument(scene.ToDocument());
+        const glm::vec3 position{3,4,5};
+        const glm::vec3 direction{0,-1,0};
+        Require(!scene.HasDirectionalLight(), "Empty directional slot stays absent");
+        Require(history.CreateLight(scene, selection, SceneLightKind::Directional, position, direction, 12), "Create directional light");
+        const auto directionalId = *selection.SelectedLightId();
+        Require(scene.MainDirectionalLight().position == position && scene.MainDirectionalLight().directionToLight == -direction,
+            "Directional creation must place its marker and aim along the supplied direction");
+        Require(!history.CreateLight(scene, selection, SceneLightKind::Directional, position, direction, 12),
+            "Single-directional renderer must reject a second directional without adding history");
+        Require(history.CreateLight(scene, selection, SceneLightKind::Point, position, direction, 12), "Create point light");
+        const auto pointId = *selection.SelectedLightId();
+        Require(history.CreateLight(scene, selection, SceneLightKind::Spot, position, direction, 24), "Create spot light");
+        const auto spotId = *selection.SelectedLightId();
+        Require(directionalId != pointId && pointId != spotId && directionalId != spotId,
+            "All light types must share unique scene IDs");
+        Require(scene.PointLights().back().position == position && scene.PointLights().back().range == 12 &&
+            scene.SpotLights().back().range == 24 && scene.SpotLights().back().emissionDirection == direction,
+            "Created lights must retain placement, range, and orientation");
+        Require(session.HasUnsavedChanges(), "Light creation must mark scene modified");
+        for (int i = 0; i < 3; ++i) Require(history.Undo(scene, &selection), "Undo each light creation");
+        Require(!scene.HasDirectionalLight() && scene.PointLights().empty() && scene.SpotLights().empty() &&
+            SerializeSceneDocument(scene.ToDocument()) == baseline && !session.HasUnsavedChanges(),
+            "Undoing light creation must restore the exact empty/clean scene");
+        bool failed = false;
+        try { static_cast<void>(history.CreateLight(scene, selection, SceneLightKind::Point,
+            {std::numeric_limits<float>::quiet_NaN(),0,0}, direction, 12)); }
+        catch (const std::invalid_argument&) { failed = true; }
+        Require(failed && history.CanRedo() && SerializeSceneDocument(scene.ToDocument()) == baseline,
+            "Failed creation must preserve scene and redo history");
+        for (int i = 0; i < 3; ++i) Require(history.Redo(scene, &selection), "Redo each light creation");
+        Require(selection.IsLightSelected(spotId) && scene.MainDirectionalLight().id == directionalId &&
+            scene.PointLights().front().id == pointId && scene.SpotLights().front().id == spotId,
+            "Redo creation must restore original IDs and select the recreated light");
+        session.SaveAs(root / "created-lights.scene.json");
+        const auto reopened = session.PrepareOpen(root / "created-lights.scene.json", root);
+        Require(SerializeSceneDocument(reopened.Scene().ToDocument()) == SerializeSceneDocument(scene.ToDocument()),
+            "Created lights must survive save/reopen with all authored properties");
+        selection.SelectLight(directionalId);
+        Require(history.DeleteSelection(scene, selection), "Remove original directional light");
+        Require(history.CreateLight(scene, selection, SceneLightKind::Directional, position, direction, 12), "Recreate directional light");
+        const auto replacementId = *selection.SelectedLightId();
+        Require(replacementId != directionalId, "Recreated directional must not reuse a deleted ID retained by undo");
+        Require(history.Undo(scene, &selection) && !scene.HasDirectionalLight(), "Undo recreation removes replacement");
+        Require(history.Undo(scene, &selection) && scene.MainDirectionalLight().id == directionalId, "Undo deletion restores original");
+        Require(history.Redo(scene, &selection) && history.Redo(scene, &selection) &&
+            scene.MainDirectionalLight().id == replacementId, "Replay deletion and recreation in order");
+
+        const auto legacy = DeserializeSceneDocument(SerializeSceneDocument(SceneDocument{}));
+        Require(legacy.hasDirectionalLight && SandboxScene(legacy).HasDirectionalLight(), "Existing directional scene files remain supported");
+        auto invalid = document;
+        invalid.hiddenLightIds = {1};
+        failed = false;
+        try { static_cast<void>(SerializeSceneDocument(invalid)); } catch (const std::invalid_argument&) { failed = true; }
+        Require(failed, "Visibility must not reference an absent directional light");
     }
     void TestRootRetention(const fs::path& root)
     {
@@ -160,7 +231,8 @@ int main()
         TestLightDeletion(root);
         TestRootRetention(root);
         TestMixedTransformAndDeletion(root);
-        std::cout << "Deletion, undo/redo, visibility, IDs, root retention, and persistence passed\n";
+        TestLightCreation(root);
+        std::cout << "Light creation/deletion, undo/redo, visibility, IDs, root retention, and persistence passed\n";
     }
     catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

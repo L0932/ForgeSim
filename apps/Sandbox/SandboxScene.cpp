@@ -75,6 +75,32 @@ namespace ForgeSim::Sandbox
             return false;
         }
     }
+    SceneLightId SandboxScene::AddDirectionalLight()
+    {
+        if (HasDirectionalLight()) throw std::invalid_argument("The scene already has a directional light.");
+        if (m_NextLightId == InvalidSceneLightId) throw std::overflow_error("Scene light ID space is exhausted.");
+        const auto id = m_NextLightId;
+        m_DirectionalLight = DirectionalLight{.id = id};
+        m_NextLightId = id == std::numeric_limits<SceneLightId>::max() ? InvalidSceneLightId : id + 1;
+        return id;
+    }
+    bool SandboxScene::RemoveDirectionalLight(SceneLightId id)
+    {
+        if (!HasDirectionalLight() || m_DirectionalLight.id != id) return false;
+        m_HiddenLights.erase(id);
+        m_DirectionalLight = DirectionalLight{.id = InvalidSceneLightId, .enabled = false};
+        return true;
+    }
+    bool SandboxScene::RestoreDirectionalLight(const DirectionalLight& light, bool visible)
+    {
+        if (HasDirectionalLight() || light.id == InvalidSceneLightId || LightIdExists(*this, light.id)) return false;
+        if (!visible) m_HiddenLights.insert(light.id);
+        m_DirectionalLight = light;
+        if (visible) m_HiddenLights.erase(light.id);
+        if (m_NextLightId != InvalidSceneLightId && light.id >= m_NextLightId)
+            m_NextLightId = light.id == std::numeric_limits<SceneLightId>::max() ? InvalidSceneLightId : light.id + 1;
+        return true;
+    }
     bool SandboxScene::RemoveObject(SandboxObjectId id)
     { return RemoveEntity(m_Objects, m_HiddenObjects, id); }
     bool SandboxScene::RemovePointLight(SceneLightId id)

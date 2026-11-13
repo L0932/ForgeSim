@@ -7,12 +7,6 @@
 
 namespace ForgeSim::Sandbox
 {
-	enum class SceneLightKind
-	{
-		Directional,
-		Point,
-		Spot
-	};
 
 	struct LightValidationError
 	{

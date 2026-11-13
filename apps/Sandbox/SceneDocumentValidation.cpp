@@ -215,13 +215,9 @@ namespace ForgeSim::Sandbox
 
         std::unordered_set<SceneLightId> lightIds;
 
-        if (auto error = ValidateDocumentLight(
-            document.directionalLight,
-            "directionalLight",
-            lightIds))
-        {
-            return error;
-        }
+        if (document.hasDirectionalLight)
+            if (auto error = ValidateDocumentLight(document.directionalLight, "directionalLight", lightIds))
+                return error;
 
         for (std::size_t index = 0;
             index < document.pointLights.size();

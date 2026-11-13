@@ -7,6 +7,7 @@
 
 namespace ForgeSim::Sandbox
 {
+    enum class SceneLightKind { Directional, Point, Spot };
     using SceneLightId = std::uint64_t; 
 
     // Zero represents an unassigned light ID

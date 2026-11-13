@@ -45,6 +45,10 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] const SandboxObject* FindObject(
 			SandboxObjectId objectId) const noexcept;
 
+        [[nodiscard]] bool HasDirectionalLight() const noexcept { return m_DirectionalLight.id != InvalidSceneLightId; }
+        [[nodiscard]] SceneLightId AddDirectionalLight();
+        [[nodiscard]] bool RemoveDirectionalLight(SceneLightId id);
+        [[nodiscard]] bool RestoreDirectionalLight(const DirectionalLight& light, bool visible);
         [[nodiscard]] bool HasAllocatedObjectIds() const noexcept { return m_LastObjectId != 0; }
         // Restore trusted history snapshots without reassigning IDs.
         [[nodiscard]] bool RemoveObject(SandboxObjectId id);

@@ -17,7 +17,7 @@ namespace ForgeSim::Sandbox
 {
     void SceneFilePanel::DrawMenu(
         bool actionsAllowed,
-        bool hasScenePath)
+        bool hasScenePath, bool hasDirectionalLight)
     {
         if (!ImGui::BeginMainMenuBar())
         {
@@ -76,6 +76,22 @@ namespace ForgeSim::Sandbox
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("GameObject"))
+        {
+            ImGui::BeginDisabled(!actionsAllowed);
+            if (ImGui::BeginMenu("Light"))
+            {
+                if (ImGui::MenuItem("Directional Light", nullptr, false, !hasDirectionalLight))
+                    m_CreateLightRequest = SceneLightKind::Directional;
+                if (hasDirectionalLight && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("The renderer supports one directional light. Delete the existing light to create another.");
+                if (ImGui::MenuItem("Point Light")) m_CreateLightRequest = SceneLightKind::Point;
+                if (ImGui::MenuItem("Spot Light")) m_CreateLightRequest = SceneLightKind::Spot;
+                ImGui::EndMenu();
+            }
+            ImGui::EndDisabled();
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("Help"))
         {
             if (ImGui::MenuItem("Keyboard Controls...")) m_KeyboardControlsOpen = true;
@@ -231,8 +247,10 @@ namespace ForgeSim::Sandbox
         const SceneFileAction menuAction =
             std::exchange(m_MenuAction, SceneFileAction::None);
 
+        const auto createLight = std::exchange(m_CreateLightRequest, std::nullopt);
         if (actionsAllowed)
         {
+            request.createLight = createLight;
             request.action = menuAction;
             if (menuAction == SceneFileAction::OpenSample)
                 request.path = m_SampleFilename;

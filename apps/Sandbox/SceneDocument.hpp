@@ -46,7 +46,8 @@ namespace ForgeSim::Sandbox
         std::vector<std::uint64_t> hiddenObjectIds;
         std::vector<SceneLightId> hiddenLightIds;
 
-        // Match the current runtime's single directional light.
+        // Zero or one directional light; absence is serialized as JSON null.
+        bool hasDirectionalLight = true;
         DirectionalLight directionalLight{
             .id = 1
         };

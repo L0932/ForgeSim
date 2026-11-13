@@ -1,4 +1,7 @@
 #include "SceneEditHistory.hpp"
+#include "SceneLightValidation.hpp"
+#include <stdexcept>
+#include <glm/geometric.hpp>
 
 #include <utility>
 #include <type_traits>
@@ -121,11 +124,25 @@ namespace ForgeSim::Sandbox
             return useAfter ? scene.RemoveSpotLight(edit.light.id) :
                 scene.RestoreSpotLight(edit.index, edit.light, edit.visible);
         }
-        bool ApplyEdit(SandboxScene& scene, const DirectionalLightEnabledEdit& edit, bool useAfter)
+        bool ApplyEdit(SandboxScene& scene, const DirectionalLightRemovalEdit& edit, bool useAfter)
         {
-            if (scene.MainDirectionalLight().id != edit.lightId) return false;
-            scene.MainDirectionalLight().enabled = useAfter ? edit.after : edit.before;
-            return true;
+            return useAfter ? scene.RemoveDirectionalLight(edit.light.id) :
+                scene.RestoreDirectionalLight(edit.light, edit.visible);
+        }
+        bool ApplyEdit(SandboxScene& scene, const DirectionalLightCreationEdit& edit, bool useAfter)
+        {
+            return useAfter ? scene.RestoreDirectionalLight(edit.light, edit.visible) :
+                scene.RemoveDirectionalLight(edit.light.id);
+        }
+        bool ApplyEdit(SandboxScene& scene, const PointLightCreationEdit& edit, bool useAfter)
+        {
+            return useAfter ? scene.RestorePointLight(edit.index, edit.light, edit.visible) :
+                scene.RemovePointLight(edit.light.id);
+        }
+        bool ApplyEdit(SandboxScene& scene, const SpotLightCreationEdit& edit, bool useAfter)
+        {
+            return useAfter ? scene.RestoreSpotLight(edit.index, edit.light, edit.visible) :
+                scene.RemoveSpotLight(edit.light.id);
         }
 
 		[[nodiscard]] bool ApplySceneEdit(
@@ -145,15 +162,15 @@ namespace ForgeSim::Sandbox
                             if (!useAfter) selection->SelectObject(concreteEdit.object.id);
                             else if (selection->IsObjectSelected(concreteEdit.object.id)) selection->Clear();
                         }
-                        else if constexpr (std::is_same_v<T, PointLightRemovalEdit> || std::is_same_v<T, SpotLightRemovalEdit>)
+                        else if constexpr (std::is_same_v<T, PointLightRemovalEdit> || std::is_same_v<T, SpotLightRemovalEdit> ||
+                            std::is_same_v<T, DirectionalLightRemovalEdit> || std::is_same_v<T, PointLightCreationEdit> ||
+                            std::is_same_v<T, SpotLightCreationEdit> || std::is_same_v<T, DirectionalLightCreationEdit>)
                         {
-                            if (!useAfter) selection->SelectLight(concreteEdit.light.id);
+                            constexpr bool creation = std::is_same_v<T, PointLightCreationEdit> ||
+                                std::is_same_v<T, SpotLightCreationEdit> || std::is_same_v<T, DirectionalLightCreationEdit>;
+                            const bool restoring = creation ? useAfter : !useAfter;
+                            if (restoring) selection->SelectLight(concreteEdit.light.id);
                             else if (selection->IsLightSelected(concreteEdit.light.id)) selection->Clear();
-                        }
-                        else if constexpr (std::is_same_v<T, DirectionalLightEnabledEdit>)
-                        {
-                            if (!useAfter) selection->SelectLight(concreteEdit.lightId);
-                            else if (selection->IsLightSelected(concreteEdit.lightId)) selection->Clear();
                         }
                     }
                     return true;
@@ -167,11 +184,66 @@ namespace ForgeSim::Sandbox
         if (const auto id = selection.SelectedObjectId()) return scene.FindObject(*id) != nullptr;
         if (const auto id = selection.SelectedLightId())
         {
-            if (*id == scene.MainDirectionalLight().id) return scene.MainDirectionalLight().enabled;
+            if (scene.HasDirectionalLight() && *id == scene.MainDirectionalLight().id) return true;
             for (const auto& light : scene.PointLights()) if (light.id == *id) return true;
             for (const auto& light : scene.SpotLights()) if (light.id == *id) return true;
         }
         return false;
+    }
+
+    bool SceneEditHistory::CreateLight(SandboxScene& scene, SceneSelection& selection,
+        SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range)
+    {
+        if (type == SceneLightKind::Directional && scene.HasDirectionalLight()) return false;
+        // Prepare and validate before changing the active scene or its history.
+        SandboxScene prepared = scene;
+        SceneEdit edit;
+        const auto validate = [](const auto& light)
+        {
+            if (const auto error = ValidateLight(light))
+                throw std::invalid_argument(std::string(error->property) + ": " + std::string(error->message));
+        };
+        switch (type)
+        {
+        case SceneLightKind::Directional:
+        {
+            static_cast<void>(prepared.AddDirectionalLight());
+            auto& light = prepared.MainDirectionalLight();
+            light.position = position;
+            light.directionToLight = -direction;
+            validate(light);
+            light.directionToLight = glm::normalize(light.directionToLight);
+            edit = DirectionalLightCreationEdit{light, true};
+            break;
+        }
+        case SceneLightKind::Point:
+        {
+            static_cast<void>(prepared.AddPointLight());
+            auto& light = prepared.PointLights().back();
+            light.position = position;
+            light.range = range;
+            validate(light);
+            edit = PointLightCreationEdit{light, scene.PointLights().size(), true};
+            break;
+        }
+        case SceneLightKind::Spot:
+        {
+            static_cast<void>(prepared.AddSpotLight());
+            auto& light = prepared.SpotLights().back();
+            light.position = position;
+            light.range = range;
+            light.emissionDirection = direction;
+            validate(light);
+            light.emissionDirection = glm::normalize(light.emissionDirection);
+            edit = SpotLightCreationEdit{light, scene.SpotLights().size(), true};
+            break;
+        }
+        default: return false;
+        }
+        m_Edits.reserve(m_Position + 1);
+        if (!ApplySceneEdit(scene, edit, true, &selection)) return false;
+        RecordApplied(std::move(edit));
+        return true;
     }
 
     bool SceneEditHistory::DeleteSelection(SandboxScene& scene, SceneSelection& selection)
@@ -187,7 +259,7 @@ namespace ForgeSim::Sandbox
         else if (const auto lightId = selection.SelectedLightId())
         {
             if (*lightId == scene.MainDirectionalLight().id)
-                edit = DirectionalLightEnabledEdit{*lightId, scene.MainDirectionalLight().enabled, false};
+                edit = DirectionalLightRemovalEdit{scene.MainDirectionalLight(), scene.IsLightVisible(*lightId)};
             const auto points = scene.PointLights();
             for (std::size_t i = 0; i < points.size(); ++i)
                 if (points[i].id == *lightId) edit = PointLightRemovalEdit{points[i], i, scene.IsLightVisible(*lightId)};

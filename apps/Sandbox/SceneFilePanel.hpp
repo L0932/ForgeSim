@@ -1,6 +1,8 @@
 #pragma once
 
 #include "EditorConsole.hpp"
+#include "SceneLight.hpp"
+#include <optional>
 #include "BundledSamples.hpp"
 #include "SamplePreview.hpp"
 
@@ -50,6 +52,7 @@ namespace ForgeSim::Sandbox
         SceneFileAction action = SceneFileAction::None;
         std::string path;
         bool allowTextureFallbacks = true;
+        std::optional<SceneLightKind> createLight;
     };
 
     struct SceneToolbarContext
@@ -80,7 +83,7 @@ namespace ForgeSim::Sandbox
                 minimumArguments, maximumArguments, std::move(handler));
         }
 
-        void DrawMenu(bool actionsAllowed, bool hasScenePath);
+        void DrawMenu(bool actionsAllowed, bool hasScenePath, bool hasDirectionalLight);
         void ResetSampleBrowserLayout();
         void SetExternalSamplePath(const std::filesystem::path& path);
         // Draw before creating the workspace dockspace.
@@ -95,6 +98,7 @@ namespace ForgeSim::Sandbox
         bool m_KeyboardControlsOpen = false;
         ImGuiTextFilter m_KeyboardControlsFilter;
         EditorConsole m_Console;
+        std::optional<SceneLightKind> m_CreateLightRequest;
         SceneFileAction m_MenuAction = SceneFileAction::None;
         std::string m_SampleFilename;
         std::array<SamplePreview, BundledSamples.size()> m_SamplePreviews;

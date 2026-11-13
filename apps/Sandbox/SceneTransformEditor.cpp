@@ -503,6 +503,13 @@ namespace ForgeSim::Sandbox
 		return m_History.Redo(scene, selection);
 	}
 
+    bool SceneTransformEditor::CreateLight(SandboxScene& scene, SceneSelection& selection,
+        SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range)
+    {
+        if (m_WasActive || IsActive() || m_PendingEdit) return false;
+        return m_History.CreateLight(scene, selection, type, position, direction, range);
+    }
+
     bool SceneTransformEditor::DeleteSelection(SandboxScene& scene, SceneSelection& selection)
     {
         if (m_WasActive || IsActive() || m_PendingEdit) return false;

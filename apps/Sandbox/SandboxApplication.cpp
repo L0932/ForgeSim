@@ -493,6 +493,8 @@ namespace ForgeSim::Sandbox
 				const LightDebugLayout layout =
 					CalculateLightDebugLayout(lightDebugBounds);
 
+                if (scene.HasDirectionalLight())
+                {
 				lightPickTargets.push_back(
 					LightPickTarget{
 						.id = scene.MainDirectionalLight().id,
@@ -501,6 +503,7 @@ namespace ForgeSim::Sandbox
 							.radius = layout.pickRadius
 						}
 					});
+                }
 
 				for (const PointLight& light : scene.PointLights())
 				{
@@ -548,7 +551,7 @@ namespace ForgeSim::Sandbox
 				!transformEditor.IsActive() &&
 				!input.GetMouseButtonState(
 					Platform::MouseButton::Right).held,
-				m_EditorSession->ScenePath().has_value());
+				m_EditorSession->ScenePath().has_value(), scene.HasDirectionalLight());
 
             SceneToolbarRequest toolbarRequest;
             const bool layoutReset = m_DebugUI.BeginWorkspace([&]
@@ -893,14 +896,24 @@ namespace ForgeSim::Sandbox
 				sceneEntitiesChanged = transformEditor.Redo(scene, &selection);
 			}
 
+            else if (fileRequest.createLight && !changePending && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+            {
+                const auto worldBounds = scene.Objects().empty() ? emptySceneBounds :
+                    CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
+                const float radius = glm::length(worldBounds.maximum * 0.5f - worldBounds.minimum * 0.5f);
+                const float distance = std::clamp(radius * 0.25f, 0.01f, 10.0f);
+                const auto direction = camera.ForwardDirection();
+                const auto position = camera.Position() + direction * distance;
+                sceneEntitiesChanged = transformEditor.CreateLight(scene, selection, *fileRequest.createLight,
+                    position, direction, std::max(distance * 4.0f, 0.1f));
+                if (sceneEntitiesChanged) sceneFileMessage = "Light created. Undo removes it.";
+            }
             else if (!changePending && !sceneFilePanel.ConsoleWantsKeyboard() && !rightMouseDown &&
                 (viewport.deleteSelectionRequested || hierarchyPanel.DeleteSelectionRequested()))
             {
-                const bool directional = selection.IsLightSelected(scene.MainDirectionalLight().id);
                 sceneEntitiesChanged = transformEditor.DeleteSelection(scene, selection);
-                if (sceneEntitiesChanged) sceneFileMessage = directional
-                    ? "Directional light disabled. Undo restores it."
-                    : "Selection deleted. Undo restores it.";
+                if (sceneEntitiesChanged) sceneFileMessage = "Selection deleted. Undo restores it.";
             }
             if (sceneEntitiesChanged)
             {
@@ -964,7 +977,7 @@ namespace ForgeSim::Sandbox
 					m_DebugUI.ShowObjectBounds(),
 
 				.showLights = m_DebugUI.ShowLights(),
-                .showDirectionalLightGuide = scene.IsLightVisible(scene.MainDirectionalLight().id),
+                .showDirectionalLightGuide = scene.HasDirectionalLight() && scene.IsLightVisible(scene.MainDirectionalLight().id),
 
 				.directionalShadows = scene.RenderingSettings().directionalShadows,
                 .fxaa = m_DebugUI.Fxaa(),
@@ -988,7 +1001,7 @@ namespace ForgeSim::Sandbox
 			};
 
             DirectionalLight visibleDirectional = scene.MainDirectionalLight();
-            visibleDirectional.enabled &= scene.IsLightVisible(visibleDirectional.id);
+            visibleDirectional.enabled &= scene.HasDirectionalLight() && scene.IsLightVisible(visibleDirectional.id);
             visiblePointLights.clear();
             for (const auto& light : scene.PointLights())
                 if (scene.IsLightVisible(light.id)) visiblePointLights.push_back(light);
@@ -1431,10 +1444,10 @@ namespace ForgeSim::Sandbox
                     if (!previous.empty())
                     {
                         const auto existing = CalculateSceneBounds(previous, m_Renderer.ObjectLocalBounds());
-                        const auto& bounds = *imported.localBounds;
+                        const auto& importedBounds = *imported.localBounds;
                         const float gap = std::max(existing.maximum.x - existing.minimum.x,
-                            bounds.maximum.x - bounds.minimum.x) * 0.1f;
-                        imported.transform.position.x = existing.maximum.x + gap - bounds.minimum.x;
+                            importedBounds.maximum.x - importedBounds.minimum.x) * 0.1f;
+                        imported.transform.position.x = existing.maximum.x + gap - importedBounds.minimum.x;
                     }
                     const auto id = imported.id;
                     *m_EditorSession = std::move(replacement);

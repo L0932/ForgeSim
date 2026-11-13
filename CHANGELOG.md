@@ -22,9 +22,11 @@ contains the detailed implementation record.
 
 ### Added
 
-- Delete selected model instances and local lights from Hierarchy or with Delete,
-  with undo/redo restoring properties, visibility, IDs, and selection. Deleting the
-  required main directional light disables it with undo support.
+- GameObject > Light creation menus with selection and undo/redo. Directional
+  lights can be deleted entirely, saved as absent, and recreated.
+
+- Delete selected model instances and lights from Hierarchy or with Delete,
+  with undo/redo restoring properties, visibility, IDs, and selection.
 
 - Searchable Help > Keyboard Controls reference and context-aware F focus for
   selected model instances and lights, shared with the Camera-panel action.
@@ -34,8 +36,7 @@ contains the detailed implementation record.
 
 - Mouse-wheel fly-speed adjustment during right-mouse camera navigation.
 
-- Per-scene fly-speed persistence with an Automatic fly speed option, independent
-  of explicit viewpoint capture.
+- Per-scene fly-speed persistence, independent of explicit viewpoint capture.
 
 - Camera fly-speed and near/far clipping controls, Ctrl precision movement,
   and scene/selected-object framing actions in the Camera panel.

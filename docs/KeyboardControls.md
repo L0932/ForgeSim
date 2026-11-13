@@ -12,13 +12,13 @@ Update both when bindings change; list only implemented commands.
 | Camera | Ctrl while flying | Move at one tenth of fly speed | Scene navigation |
 | Selection | Left click | Select an object or light | Scene or Hierarchy; empty Scene space clears selection |
 | Selection | F | Focus selected object or light | Scene or Hierarchy focused; navigation stopped |
-| Selection | Delete | Delete selected model or local light | Scene or Hierarchy focused; main directional light is disabled |
+| Selection | Delete | Delete selected model or light | Scene or Hierarchy focused; navigation stopped |
 | Transforms | W | Move tool | Navigation stopped; no text entry or active edit |
 | Transforms | E | Rotate tool | Navigation stopped; no text entry or active edit |
 | Transforms | R | Scale tool | Navigation stopped; no text entry or active edit |
 | Transforms | X | Toggle world / local axes | Navigation stopped; no text entry or active edit |
-| History | Ctrl+Z | Undo transform, pivot, or deletion | No text entry, active edit, or scene-change confirmation |
-| History | Ctrl+Y / Ctrl+Shift+Z | Redo transform, pivot, or deletion | No text entry, active edit, or scene-change confirmation |
+| History | Ctrl+Z | Undo transform, pivot, creation, or deletion | No text entry, active edit, or scene-change confirmation |
+| History | Ctrl+Y / Ctrl+Shift+Z | Redo transform, pivot, creation, or deletion | No text entry, active edit, or scene-change confirmation |
 | Files | Ctrl+S | Save scene / choose destination | No text entry, active edit, navigation, or confirmation |
 | Panels | F1 | Show / hide ForgeSim Debug | No text entry or active control |
 | Console | Enter | Execute command | Console input focused |
@@ -47,16 +47,15 @@ does nothing. Internal-node focus will follow when node selection is implemented
 ## Deletion and undo
 
 With Scene or Hierarchy focused, press **Delete** to remove the selected complete
-model instance, point light, or spot light. The Hierarchy also provides a
+model instance or light. The Hierarchy also provides a
 **Delete selection** button. Internal glTF nodes are not independently deletable.
 
-The required main directional light uses **Disable directional light** instead.
-Delete stops its illumination while retaining the singleton and its settings.
-Undo restores its previous enabled state.
+Directional lights are removed as scene entities, including when disabled or
+hidden. Undo restores their authored properties, visibility, and identity.
 
 **Ctrl+Z** undoes deletion and selects the restored entity. **Ctrl+Y** or
 **Ctrl+Shift+Z** reapplies it. Undo restores IDs, authored properties, visibility,
-and original list position. Saving writes the current deleted/disabled state;
+and original list position. Saving writes the current scene state;
 undo history itself is not saved. Existing transform/pivot edits use the same
 history. New objects receive IDs that do not collide with deleted objects still
 retained by undo.
@@ -65,5 +64,21 @@ Delete has the same typing, popup, modifier, navigation, and active-edit guards 
 F. Empty or stale selections do nothing. Deleted models' resources are retained
 for undo during the authoring session, including across further imports, and are
 released when a different scene is opened or a new scene is created.
+
+## Create lights
+
+Choose **GameObject > Light > Directional Light / Point Light / Spot Light**.
+New lights appear in front of the current camera, are selected for Inspector
+editing, and participate in the same undo/redo history. Spot lights aim along the
+camera's viewing direction; directional lights use it as their emission direction.
+
+The renderer supports zero or one directional light. Its creation menu item is
+disabled while one exists, and becomes available after deletion. Point and spot
+lights can be created repeatedly; the renderer currently submits up to 16 active
+lights of each local type.
+
+Scenes without a directional light write `directionalLight: null`. Existing
+scene files with a directional-light object remain supported. Older builds that
+require the object cannot read the new null form.
 
 Duplicating entities will follow in the next scene-authoring patch.

@@ -47,6 +47,8 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool Undo(SandboxScene& scene, SceneSelection* selection = nullptr);
 		[[nodiscard]] bool Redo(SandboxScene& scene, SceneSelection* selection = nullptr);
 
+        [[nodiscard]] bool CreateLight(SandboxScene& scene, SceneSelection& selection,
+            SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range);
         [[nodiscard]] bool DeleteSelection(SandboxScene& scene, SceneSelection& selection);
 
 		// Call when replacing the scene, outside an active drag.

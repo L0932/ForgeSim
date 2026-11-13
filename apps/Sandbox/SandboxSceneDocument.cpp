@@ -41,7 +41,8 @@ namespace ForgeSim::Sandbox
                 });
         }
 
-        m_DirectionalLight = document.directionalLight;
+        m_DirectionalLight = document.hasDirectionalLight ? document.directionalLight :
+            DirectionalLight{.id = InvalidSceneLightId, .enabled = false};
         m_PointLights = document.pointLights;
         m_SpotLights = document.spotLights;
 
@@ -91,6 +92,7 @@ namespace ForgeSim::Sandbox
                 });
         }
 
+        document.hasDirectionalLight = HasDirectionalLight();
         document.directionalLight = m_DirectionalLight;
         document.pointLights = m_PointLights;
         document.spotLights = m_SpotLights;

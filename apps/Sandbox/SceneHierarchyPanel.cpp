@@ -135,7 +135,7 @@ namespace ForgeSim::Sandbox
             selectedMatches |= context.selection.IsLightSelected(light.id);
         };
         const auto& directional = context.scene.MainDirectionalLight();
-        countLight("Directional Light", directional);
+        if (context.scene.HasDirectionalLight()) countLight("Directional Light", directional);
         for (const auto& light : context.scene.PointLights()) countLight("Point Light", light);
         for (const auto& light : context.scene.SpotLights()) countLight("Spot Light", light);
 
@@ -174,7 +174,9 @@ namespace ForgeSim::Sandbox
             if (changed && filtering) ImGui::SetNextItemOpen(true);
             if (EditorSectionHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                DrawLightEntry("Directional Light", directional.id, directional.enabled, context.selection, context.scene);
+                if (context.scene.HasDirectionalLight())
+                    DrawLightEntry("Directional Light", directional.id, directional.enabled, context.selection, context.scene);
+                if (lightMatches == 0) ImGui::TextDisabled("No lights.");
                 for (const auto& light : context.scene.PointLights())
                     DrawLightEntry("Point Light", light.id, light.enabled, context.selection, context.scene);
                 for (const auto& light : context.scene.SpotLights())
@@ -182,13 +184,10 @@ namespace ForgeSim::Sandbox
             }
         }
         ImGui::Separator();
-        const bool directionalSelected = context.selection.IsLightSelected(context.scene.MainDirectionalLight().id);
         ImGui::BeginDisabled(!CanDeleteSceneSelection(context.scene, context.selection));
-        if (ImGui::Button(directionalSelected ? "Disable directional light" : "Delete selection", ImVec2(-1, 0)))
+        if (ImGui::Button("Delete selection", ImVec2(-1, 0)))
             m_DeleteSelectionRequested = true;
-        ImGui::SetItemTooltip(directionalSelected
-            ? "Delete disables the required main directional light. Undo restores it."
-            : "Remove the selected model instance or local light (Delete). Undo restores it.");
+        ImGui::SetItemTooltip("Remove the selected model instance or light (Delete). Undo restores it.");
         ImGui::EndDisabled();
         ImGui::EndDisabled();
         ImGui::PopStyleVar(2);

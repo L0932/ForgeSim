@@ -54,7 +54,10 @@ namespace ForgeSim::Sandbox
     struct ObjectRemovalEdit { SandboxObject object; std::size_t index; bool visible; };
     struct PointLightRemovalEdit { PointLight light; std::size_t index; bool visible; };
     struct SpotLightRemovalEdit { SpotLight light; std::size_t index; bool visible; };
-    struct DirectionalLightEnabledEdit { SceneLightId lightId; bool before; bool after; };
+    struct DirectionalLightRemovalEdit { DirectionalLight light; bool visible; };
+    struct DirectionalLightCreationEdit { DirectionalLight light; bool visible; };
+    struct PointLightCreationEdit { PointLight light; std::size_t index; bool visible; };
+    struct SpotLightCreationEdit { SpotLight light; std::size_t index; bool visible; };
 
     [[nodiscard]] bool CanDeleteSceneSelection(const SandboxScene& scene, const SceneSelection& selection);
 
@@ -67,7 +70,8 @@ namespace ForgeSim::Sandbox
 		SpotLightPoseEdit,
 		DirectionalLightDirectionEdit,
 		DirectionalLightPositionEdit, ObjectRemovalEdit, PointLightRemovalEdit,
-        SpotLightRemovalEdit, DirectionalLightEnabledEdit>;
+        SpotLightRemovalEdit, DirectionalLightRemovalEdit, DirectionalLightCreationEdit,
+        PointLightCreationEdit, SpotLightCreationEdit>;
 
 	class SceneEditHistory final
 	{
@@ -82,6 +86,8 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool CanUndo() const noexcept;
 		[[nodiscard]] bool CanRedo() const noexcept;
 
+        [[nodiscard]] bool CreateLight(SandboxScene& scene, SceneSelection& selection,
+            SceneLightKind type, const glm::vec3& position, const glm::vec3& direction, float range);
         [[nodiscard]] bool DeleteSelection(SandboxScene& scene, SceneSelection& selection);
 
 		// Call when replacing the scene
