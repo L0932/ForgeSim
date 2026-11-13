@@ -92,6 +92,8 @@ namespace ForgeSim::Sandbox
     private:
         void DrawSampleBrowser(bool actionsAllowed, SceneFileRequest& request);
 
+        bool m_KeyboardControlsOpen = false;
+        ImGuiTextFilter m_KeyboardControlsFilter;
         EditorConsole m_Console;
         SceneFileAction m_MenuAction = SceneFileAction::None;
         std::string m_SampleFilename;

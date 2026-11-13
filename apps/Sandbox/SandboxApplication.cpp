@@ -21,6 +21,7 @@
 #include "SceneTransformEditor.hpp"
 #include "SceneViewportPanel.hpp"
 #include "SceneSelection.hpp"
+#include "SelectionFocus.hpp"
 #include "SceneSelectionValidation.hpp"
 #include "TransformEditorUIState.hpp"
 #include "ViewportSelectionController.hpp"
@@ -991,6 +992,21 @@ namespace ForgeSim::Sandbox
 
 			sceneViewportPanel.End();
 
+            const auto focusSelection = [&]
+            {
+                const auto focusBounds = SelectionFocusBounds(scene.Objects(),
+                    SceneLightingView{scene.MainDirectionalLight(), scene.PointLights(), scene.SpotLights()},
+                    selection, m_Renderer.ObjectLocalBounds());
+                if (!focusBounds) return;
+                const auto framing = CreateSceneCameraFraming(*focusBounds, aspectRatio);
+                cameraRestoreRequest = CaptureSceneCamera(framing.camera);
+                // Focusing changes the viewpoint, never the fly-speed setting or scene data.
+            };
+            if ((viewport.focusSelectionRequested || hierarchyPanel.FocusSelectionRequested()) &&
+                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable())
+                focusSelection();
+
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
 					.diagnosticsSnapshot =
@@ -1008,19 +1024,8 @@ namespace ForgeSim::Sandbox
                         static_cast<std::uint32_t>(viewport.framebufferExtent.height) } }
                     : std::nullopt,
                 .cameraRestoreRequest = cameraRestoreRequest,
-                .canFocusSelection = selection.SelectedObjectId().has_value(),
-                .focusSelection = [&]
-                {
-                    const auto id = selection.SelectedObjectId();
-                    const auto* object = id ? scene.FindObject(*id) : nullptr;
-                    if (!object) return;
-                    auto framing = CreateSceneCameraFraming(CalculateSceneBounds(
-                        std::span<const SandboxObject>{object, 1}, m_Renderer.ObjectLocalBounds()), aspectRatio);
-                    cameraRestoreRequest = CaptureSceneCamera(framing.camera);
-                    cameraController = std::move(framing.controller);
-                    if (scene.CameraMovementSpeed())
-                        cameraController.SetMovementSpeed(*scene.CameraMovementSpeed());
-                },
+                .canFocusSelection = !selection.Empty(),
+                .focusSelection = focusSelection,
                 .frameScene = [&]
                 {
                     auto framing = CreateSceneCameraFraming(CalculateSceneBounds(

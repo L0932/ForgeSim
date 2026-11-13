@@ -15,6 +15,7 @@ namespace ForgeSim::Sandbox
         Platform::FramebufferExtent framebufferExtent{};
 
         bool hovered = false;
+        bool focusSelectionRequested = false;
 
         [[nodiscard]] bool IsDrawable() const noexcept
         {

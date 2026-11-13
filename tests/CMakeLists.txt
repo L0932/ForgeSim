@@ -1488,3 +1488,15 @@ target_compile_features(ForgeSimCameraNavigationTests PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimCameraNavigationTests)
 set_target_properties(ForgeSimCameraNavigationTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.CameraNavigation COMMAND ForgeSimCameraNavigationTests)
+
+add_executable(ForgeSimSelectionFocusTests SelectionFocusTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraFraming.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/FreeCameraController.cpp)
+target_include_directories(ForgeSimSelectionFocusTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimSelectionFocusTests PRIVATE ForgeSim::Platform ForgeSim::Renderer)
+target_compile_features(ForgeSimSelectionFocusTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimSelectionFocusTests)
+set_target_properties(ForgeSimSelectionFocusTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.SelectionFocus COMMAND ForgeSimSelectionFocusTests)

@@ -19,6 +19,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Searchable Help > Keyboard Controls reference and context-aware F focus for
+  selected model instances and lights, shared with the Camera-panel action.
+
 - Import glTF models into the active scene for side-by-side comparisons, with
   independent model materials, bounds, selection, and save/reopen support.
 

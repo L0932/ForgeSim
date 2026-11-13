@@ -40,3 +40,6 @@ Opening or creating a scene resets navigation to that scene's saved fly speed,
 or uses 10 units/s when no speed is saved.
 This also applies after importing models, independently of camera viewpoint
 restoration. A manual speed remains attached to the current scene.
+
+Use **F** with Scene or Hierarchy focused to frame the selected model or light.
+See [Keyboard controls](KeyboardControls.md) for input contexts and shortcuts.

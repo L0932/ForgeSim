@@ -108,6 +108,11 @@ target_sources(
         SceneAssetRecovery.hpp
         SceneAssetRoot.hpp
         SceneAssetRoot.cpp
+        EditorShortcutContext.hpp
+        SceneKeyboardShortcuts.hpp
+        SelectionFocus.hpp
+        KeyboardControls.hpp
+        KeyboardControlsPanel.hpp
         ExternalSample.hpp
         BundledSamples.hpp
 		SceneFilePanel.hpp

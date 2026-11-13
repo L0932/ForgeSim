@@ -1,4 +1,5 @@
 #include "SceneHierarchyPanel.hpp"
+#include "SceneKeyboardShortcuts.hpp"
 #include "EditorSectionHeader.hpp"
 
 #include <algorithm>
@@ -66,11 +67,13 @@ namespace ForgeSim::Sandbox
 
     void SceneHierarchyPanel::Draw(const SceneHierarchyPanelContext& context)
     {
+        m_FocusSelectionRequested = false;
         if (!ImGui::Begin("Hierarchy"))
         {
             ImGui::End();
             return;
         }
+        m_FocusSelectionRequested = FocusSelectionShortcutPressed(context.interactionDisabled);
         // Compact list density belongs to the Hierarchy, independent of the
         // larger form controls in the Inspector and Debug panels.
         const auto padding = ImGui::GetStyle().FramePadding;

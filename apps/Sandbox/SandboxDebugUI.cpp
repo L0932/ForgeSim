@@ -376,7 +376,7 @@ namespace ForgeSim::Sandbox
             if (ImGui::Button("Frame scene") && context.frameScene) context.frameScene();
             ImGui::SameLine();
             ImGui::BeginDisabled(!context.canFocusSelection);
-            if (ImGui::Button("Focus selected object") && context.focusSelection) context.focusSelection();
+            if (ImGui::Button("Focus selection (F)") && context.focusSelection) context.focusSelection();
             ImGui::EndDisabled();
             ImGui::EndDisabled();
 

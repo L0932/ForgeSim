@@ -1,4 +1,5 @@
 #include "SceneFilePanel.hpp"
+#include "KeyboardControlsPanel.hpp"
 #include "BundledSamples.hpp"
 #include "EditorMainToolbar.hpp"
 #include "ExternalSample.hpp"
@@ -75,7 +76,13 @@ namespace ForgeSim::Sandbox
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Help"))
+        {
+            if (ImGui::MenuItem("Keyboard Controls...")) m_KeyboardControlsOpen = true;
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
+        DrawKeyboardControls(m_KeyboardControlsOpen, m_KeyboardControlsFilter);
     }
 
     void SceneFilePanel::SetExternalSamplePath(const std::filesystem::path& path)
