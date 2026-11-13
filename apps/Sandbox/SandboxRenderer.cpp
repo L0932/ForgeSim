@@ -2487,6 +2487,24 @@ namespace ForgeSim::Sandbox
 	}
 
 
+    ModelMaterialInspection SandboxRenderer::InspectModelMaterials(const std::string& modelReference) const
+    {
+        const auto binding = m_ModelBindings.find(modelReference);
+        if (binding == m_ModelBindings.end()) return {};
+        const auto cached = m_Models.find(binding->second);
+        const auto* model = cached == m_Models.end() ? nullptr : cached->second.get();
+        ModelMaterialInspection result;
+        result.asset = model ? &model->asset : &m_ObjectSceneAsset;
+        const auto& materials = model ? model->materials : m_GpuMaterialResources;
+        const auto handle = [](const GpuTextureBinding& texture) -> std::uint32_t
+        { return texture.texture ? texture.texture->Handle() : 0; };
+        result.textureHandles.reserve(materials.size());
+        for (const auto& material : materials)
+            result.textureHandles.push_back({handle(material.baseColor), handle(material.metallicRoughness),
+                handle(material.normal), handle(material.occlusion), handle(material.emissive)});
+        return result;
+    }
+
     void SandboxRenderer::LoadSceneModels(const std::filesystem::path& root,
         std::span<SandboxObject> objects,
         const std::optional<std::filesystem::path>& environmentPath,

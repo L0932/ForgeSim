@@ -1,4 +1,5 @@
 #pragma once
+#include "ModelMaterialInspection.hpp"
 #include <map>
 #include <memory>
 
@@ -189,6 +190,8 @@ namespace ForgeSim::Sandbox
 		void ClearWindow(
 			std::uint32_t width,
 			std::uint32_t height);
+
+        [[nodiscard]] ModelMaterialInspection InspectModelMaterials(const std::string& modelReference) const;
 
 	private:
 

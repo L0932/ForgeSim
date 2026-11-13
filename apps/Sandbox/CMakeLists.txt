@@ -119,6 +119,7 @@ target_sources(
         SceneFilePanel.cpp
 		SceneHierarchyPanel.hpp
 		SceneHierarchyPanel.cpp
+        ModelMaterialInspection.hpp
 		SceneInspectorPanel.hpp
 		SceneInspectorPanel.cpp
 		SceneLightEditing.hpp

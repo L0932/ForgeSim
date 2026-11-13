@@ -1124,7 +1124,10 @@ namespace ForgeSim::Sandbox
 						changePending ||
 						transformEditor.IsActive() ||
 						rightMouseDown,
-                    .transformEditor = &transformEditor
+                    .transformEditor = &transformEditor,
+                    .materials = selection.SelectedObjectId() && scene.FindObject(*selection.SelectedObjectId())
+                        ? m_Renderer.InspectModelMaterials(scene.FindObject(*selection.SelectedObjectId())->modelPath)
+                        : ModelMaterialInspection{}
 				});
 
 			bool openAfterFrame = false;

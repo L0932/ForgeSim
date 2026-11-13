@@ -1,4 +1,5 @@
 #pragma once
+#include "ModelMaterialInspection.hpp"
 
 #include "SceneLightValidation.hpp"
 
@@ -23,6 +24,7 @@ namespace ForgeSim::Sandbox
 
 		bool editingDisabled = false;
         SceneTransformEditor* transformEditor = nullptr;
+        ModelMaterialInspection materials;
 	};
 
 	class SceneInspectorPanel final
@@ -34,6 +36,7 @@ namespace ForgeSim::Sandbox
 	private:
 		void DrawLights(const SceneInspectorPanelContext& context);
 		void DrawObject(const SceneInspectorPanelContext& context);
+        void DrawMaterials(const ModelMaterialInspection& inspection);
 
 		[[nodiscard]] static float CalculatePositionDragSpeed(
 			const Renderer::AxisAlignedBoundingBox& bounds);
