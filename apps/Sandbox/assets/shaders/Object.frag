@@ -86,6 +86,7 @@ uniform int uSpotLightCount;
 uniform SpotLightData uSpotLights[maximumSpotLights];
 
 uniform float uEnvironmentIntensity;
+uniform bool uFlipEnvironmentVertically;
 uniform samplerCube uDiffuseIrradianceMap;
 uniform samplerCube uPrefilteredSpecularMap;
 uniform sampler2D uBrdfLookupTexture;
@@ -93,6 +94,14 @@ uniform float uMaximumSpecularLod;
 uniform float uRoughnessFactor;
 
 out vec4 fragColor;
+
+// Reflect only the environment lookup, preserving geometry, direct lighting,
+// and the BRDF. The same reflection applies to diffuse and specular IBL.
+vec3 EnvironmentSampleDirection(vec3 direction)
+{
+    if (uFlipEnvironmentVertically) direction.y=-direction.y;
+    return direction;
+}
 
 float DistributionGGX(
 	vec3 normal,
@@ -718,7 +727,7 @@ void main()
 	vec3 irradiance =
 		texture(
 			uDiffuseIrradianceMap,
-			normal).rgb * 
+            EnvironmentSampleDirection(normal)).rgb *
 			uEnvironmentIntensity;
 
 	vec3 indirectDiffuseLighting =
@@ -741,7 +750,7 @@ void main()
 	vec3 prefilteredEnvironment =
 		textureLod(
 			uPrefilteredSpecularMap,
-			reflectionDirection,
+            EnvironmentSampleDirection(reflectionDirection),
 			roughness *
 				uMaximumSpecularLod).rgb *
 		uEnvironmentIntensity;

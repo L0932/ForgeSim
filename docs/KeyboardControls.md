@@ -30,6 +30,10 @@ Update both when bindings change; list only implemented commands.
 | History | Ctrl+Z | Undo transform, pivot, creation, or deletion | No text entry, active edit, or scene-change confirmation |
 | History | Ctrl+Y / Ctrl+Shift+Z | Redo transform, pivot, creation, or deletion | No text entry, active edit, or scene-change confirmation |
 | Files | Ctrl+S | Save scene / choose destination | No text entry, active edit, navigation, or confirmation |
+| Capture | F9 | Save Scene PNG | Navigation stopped; no text input, active edit or popup |
+| Capture | Ctrl+F9 | Save full editor PNG | Feedback appears after image readback |
+| Panels | Shift+Space | Maximize / restore Scene | Scene focused; existing layout preserved |
+| Panels | Esc | Restore maximized Scene | Takes priority over orbit exit |
 | Panels | F1 | Show / hide ForgeSim Debug | No text entry or active control |
 | Console | Enter | Execute command | Console input focused |
 | Console | Up / Down | Recall command history | Console input focused |
@@ -211,3 +215,5 @@ Node gizmos use the same saved adjustments. Select a node and use W (move), E
 (rotate), or R (scale); X toggles world/local move and rotation axes. Scale uses
 local axes. A singular parent or a drag requiring local shear is rejected with
 feedback in Scene; numeric Inspector editing remains available.
+
+See [Screenshots.md](Screenshots.md) for screenshot output folders, capture contents and preview workflow.

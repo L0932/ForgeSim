@@ -10,6 +10,11 @@
 
 namespace ForgeSim::Sandbox
 {
+    namespace 
+    {
+        constexpr int SchemaVersion = 1;
+    }
+
     std::string_view EditorThemeName(EditorTheme theme) noexcept
     {
         switch (theme)
@@ -30,7 +35,7 @@ namespace ForgeSim::Sandbox
             if (input)
             {
                 const auto json = nlohmann::json::parse(input, nullptr, false);
-                if (json.is_object() && json.value("version", 0) == 1)
+                if (json.is_object() && json.value("version", 0) == SchemaVersion)
                 {
                     const auto name = json.value("theme", std::string{});
                     if (name == "ForgeSim Dark Blue") return EditorTheme::ForgeSimDarkBlue;
@@ -57,7 +62,7 @@ namespace ForgeSim::Sandbox
             if (!output)
                 return false;
             output << nlohmann::json{
-                {"version", 1}, {"theme", EditorThemeName(theme)}
+                {"version", SchemaVersion}, {"theme", EditorThemeName(theme)}
             }.dump(2) << '\n';
             output.close();
             return static_cast<bool>(output);

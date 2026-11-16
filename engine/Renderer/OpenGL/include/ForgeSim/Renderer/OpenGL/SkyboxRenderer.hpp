@@ -35,7 +35,7 @@ namespace ForgeSim::Renderer::OpenGL
 			const TextureCube& environmentMap,
 			const glm::mat4& view,
 			const glm::mat4& projection,
-			float intensity);
+			float intensity, bool flipVertically = false);
 
 		void ReloadShaders(
 			std::string_view vertexShaderSource,

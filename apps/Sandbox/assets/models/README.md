@@ -212,3 +212,15 @@ See `docs/TextureTransforms.md` for the layout and validation procedure.
 - Third-party attribution: None
 - License: No separate public license is currently granted
 - External files or textures: None
+
+
+## Chess sample models
+
+- `chess_set_1k.glb`: Chess Set by Riley Queen.
+  Source: https://polyhaven.com/a/chess_set
+- `chinese_tea_table_1k.glb`: Chinese Tea Table by Kirill Sannikov.
+  Source: https://polyhaven.com/a/chinese_tea_table
+- Both: Creative Commons Zero v1.0 Universal (CC0-1.0).
+  License: https://creativecommons.org/publicdomain/zero/1.0/
+- Modifications: supplied GLB files are unchanged. The ForgeSim Chess Board scene
+  applies per-instance transforms and node adjustments.

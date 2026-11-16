@@ -1,0 +1,214 @@
+{
+  "camera": {
+    "farClippingPlane": 84.67829132080078,
+    "forwardDirection": [
+      -0.7980871200561523,
+      -0.3553895950317383,
+      -0.4865751266479492
+    ],
+    "nearClippingPlane": 0.0011653391411527991,
+    "position": [
+      13.267468452453613,
+      10.916609764099121,
+      6.777568340301514
+    ],
+    "referenceViewport": {
+      "height": 1010,
+      "width": 1992
+    },
+    "upDirection": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "verticalFieldOfViewRadians": 0.7853981852531433
+  },
+  "cameraBookmarks": [
+    {
+      "camera": {
+        "farClippingPlane": 84.67829132080078,
+        "forwardDirection": [
+          -0.8805620670318604,
+          -0.3290925920009613,
+          -0.3410404622554779
+        ],
+        "nearClippingPlane": 0.0011653391411527991,
+        "position": [
+          10.162426948547363,
+          8.19847583770752,
+          3.332796096801758
+        ],
+        "referenceViewport": {
+          "height": 888,
+          "width": 1992
+        },
+        "upDirection": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "verticalFieldOfViewRadians": 0.7853981852531433
+      },
+      "name": "entryway_view"
+    }
+  ],
+  "cameraMovementSpeed": null,
+  "directionalLight": {
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "directionToLight": [
+      -0.609000027179718,
+      0.18400000035762787,
+      -0.27556127309799194
+    ],
+    "enabled": true,
+    "id": 1,
+    "intensity": 0.8500000238418579,
+    "position": [
+      0.0,
+      19.133241653442383,
+      0.0
+    ]
+  },
+  "editorVisibility": {
+    "hiddenLightIds": [],
+    "hiddenObjectIds": []
+  },
+  "name": "Chess Board",
+  "objects": [
+    {
+      "id": 1,
+      "modelPath": "assets/models/chess_set_1k.glb",
+      "name": "chess_set_1k",
+      "nodeOverrides": [
+        {
+          "nodeIndex": 14,
+          "transform": {
+            "pivot": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationRadians": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "nodeIndex": 26,
+          "transform": {
+            "pivot": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "position": [
+              -0.0007935931789688766,
+              0.0,
+              0.0
+            ],
+            "rotationRadians": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ],
+      "transform": {
+        "pivot": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.04308342933654785,
+          4.082165241241455,
+          0.029629945755004883
+        ],
+        "rotationRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          20.948928833007812,
+          20.948928833007812,
+          20.948928833007812
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "modelPath": "assets/models/chinese_tea_table_1k.glb",
+      "name": "chinese_tea_table_1k",
+      "nodeOverrides": [],
+      "transform": {
+        "pivot": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.2055656909942627,
+          -4.571474075317383,
+          0.0
+        ],
+        "rotationRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          17.324674606323242,
+          17.324674606323242,
+          17.324674606323242
+        ]
+      }
+    }
+  ],
+  "pointLights": [],
+  "rendering": {
+    "backgroundColor": [
+      0.03200000151991844,
+      0.035999998450279236,
+      0.04399999976158142
+    ],
+    "directionalShadows": {
+      "enabled": true,
+      "filteringEnabled": true,
+      "minimumBias": 0.0005000000237487257,
+      "slopeBias": 0.0024999999441206455
+    },
+    "environment": {
+      "asset": "assets/environments/thatch_chapel_4k.hdr",
+      "flipVertical": true,
+      "source": "projectAsset"
+    },
+    "environmentIntensity": 0.28999999165534973,
+    "exposure": 1.0,
+    "showEnvironmentBackground": true
+  },
+  "spotLights": [],
+  "version": 5
+}

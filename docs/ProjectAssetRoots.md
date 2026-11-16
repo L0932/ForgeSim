@@ -27,6 +27,18 @@ Scene model and project-environment references remain relative to this asset
 root. The manifest does not change scene documents or copy assets. Keep the
 manifest, scenes, and required assets together when moving a project or pack.
 
+## Standalone scene bundle convention
+
+A portable bundle can contain `ForgeSim.project.json`, `scenes/`, `models/`,
+`hdri/`, `screenshots/`, `ATTRIBUTIONS.md` and `README.md` at its root. Set
+`assetRoot` to `"."`; scene references then use `models/model.glb` and
+`hdri/environment.hdr`. Include external model buffers/textures if the format
+uses them. A saved scene JSON references assets; it does not embed them.
+
+Folder names are a convention rather than a loader requirement. Built-in samples
+share the application's `assets/models`, `assets/environments` and `assets/previews`
+folders to avoid duplicating common assets. Neither layout requires an absolute path.
+
 ## Resolver policy
 
 1. An explicit root override wins and must name an existing directory.

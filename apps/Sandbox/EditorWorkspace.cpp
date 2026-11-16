@@ -34,7 +34,7 @@ namespace ForgeSim::Sandbox
         {
             std::ifstream input(m_ViewPath);
             const auto saved = nlohmann::json::parse(input, nullptr, false);
-            if (saved.is_object() && saved.value("version", 0) == 1)
+            if (saved.is_object() && saved.value("version", 0) == SchemaVersion)
                 m_ShowMainToolbar = saved.value("showMainToolbar", true);
         }
         catch (...) { /* Invalid local preferences keep the default view. */ }
@@ -149,7 +149,7 @@ namespace ForgeSim::Sandbox
                     try
                     {
                         std::ofstream output(m_ViewPath, std::ios::trunc);
-                        output << nlohmann::json{{"version", 1},
+                        output << nlohmann::json{{"version", SchemaVersion},
                             {"showMainToolbar", m_ShowMainToolbar}}.dump(2) << '\n';
                         output.close();
                         if (!output) Core::LogWarning("Could not save editor view preference.");

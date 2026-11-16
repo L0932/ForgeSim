@@ -68,6 +68,7 @@ namespace ForgeSim::Sandbox
 		float environmentIntensity = 0.2f;
 
 		bool showEnvironmentBackground = false;
+        bool flipEnvironmentVertically = false;
 		bool showGrid = true;
 		bool showObjectBounds = false;
 		bool showLights = true;

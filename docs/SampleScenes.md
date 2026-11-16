@@ -9,15 +9,17 @@ editor, choose **File > Open Sample**:
 | --- | --- | --- |
 | Starter: Directional Shadows | Select and transform cubes, toggle visibility, and inspect directional shadows on a floor. | `ShadowTestCube.gltf` |
 | Material Gallery | Compare metallic and nonmetallic materials across roughness values. | `PbrMaterialGallery.glb` |
+| Chess Board | Inspect marble pieces and a wooden table under a warm interior HDRI. | `chess_set_1k.glb`, `chinese_tea_table_1k.glb`, `thatch_chapel_4k.hdr` |
 
 The cards use screenshots of the bundled scenes and preserve their aspect ratio.
 At narrower browser widths they stack vertically. A missing preview does not
 prevent opening the scene.
 
-Both use the bundled studio environment and require no separate downloads,
-texture fallback settings, project-root command, or scene JSON edits. The starter
-cube contains its own geometry and has no external textures. The application
-frames each sample automatically.
+The starter and gallery use the bundled studio environment; Chess Board uses
+Thatch Chapel with vertical environment flipping enabled. All required models,
+textures and environments ship with the package and need no separate downloads
+or texture fallback settings. The starter cube contains its own geometry.
+Saved sample cameras are restored; scenes without one are framed automatically.
 
 Samples open as editable copies. **Save** asks for a destination in your scene
 folder rather than writing into the installation. Opening a sample uses the

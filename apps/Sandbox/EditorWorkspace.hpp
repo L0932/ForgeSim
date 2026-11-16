@@ -12,6 +12,8 @@ namespace ForgeSim::Sandbox
     class EditorWorkspace final
     {
     public:
+        static constexpr int SchemaVersion = 1;
+
         // Call after creating the ImGui context, before the first frame.
         void Initialize();
 

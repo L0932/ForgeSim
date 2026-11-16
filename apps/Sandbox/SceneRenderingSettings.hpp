@@ -27,6 +27,7 @@ namespace ForgeSim::Sandbox
         float environmentIntensity = 0.2f;
 
         bool showEnvironmentBackground = false;
+        bool flipEnvironmentVertically = false;
         DirectionalShadowSettings directionalShadows{};
 
         SceneEnvironmentSource environmentSource =

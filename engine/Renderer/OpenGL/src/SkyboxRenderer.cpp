@@ -27,11 +27,13 @@ namespace ForgeSim::Renderer::OpenGL
 			constexpr std::string_view environmentIntensity =
 				"uEnvironmentIntensity";
 
+            constexpr std::string_view flipVertically = "uFlipEnvironmentVertically";
 			constexpr std::array required{
 				view,
 				projection,
 				environmentMap,
-				environmentIntensity
+				environmentIntensity,
+                flipVertically
 			};
 		}
 
@@ -109,7 +111,7 @@ namespace ForgeSim::Renderer::OpenGL
 		const TextureCube& environmentMap,
 		const glm::mat4& view,
 		const glm::mat4& projection,
-		float intensity)
+		float intensity, bool flipVertically)
 	{
 		GLint previousDepthFunction = GL_LESS;
 		GLboolean previousDepthWriteMask = GL_TRUE;
@@ -146,26 +148,13 @@ namespace ForgeSim::Renderer::OpenGL
 		m_ShaderProgram.SetFloat(
 			SkyboxShaderUniform::environmentIntensity,
 			intensity);
-
-		m_ShaderProgram.SetFloat(
-			SkyboxShaderUniform::environmentIntensity,
-			intensity);
+        m_ShaderProgram.SetInt(SkyboxShaderUniform::flipVertically,flipVertically ? 1 : 0);
 
 		// Remove any material sampler left bound to this unit so the
 		// cubemap uses its own filtering and wrapping configuration.
 		glBindSampler(
 			environmentTextureUnit,
 			0);
-
-		environmentMap.Bind(
-			environmentTextureUnit);
-
-		m_ShaderProgram.SetInt(
-			SkyboxShaderUniform::environmentMap,
-			static_cast<int>(
-				environmentTextureUnit));
-
-		m_VertexArray.Bind();
 
 		environmentMap.Bind(
 			environmentTextureUnit);

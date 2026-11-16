@@ -18,6 +18,21 @@ contains the detailed implementation record.
 
 ### Added
 
+- Bundled Chess Board sample with the supplied saved camera, node adjustments,
+  screenshot preview, Poly Haven chess/table models and Thatch Chapel HDRI.
+  Runtime packaging includes the assets and their attribution.
+
+- Reference grid, scene light guides and object bounds visibility are saved as
+  editor preferences across scene changes and application restarts.
+
+- Scene and full-editor PNG screenshots through Capture, F9 and Ctrl+F9, with
+  selectable output folder, unique filenames, and feedback after readback.
+  Shift+Space maximizes/restores Scene without changing the dock layout.
+
+- Per-scene vertical environment flipping, applied consistently to the HDRI
+  background, diffuse lighting and specular reflections. The Environment asset
+  section now groups orientation and background visibility with source controls.
+
 - Scene gizmos for imported node adjustments: move, rotate and local-axis scale,
   world/local axes, one-step drag undo/redo, and the existing scene persistence.
   Parent transforms remain intact; unsupported shear-producing drags report feedback.

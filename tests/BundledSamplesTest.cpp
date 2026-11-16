@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 
 namespace fs = std::filesystem;
@@ -42,10 +43,27 @@ int main()
         fs::create_directories(externalRoot);
         const fs::path source = FORGESIM_SAMPLE_ASSET_DIRECTORY;
         for (const auto& sample : BundledSamples)
+        {
             fs::copy_file(source / "scenes" / sample.filename,
                 bundle / "assets/scenes" / sample.filename);
-        for (const auto* model : {"ShadowTestCube.gltf", "PbrMaterialGallery.glb"})
-            fs::copy_file(source / "models" / model, bundle / "assets/models" / model);
+            Require(fs::is_regular_file(source / "previews" / sample.preview),
+                "Every bundled sample has a preview");
+            const auto authored = DeserializeSceneDocument([&]
+            {
+                std::ifstream input(source / "scenes" / sample.filename);
+                return std::string(std::istreambuf_iterator<char>(input), {});
+            }());
+            const auto copyReference = [&](const std::string& reference)
+            {
+                const auto destination = bundle / reference;
+                fs::create_directories(destination.parent_path());
+                fs::copy_file(source.parent_path() / reference, destination,
+                    fs::copy_options::overwrite_existing);
+            };
+            for (const auto& object : authored.objects) copyReference(object.modelPath);
+            if (authored.rendering.environmentSource == SceneEnvironmentSource::ProjectAsset)
+                copyReference(authored.rendering.environmentAsset);
+        }
 
         SceneDocument document;
         document.name = "External scene";
@@ -59,8 +77,22 @@ int main()
             Require(sample.ProjectRoot() == fs::canonical(bundle), "Sample uses bundled root");
             Require(!sample.ScenePath(), "Sample opens as an editable copy");
             Require(sample.DefaultSceneDirectory() == userDirectory, "Save dialog keeps user directory");
-            Require(sample.ModelPaths().size() == 1 && fs::is_regular_file(sample.ModelPaths().front()),
-                "Sample model resolves after relocation");
+            Require(!sample.ModelPaths().empty(), "Sample contains models");
+            for (const auto& model : sample.ModelPaths())
+                Require(fs::is_regular_file(model), "Every sample model resolves after relocation");
+            if (std::string_view(entry.filename) == "ChessBoard.scene.json")
+            {
+                const auto chess = sample.Scene().ToDocument();
+                Require(chess.name == "Chess Board" && chess.objects.size() == 2 && chess.camera &&
+                    chess.cameraBookmarks.size() == 1, "Chess sample retains scene content and saved cameras");
+                Require(chess.rendering.flipEnvironmentVertically &&
+                    chess.rendering.showEnvironmentBackground &&
+                    chess.rendering.environmentAsset == "assets/environments/thatch_chapel_4k.hdr" &&
+                    fs::is_regular_file(bundle / chess.rendering.environmentAsset),
+                    "Chess environment resolves with saved orientation and background visibility");
+                Require(chess.objects.front().nodeOverrides.size() == 2,
+                    "Chess node adjustments survive opening");
+            }
             bool failed = false;
             try { sample.Save(); } catch (const std::logic_error&) { failed = true; }
             Require(failed, "Save requires destination before writing sample");

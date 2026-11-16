@@ -8,6 +8,7 @@
 #include "TransformEditorUIState.hpp"
 #include "SceneViewportToolbar.hpp"
 #include "SceneViewportPanel.hpp"
+#include "ViewportDisplayPreferences.hpp"
 
 #include "SceneCameraData.hpp"
 #include "FreeCameraController.hpp"
@@ -142,9 +143,7 @@ namespace ForgeSim::Sandbox
 
 		bool m_IsVisible = true;
 		Renderer::FxaaSettings m_FxaaSettings{};
-		bool m_ShowGrid = true;
-		bool m_ShowLights = true;
-		bool m_ShowObjectBounds = false;
+        ViewportDisplayPreferences m_ViewportDisplay;
 		bool m_RuntimeDiagnosticsEnabled = false;
 		bool m_SelectionHighlightEnabled = true;
 

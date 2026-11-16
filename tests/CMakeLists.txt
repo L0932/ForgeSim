@@ -1637,3 +1637,31 @@ target_compile_definitions(ForgeSimNodeGizmoTests PRIVATE GLM_ENABLE_EXPERIMENTA
 forgesim_set_project_warnings(ForgeSimNodeGizmoTests)
 set_target_properties(ForgeSimNodeGizmoTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.NodeGizmo COMMAND ForgeSimNodeGizmoTests)
+
+add_executable(ForgeSimScreenshotTests ScreenshotTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/ScreenshotImage.cpp)
+target_include_directories(ForgeSimScreenshotTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimScreenshotTests PRIVATE ForgeSimStb)
+target_compile_features(ForgeSimScreenshotTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimScreenshotTests)
+set_target_properties(ForgeSimScreenshotTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.Screenshot COMMAND ForgeSimScreenshotTests)
+
+add_executable(ForgeSimViewportMaximizeTests ViewportMaximizeTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneViewportPanel.cpp)
+target_include_directories(ForgeSimViewportMaximizeTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimViewportMaximizeTests PRIVATE ForgeSim::ImGui ForgeSim::PlatformGLFW glm::glm-header-only)
+target_compile_features(ForgeSimViewportMaximizeTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimViewportMaximizeTests)
+set_target_properties(ForgeSimViewportMaximizeTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ViewportMaximize COMMAND ForgeSimViewportMaximizeTests)
+
+add_executable(ForgeSimViewportDisplayPreferencesTests ViewportDisplayPreferencesTest.cpp)
+target_include_directories(ForgeSimViewportDisplayPreferencesTests PRIVATE
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox)
+target_link_libraries(ForgeSimViewportDisplayPreferencesTests PRIVATE
+    nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimViewportDisplayPreferencesTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimViewportDisplayPreferencesTests)
+set_target_properties(ForgeSimViewportDisplayPreferencesTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.ViewportDisplayPreferences COMMAND ForgeSimViewportDisplayPreferencesTests)
