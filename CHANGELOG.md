@@ -18,6 +18,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Bundled Chess Board sample with the supplied saved camera, node adjustments,
+  screenshot preview, Poly Haven chess/table models and Thatch Chapel HDRI.
+  Runtime packaging includes the assets and their attribution.
+
 - Reference grid, scene light guides and object bounds visibility are saved as
   editor preferences across scene changes and application restarts.
 

@@ -1,6 +1,6 @@
 # Bundled sample previews
 
-DirectionalShadows.png and MaterialGallery.png are ForgeSim screenshots supplied
+DirectionalShadows.png, MaterialGallery.png and ChessBoard.png are ForgeSim screenshots supplied
 by the project author. They preview the bundled scene documents in the Samples
 browser and are not additional scene assets.
 

@@ -17,7 +17,10 @@ The installed notices directory contains upstream license documents
 copied from the dependency sources used by the build.
 
 Bundled model and environment attribution is recorded in the README
-files under assets/models and assets/environments.
+files under assets/models and assets/environments. The Chess Board sample includes
+Poly Haven's Chess Set (Riley Queen), Chinese Tea Table (Kirill Sannikov), and
+Thatch Chapel (Dimitrios Savva and Jarod Guest), distributed under CC0-1.0.
+Source links and modification details are recorded in those asset README files.
 
 Microsoft compiler runtime files may accompany Windows builds.
 

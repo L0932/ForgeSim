@@ -12,6 +12,7 @@ install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/DirectionalShadowTest.forgesim.json"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/MaterialGallery.scene.json"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/ChessBoard.scene.json"
     DESTINATION assets/scenes
     COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel
@@ -33,6 +34,8 @@ install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/PbrMaterialGallery.glb"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/ShadowTestCube.gltf"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/chess_set_1k.glb"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/chinese_tea_table_1k.glb"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/TextureTransformTest.gltf"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/BoxVertexColors.glb"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/models/README.md"
@@ -44,6 +47,7 @@ install(
 install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/studio_small_01_4k.hdr"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/thatch_chapel_4k.hdr"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/README.md"
     DESTINATION assets/environments
     COMPONENT SandboxRuntime
@@ -187,6 +191,7 @@ install(FILES "${FORGESIM_INSTALLED_SAMPLE_GUIDE}"
 install(FILES
     "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/DirectionalShadows.png"
     "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/MaterialGallery.png"
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/ChessBoard.png"
     "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/previews/README.md"
     DESTINATION assets/previews COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel)

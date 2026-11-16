@@ -18,7 +18,9 @@ namespace ForgeSim::Sandbox
         BundledSample{"Starter: Directional Shadows", "DirectionalShadowTest.forgesim.json",
             "Explore object transforms, visibility, and directional shadows.", "DirectionalShadows.png"},
         BundledSample{"Material Gallery", "MaterialGallery.scene.json",
-            "Compare metallic and nonmetallic materials across roughness values.", "MaterialGallery.png"}
+            "Compare metallic and nonmetallic materials across roughness values.", "MaterialGallery.png"},
+        BundledSample{"Chess Board", "ChessBoard.scene.json",
+            "Explore marble chess pieces, a wooden table and warm HDR environment lighting.", "ChessBoard.png"}
     };
 
     [[nodiscard]] inline bool IsBundledSample(std::string_view filename)
