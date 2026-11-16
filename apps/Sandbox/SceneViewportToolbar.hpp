@@ -15,6 +15,7 @@ namespace ForgeSim::Sandbox
     class SceneViewportTools final
     {
     public:
+        static constexpr int SchemaVersion = 1;
         enum class Placement { Left, Right, Top, Bottom, Floating };
 
         void Load(const std::filesystem::path& path)
@@ -24,7 +25,7 @@ namespace ForgeSim::Sandbox
             {
                 std::ifstream input(path);
                 const auto json = nlohmann::json::parse(input, nullptr, false);
-                if (!json.is_object() || json.value("version", 0) != 1) return;
+                if (!json.is_object() || json.value("version", 0) != SchemaVersion) return;
                 const int placement = json.at("placement").get<int>();
                 const float along = json.at("along").get<float>();
                 const float x = json.at("x").get<float>(), y = json.at("y").get<float>();
@@ -224,7 +225,7 @@ namespace ForgeSim::Sandbox
             try
             {
                 std::ofstream output(m_Path,std::ios::trunc);
-                if(output) output << nlohmann::json{{"version",1},{"placement",static_cast<int>(m_Placement)},
+                if(output) output << nlohmann::json{{"version",SchemaVersion},{"placement",static_cast<int>(m_Placement)},
                     {"along",m_Along},{"x",m_Floating.x},{"y",m_Floating.y},{"vertical",m_Vertical}}.dump(2) << '\n';
             }
             catch(...) { /* Placement remains usable when saving is unavailable. */ }

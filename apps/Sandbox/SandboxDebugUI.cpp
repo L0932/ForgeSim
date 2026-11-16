@@ -53,6 +53,7 @@ namespace ForgeSim::Sandbox
 
 		m_Workspace.Initialize();
         m_ViewportTools.Load(EditorSettingsDirectory() / "viewport-tools.json");
+        m_ViewportDisplay.Load(EditorSettingsDirectory() / "viewport-display.json");
 
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
@@ -178,7 +179,7 @@ namespace ForgeSim::Sandbox
 			}
 			catch (const std::exception& exception)
 			{
-				Core::LogWarning("Could not load the ForgeSim loading icon: " +
+				Core::LogInfo("Could not load the ForgeSim loading icon: " +
 					std::string{exception.what()});
 			}
 		}
@@ -291,17 +292,23 @@ namespace ForgeSim::Sandbox
         ImGui::Spacing();
         if (EditorSectionHeader("Viewport", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Checkbox(
+            bool displayChanged = ImGui::Checkbox(
                 "Show reference grid",
-                &m_ShowGrid);
+                &m_ViewportDisplay.showReferenceGrid);
 
-            ImGui::Checkbox(
+            displayChanged |= ImGui::Checkbox(
                 "Show object bounds",
-                &m_ShowObjectBounds);
+                &m_ViewportDisplay.showObjectBounds);
 
-            ImGui::Checkbox(
+            displayChanged |= ImGui::Checkbox(
                 "Show scene lights",
-                &m_ShowLights);
+                &m_ViewportDisplay.showSceneLights);
+
+            if (displayChanged && !m_ViewportDisplay.Save(
+                EditorSettingsDirectory() / "viewport-display.json"))
+            {
+                Core::LogWarning("Could not save viewport display preferences.");
+            }
 
             ImGui::Spacing();
         }
@@ -837,17 +844,17 @@ namespace ForgeSim::Sandbox
 
 	bool SandboxDebugUI::ShowGrid() const noexcept
 	{
-		return m_ShowGrid;
+		return m_ViewportDisplay.showReferenceGrid;
 	}
 
 	bool SandboxDebugUI::ShowLights() const noexcept
 	{
-		return m_ShowLights;
+		return m_ViewportDisplay.showSceneLights;
 	}
 
 	bool SandboxDebugUI::ShowObjectBounds() const noexcept
 	{
-		return m_ShowObjectBounds;
+		return m_ViewportDisplay.showObjectBounds;
 	}
 
 	bool SandboxDebugUI::RuntimeDiagnosticsEnabled()

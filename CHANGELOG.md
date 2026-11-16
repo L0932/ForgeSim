@@ -18,6 +18,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Reference grid, scene light guides and object bounds visibility are saved as
+  editor preferences across scene changes and application restarts.
+
 - Scene and full-editor PNG screenshots through Capture, F9 and Ctrl+F9, with
   selectable output folder, unique filenames, and feedback after readback.
   Shift+Space maximizes/restores Scene without changing the dock layout.
