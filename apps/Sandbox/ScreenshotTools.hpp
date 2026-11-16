@@ -11,6 +11,8 @@ namespace ForgeSim::Sandbox
     class ScreenshotTools final
     {
     public:
+        static constexpr int SchemaVersion = 1;
+
         void Initialize();
         void DrawMenu(SceneViewportPanel& viewport,bool actionsAllowed);
         void HandleShortcuts(bool blocked);

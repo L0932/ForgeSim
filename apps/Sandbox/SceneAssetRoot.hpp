@@ -5,6 +5,8 @@
 
 namespace ForgeSim::Sandbox
 {
+    static constexpr int SchemaVersion = 1; 
+
     enum class SceneAssetRootSource { ExplicitOverride, ProjectManifest, LegacyFallback };
 
     struct SceneAssetRoot

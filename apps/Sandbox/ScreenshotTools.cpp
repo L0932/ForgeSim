@@ -25,7 +25,7 @@ namespace ForgeSim::Sandbox
         {
             std::ifstream input(m_SettingsPath);
             const auto settings=nlohmann::json::parse(input,nullptr,false);
-            if(settings.is_object() && settings.value("version",0)==1 && settings.contains("directory") && settings["directory"].is_string())
+            if(settings.is_object() && settings.value("version",0)==SchemaVersion && settings.contains("directory") && settings["directory"].is_string())
             {
                 const auto raw=settings["directory"].get<std::string>();
                 const std::filesystem::path directory{std::u8string(raw.begin(),raw.end())};
@@ -96,7 +96,7 @@ namespace ForgeSim::Sandbox
     {
         m_Directory=std::filesystem::absolute(directory).lexically_normal();
         std::ofstream output(m_SettingsPath);
-        output<<nlohmann::json{{"version",1},{"directory",Utf8(m_Directory)}}.dump(2)<<'\n';output.close();
+        output<<nlohmann::json{{"version", SchemaVersion},{"directory",Utf8(m_Directory)}}.dump(2)<<'\n';output.close();
         if(!output) Core::LogWarning("Screenshot folder changed for this session, but could not save the preference.");
     }
 }

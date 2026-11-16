@@ -30,7 +30,7 @@ namespace ForgeSim::Sandbox
                 const auto json = nlohmann::json::parse(input);
                 if (input.bad()) throw std::runtime_error("Cannot finish reading project manifest.");
                 if (!json.is_object() || !json.contains("version") ||
-                    !json.at("version").is_number_integer() || json.at("version") != 1)
+                    !json.at("version").is_number_integer() || json.at("version") != SchemaVersion)
                     throw std::runtime_error("Expected project manifest version 1.");
                 if (!json.contains("assetRoot") || !json.at("assetRoot").is_string())
                     throw std::runtime_error("assetRoot must be a relative folder path or '.'.");
