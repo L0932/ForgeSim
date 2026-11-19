@@ -709,7 +709,26 @@ namespace ForgeSim::Sandbox
 			};
 		}
 
+		glm::vec3 CalculateSortCenter(const ForgeSim::Assets::MeshData& meshData)
+		{
+			if (meshData.vertices.empty())
+			{
+				return glm::vec3{ 0.0f };
+			}
 
+			const auto& first = meshData.vertices.front().position;
+			glm::vec3 minimum = { first[0], first[1], first[2] };
+			glm::vec3 maximum = minimum;
+
+			for (const auto& vertex : meshData.vertices)
+			{
+				glm::vec3 position = { vertex.position[0], vertex.position[1], vertex.position[2] };
+				minimum = glm::min(position, minimum);
+				maximum = glm::max(position, maximum);
+			}
+
+			return minimum + (maximum - minimum) * 0.5f;
+		}
 	}
 
 	void ExpandSceneNodeBounds(
@@ -1020,8 +1039,9 @@ namespace ForgeSim::Sandbox
 
 				m_RenderSubmissions.push_back(
 					RenderSubmission{
-						.mesh = &resource.mesh,
+						.mesh = &resource.mesh,						
 						.material = resource.materialIndex ? &materials.at(*resource.materialIndex) : nullptr,
+						.localSortCenter = resource.localSortCenter,
 						.modelTransform =
 							objectTransform *
 							nodeTransform,
@@ -1031,8 +1051,7 @@ namespace ForgeSim::Sandbox
 			}
 		}
 
-		for (const Assets::SceneNodeIndex childIndex :
-		node.childIndices)
+		for (const Assets::SceneNodeIndex childIndex :node.childIndices)
 		{
 			AppendSceneNodeSubmissions(
 				childIndex,
@@ -1190,6 +1209,7 @@ namespace ForgeSim::Sandbox
 							Renderer::OpenGL::GpuMesh{
 								primitive.geometry
 							},
+						.localSortCenter = CalculateSortCenter(primitive.geometry),
 						.sceneMeshIndex = meshIndex,
 						.materialIndex =
 							primitive.materialIndex
@@ -1791,21 +1811,15 @@ namespace ForgeSim::Sandbox
 					: Assets::AlphaMode::Opaque;
 			};
 
-		const auto cameraDistanceSquared =
-			[&cameraPosition](
-				const RenderSubmission& submission)
+		const auto cameraDepth =
+			[&view](const RenderSubmission& submission)
 			{
-				// Transparent submissions are sorted using
-				// their transformed mesh origins.
-				const glm::vec3 submissionPosition{
-					submission.modelTransform[3]
-				};
+				const glm::vec4 center =
+					view *
+					submission.modelTransform *
+					glm::vec4(submission.localSortCenter, 1.0f);
 
-				const glm::vec3 offset =
-					submissionPosition -
-					cameraPosition;
-
-				return glm::dot(offset, offset);
+				return -center.z;
 			};
 
 		std::stable_sort(
@@ -1834,10 +1848,10 @@ namespace ForgeSim::Sandbox
 					return false;
 				}
 
-				// Transparent geometry uses back-to-front
-				// ordering.
-				return cameraDistanceSquared(left) >
-					cameraDistanceSquared(right);
+				// Approximate back-to-front ordering using transformed
+				// primitive bounds centers in camera space.
+				// Large or intersecting transparent surfaces may sort incorrectly.
+				return cameraDepth(left) > cameraDepth(right);
 			});
 
 		const GLboolean cullFaceWasEnabled =

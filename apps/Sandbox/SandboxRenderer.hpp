@@ -228,6 +228,7 @@ namespace ForgeSim::Sandbox
 		{
 			const Renderer::OpenGL::GpuMesh* mesh = nullptr;
 			const GpuMaterialResource* material = nullptr;
+			glm::vec3 localSortCenter{ 0.0f };
 			glm::mat4 modelTransform{ 1.0f };
 			bool isSelected = false;
 			bool castsDirectionalShadows = true;
@@ -236,6 +237,7 @@ namespace ForgeSim::Sandbox
 		struct GpuPrimitiveResource
 		{
 			Renderer::OpenGL::GpuMesh mesh;
+			glm::vec3 localSortCenter{ 0.0f };
 			Assets::SceneMeshIndex sceneMeshIndex;
 			std::optional<Assets::MaterialIndex> materialIndex;
 		};
