@@ -9,6 +9,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Correct split-sum environment specular lighting to use normal-incidence
+  reflectance, avoiding duplicate Fresnel brightening at grazing view angles.
+
 - Correct normal-map bitangent handedness for glTF meshes without tangents and
   for transformed normal-map UVs, preserving authored tangent attributes.
 

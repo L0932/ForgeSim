@@ -779,10 +779,13 @@ void main()
 				normalDotView,
 				roughness)).rg;
 
+	// The lookup already integrates Schlick Fresnel into A and B.
+	// Reconstruct with the material's F0, not angle-adjusted Fresnel,
+	// which would apply the grazing-angle response a second time.
 	vec3 indirectSpecularLighting =
 		prefilteredEnvironment *
 		(
-			environmentFresnel *
+			reflectanceAtNormalIncidence *
 				integratedBrdf.x +
 			integratedBrdf.y
 		) *
