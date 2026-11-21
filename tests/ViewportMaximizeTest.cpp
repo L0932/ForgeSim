@@ -45,7 +45,36 @@ int main()
         io.AddKeyEvent(ImGuiKey_Escape,false);frame();
         blocked=true;io.AddKeyEvent(ImGuiMod_Shift,true);io.AddKeyEvent(ImGuiKey_Space,true);frame();
         Require(!panel.Maximized(),"Text input should block viewport maximize shortcut");
-        std::cout<<"Viewport maximize, dock restoration, keyboard controls and Escape layout restoration passed\n";
+        blocked=false;
+        io.AddKeyEvent(ImGuiKey_Space,false);io.AddKeyEvent(ImGuiMod_Shift,false);frame();
+        ImGui::SetWindowFocus("Scene");frame();
+        io.AddKeyEvent(ImGuiMod_Shift,true);io.AddKeyEvent(ImGuiKey_H,true);frame();
+        Require(state.toggleSelectionHighlightRequested,"Shift+H should toggle selection overlays");
+        frame();
+        Require(!state.toggleSelectionHighlightRequested,"Holding H must not repeat the overlay toggle");
+        io.AddKeyEvent(ImGuiKey_H,false);io.AddKeyEvent(ImGuiMod_Shift,false);frame();
+        io.AddKeyEvent(ImGuiMod_Ctrl,true);io.AddKeyEvent(ImGuiKey_H,true);frame();
+        Require(!state.toggleSelectionHighlightRequested,"Ctrl+H must not toggle overlays");
+        io.AddKeyEvent(ImGuiKey_H,false);io.AddKeyEvent(ImGuiMod_Ctrl,false);frame();
+        ImGui::SetWindowFocus("Inspector");
+        io.AddMousePosEvent(state.position.x+state.size.x*.5f,state.position.y+state.size.y*.5f);
+        frame();frame();
+        Require(state.hovered,"Test cursor should hover over viewport content");
+        io.AddKeyEvent(ImGuiMod_Shift,true);io.AddKeyEvent(ImGuiKey_H,true);frame();
+        Require(state.toggleSelectionHighlightRequested,"Shift+H should work over Scene with Inspector focused");
+        io.AddKeyEvent(ImGuiKey_H,false);frame();
+        blocked=true;io.AddKeyEvent(ImGuiKey_H,true);frame();
+        Require(!state.toggleSelectionHighlightRequested,"Text input must block hovered overlay shortcuts");
+        blocked=false;io.AddKeyEvent(ImGuiKey_H,false);io.AddKeyEvent(ImGuiMod_Shift,false);frame();
+        io.AddKeyEvent(ImGuiKey_H,true);frame();
+        Require(!state.toggleSelectionHighlightRequested,"Unmodified H must not toggle overlays");
+        io.AddKeyEvent(ImGuiKey_H,false);frame();
+        io.AddKeyEvent(ImGuiMod_Ctrl,true);io.AddKeyEvent(ImGuiMod_Shift,true);
+        io.AddKeyEvent(ImGuiKey_H,true);frame();
+        Require(!state.toggleSelectionHighlightRequested,"Ctrl+Shift+H must not trigger Shift+H");
+        io.AddKeyEvent(ImGuiKey_H,false);io.AddKeyEvent(ImGuiMod_Ctrl,false);
+        io.AddKeyEvent(ImGuiMod_Shift,false);frame();
+        std::cout<<"Viewport maximize, dock restoration, keyboard controls and selection-overlay routing passed\n";
     }
     catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
     ImGui::DestroyContext();

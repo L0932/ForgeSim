@@ -3,6 +3,8 @@
 #include "DirectionalShadowSettings.hpp"
 
 #include <string>
+#include <optional>
+#include <cstdint>
 
 #include <glm/vec3.hpp>
 
@@ -15,6 +17,19 @@ namespace ForgeSim::Sandbox
         ProjectAsset
     };
 
+    enum class SceneToneMapping { AcesApproximation, Standard };
+
+    struct SceneViewportDisplaySettings
+    {
+        bool showReferenceGrid = true;
+        bool showSceneLights = true;
+        bool showObjectBounds = false;
+        bool showSelectionHighlight = true;
+        bool showTransformGizmo = true;
+
+        bool operator==(const SceneViewportDisplaySettings&) const = default;
+    };
+
     struct SceneRenderingSettings
     {
         glm::vec3 backgroundColor{
@@ -24,6 +39,7 @@ namespace ForgeSim::Sandbox
         };
 
         float exposure = 1.0f;
+        SceneToneMapping toneMapping = SceneToneMapping::AcesApproximation;
         float environmentIntensity = 0.2f;
 
         bool showEnvironmentBackground = false;
@@ -33,5 +49,7 @@ namespace ForgeSim::Sandbox
         SceneEnvironmentSource environmentSource =
             SceneEnvironmentSource::BundledStudio;
         std::string environmentAsset{};
+        SceneViewportDisplaySettings viewport{};
+        std::optional<std::uint64_t> orbitObjectId;
     };
 }

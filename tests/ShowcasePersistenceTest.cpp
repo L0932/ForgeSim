@@ -155,6 +155,114 @@ namespace
         ExpectFailure([&] { static_cast<void>(CreateSceneCamera(impossible)); }, "position");
     }
 
+    void TestToneMappingPersistence()
+    {
+        TemporaryDirectory directory;
+        SceneDocument document;
+        Require(document.rendering.toneMapping == SceneToneMapping::AcesApproximation,
+            "Existing scenes must retain the ACES approximation by default.");
+        EditorSession session{document, directory.Path()};
+        auto settings = session.Scene().RenderingSettings();
+        settings.toneMapping = SceneToneMapping::Standard;
+        Require(!session.Scene().TrySetRenderingSettings(settings), "Standard output was rejected.");
+        Require(session.HasUnsavedChanges(), "Changing the display transform must mark the scene modified.");
+        session.SaveAs("Standard.scene.json");
+        const auto reopened = session.PrepareOpen("Standard.scene.json");
+        Require(reopened.Scene().RenderingSettings().toneMapping == SceneToneMapping::Standard &&
+            !reopened.HasUnsavedChanges(), "Saved display transform was not restored.");
+        Require(reopened.PrepareNew().Scene().RenderingSettings().toneMapping == SceneToneMapping::AcesApproximation,
+            "New scene must reset the display transform.");
+        auto legacy = Json::parse(SerializeSceneDocument(document));
+        legacy["rendering"].erase("toneMapping");
+        Require(DeserializeSceneDocument(legacy.dump()).rendering.toneMapping == SceneToneMapping::AcesApproximation,
+            "Omitted display transform must retain the previous rendering behavior.");
+        legacy["rendering"]["toneMapping"] = "unknown";
+        ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(legacy.dump())); }, "rendering.toneMapping");
+        legacy["rendering"]["toneMapping"] = 1;
+        ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(legacy.dump())); }, "rendering.toneMapping");
+        document.rendering.toneMapping = static_cast<SceneToneMapping>(99);
+        ExpectFailure([&] { static_cast<void>(SerializeSceneDocument(document)); }, "toneMapping");
+    }
+
+    void TestShowcaseOrbitPersistence()
+    {
+        TemporaryDirectory directory;
+        WriteFile(directory.Path() / "model.glb", "asset placeholder");
+        SceneDocument document;
+        document.objects.push_back({.id = 17, .name = "Showcase", .modelPath = "model.glb"});
+        EditorSession session{document, directory.Path()};
+        session.SaveAs("Orbit.scene.json");
+        auto settings = session.Scene().RenderingSettings();
+        settings.orbitObjectId = 17;
+        Require(!session.Scene().TrySetRenderingSettings(settings), "Object orbit was rejected");
+        Require(!session.Scene().TrySetSavedCamera(Camera()), "Showcase camera was rejected");
+        Require(session.HasUnsavedChanges(), "Saved orbit must mark the scene modified");
+        session.Save();
+        auto reopened = session.PrepareOpen("Orbit.scene.json");
+        Require(reopened.Scene().RenderingSettings().orbitObjectId == 17 &&
+            reopened.Scene().SavedCamera()->position == Camera().position,
+            "Orbit target and viewpoint must survive save/reopen");
+        Require(!session.PrepareNew().Scene().RenderingSettings().orbitObjectId,
+            "New scenes must not inherit orbit");
+        auto legacy = Json::parse(SerializeSceneDocument(session.Scene().ToDocument()));
+        legacy["rendering"].erase("orbitObjectId");
+        Require(!DeserializeSceneDocument(legacy.dump()).rendering.orbitObjectId,
+            "Older scenes must start without orbit");
+        for (const auto& invalid : {Json(0), Json(999), Json(-1), Json(true), Json("17")})
+        {
+            auto malformed = legacy;
+            malformed["rendering"]["orbitObjectId"] = invalid;
+            ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(malformed.dump())); }, "orbitObjectId");
+        }
+        Require(reopened.Scene().RemoveObject(17) && !reopened.Scene().RenderingSettings().orbitObjectId,
+            "Deleting the target must clear saved orbit");
+        reopened.Save();
+        Require(!reopened.PrepareOpen("Orbit.scene.json").Scene().RenderingSettings().orbitObjectId,
+            "Deleted target orbit must remain disabled after reopening");
+    }
+
+    void TestViewportDisplayPersistence()
+    {
+        TemporaryDirectory directory;
+        EditorSession session{SceneDocument{}, directory.Path()};
+        session.SaveAs("Visibility.scene.json");
+        auto settings = session.Scene().RenderingSettings();
+        for (int mask = 0; mask < 32; ++mask)
+        {
+            settings.viewport = {bool(mask & 1), bool(mask & 2), bool(mask & 4),
+                bool(mask & 8), bool(mask & 16)};
+            settings.toneMapping = mask & 1 ? SceneToneMapping::Standard : SceneToneMapping::AcesApproximation;
+            Require(!session.Scene().TrySetRenderingSettings(settings), "Visibility settings were rejected.");
+            Require(session.HasUnsavedChanges(), "Visibility edit did not mark scene modified.");
+            session.Save();
+            Require(!session.HasUnsavedChanges(), "Saving visibility did not reset dirty state.");
+            const auto reopened = session.PrepareOpen("Visibility.scene.json");
+            Require(reopened.Scene().RenderingSettings().viewport == settings.viewport &&
+                reopened.Scene().RenderingSettings().toneMapping == settings.toneMapping,
+                "Visibility or display transform did not survive save/reopen.");
+        }
+        Require(session.PrepareNew().Scene().RenderingSettings().viewport == SceneViewportDisplaySettings{},
+            "New scene inherited viewport visibility.");
+        auto legacy = Json::parse(SerializeSceneDocument(session.Scene().ToDocument()));
+        legacy["rendering"].erase("viewport");
+        Require(DeserializeSceneDocument(legacy.dump()).rendering.viewport == SceneViewportDisplaySettings{},
+            "Older scene did not receive viewport defaults.");
+        legacy["rendering"]["viewport"] = {{"showSceneLights", false}};
+        auto partial = SceneViewportDisplaySettings{};
+        partial.showSceneLights = false;
+        Require(DeserializeSceneDocument(legacy.dump()).rendering.viewport == partial,
+            "Missing visibility fields did not receive defaults.");
+        for (const char* field : {"showReferenceGrid", "showSceneLights", "showObjectBounds",
+            "showSelectionHighlight", "showTransformGizmo"})
+        {
+            auto malformed = legacy;
+            malformed["rendering"]["viewport"][field] = "false";
+            ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(malformed.dump())); }, field);
+        }
+        legacy["rendering"]["viewport"] = false;
+        ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(legacy.dump())); }, "rendering.viewport");
+    }
+
     void TestShadowPersistenceAndDefaults()
     {
         TemporaryDirectory directory;
@@ -355,6 +463,9 @@ int main()
     {
         TestBookmarksAndCameraRestoration();
         TestShadowPersistenceAndDefaults();
+        TestToneMappingPersistence();
+        TestViewportDisplayPersistence();
+        TestShowcaseOrbitPersistence();
         TestMalformedShowcaseData();
         TestEnvironmentFiles();
         TestEnvironmentOrientation();

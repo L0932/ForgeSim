@@ -8,7 +8,6 @@
 #include "TransformEditorUIState.hpp"
 #include "SceneViewportToolbar.hpp"
 #include "SceneViewportPanel.hpp"
-#include "ViewportDisplayPreferences.hpp"
 
 #include "SceneCameraData.hpp"
 #include "FreeCameraController.hpp"
@@ -72,6 +71,8 @@ namespace ForgeSim::Sandbox
         bool orbitActive = false;
         bool focusActive = false;
         std::function<void()> toggleOrbit;
+        bool canOrbitObject = false;
+        std::function<void(bool)> setSavedObjectOrbit;
         std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};
@@ -97,7 +98,6 @@ namespace ForgeSim::Sandbox
 			std::optional<std::string_view> error = std::nullopt);
 		void BeginFrame();
         void ResetSceneControls();
-        void ShowWorkspaceGrid();
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 
@@ -117,15 +117,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] bool WantsKeyboardCapture()
 			const noexcept;
 
-		[[nodiscard]] bool ShowGrid() const noexcept;
         [[nodiscard]] const Renderer::FxaaSettings& Fxaa() const noexcept { return m_FxaaSettings; }
-        void ToggleSelectionHighlight() noexcept { m_SelectionHighlightEnabled = !m_SelectionHighlightEnabled; }
-		[[nodiscard]] bool ShowLights() const noexcept;
-
-		[[nodiscard]] bool ShowObjectBounds() const noexcept;
-
-		[[nodiscard]] bool SelectionHighlightEnabled()
-			const noexcept;
 		[[nodiscard]] const glm::vec3& SelectionHighlightColor()
 			const noexcept;
 		[[nodiscard]] float SelectionHighlightStrength()
@@ -145,9 +137,7 @@ namespace ForgeSim::Sandbox
 
 		bool m_IsVisible = true;
 		Renderer::FxaaSettings m_FxaaSettings{};
-        ViewportDisplayPreferences m_ViewportDisplay;
 		bool m_RuntimeDiagnosticsEnabled = false;
-		bool m_SelectionHighlightEnabled = true;
 
 		glm::vec3 m_SelectionHighlightColor{
 			1.0f,

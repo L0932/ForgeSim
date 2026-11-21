@@ -488,7 +488,9 @@ bool BuildNormalBasis(vec3 normal, vec3 positionDx, vec3 positionDy,
         vec3 perpendicular = normalize(cross(normal, tangent));
         float orientation = dot(perpendicular, rawBitangent);
         if (abs(orientation) <= 0.000000000001) return false;
-        bitangent = perpendicular * sign(orientation);
+        // Increasing glTF V points down; normal-map +Y points up.
+        // Match the convention in authored/generated glTF tangent.w.
+        bitangent = -perpendicular * sign(orientation);
     }
 
     basis = mat3(tangent, bitangent, normal);
@@ -777,10 +779,13 @@ void main()
 				normalDotView,
 				roughness)).rg;
 
+	// The lookup already integrates Schlick Fresnel into A and B.
+	// Reconstruct with the material's F0, not angle-adjusted Fresnel,
+	// which would apply the grazing-angle response a second time.
 	vec3 indirectSpecularLighting =
 		prefilteredEnvironment *
 		(
-			environmentFresnel *
+			reflectanceAtNormalIncidence *
 				integratedBrdf.x +
 			integratedBrdf.y
 		) *

@@ -17,7 +17,7 @@ Update both when bindings change; list only implemented commands.
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
 | Camera | Ctrl+F | Toggle orbit mode around selection | Scene hovered or focused, or Hierarchy focused; navigation stopped; no active focus return |
 | Camera | RMB drag / Wheel | Orbit / zoom around selection | Orbit mode active; wheel over Scene |
-| Selection | Shift+H | Show / hide selection highlight | Scene or Hierarchy focused; selection stays active |
+| Selection | Shift+H | Show / hide selection tint and transform gizmo | Scene hovered or focused, or Hierarchy focused; selection stays active |
 | Selection | F | Toggle selection focus / previous view | Scene hovered or focused, or Hierarchy focused; navigation stopped; orbit inactive |
 | Selection | Double-click label | Select and toggle focus on object, imported node, or light | Hierarchy |
 | Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
@@ -217,14 +217,26 @@ without geometry cannot start orbit mode.
 - Ctrl+F and the Camera orbit button cannot start orbit while a focus return view
   is active. Press F to return, or navigate to end focus, before entering orbit.
 
-Press **Shift+H** with Scene or Hierarchy focused, or uncheck **Show selection highlight** in the Camera panel to hide the selection
-tint while retaining the selection, Inspector target, and editing controls.
-This shares the existing highlight setting under **ForgeSim Debug > Selection**.
+The Camera panel and **ForgeSim Debug > Selection** provide independent
+**Show selection highlight** and **Show transform gizmo** checkboxes. Either can
+be disabled while the other remains visible.
+
+Press **Shift+H** with Scene hovered/focused or Hierarchy focused to control both
+at once: if either overlay is visible, both are hidden; if both are hidden, both
+are shown. The selection, Inspector target, and focus/orbit target stay active.
+These display options do not hide objects. They mark the scene modified and are
+saved with it. Text entry, active controls, popups, navigation, and active gizmo
+drags block the shortcut.
 
 Mouse input pauses during text entry, active controls, gizmo edits, scene-change
 confirmation, and popups. RMB capture still begins only inside Scene and releases
-when navigation stops. Orbit is temporary navigation state; it does not mark the
-scene modified, change saved viewpoints, or save an orbit mode in the scene file.
+when navigation stops. The Camera **Orbit selected object** checkbox saves a showcase orbit target and
+updates the saved viewpoint as you orbit. It is available with one object selected.
+Saving and reopening restores that object selection, orbit mode, and the bottom
+**Orbit mode** navigation hint. New scenes and older scenes start with it disabled.
+Changing selection, importing a model, framing the scene, restoring a camera pose, or exiting orbit
+clears the saved orbit option. Ctrl+F on one object and the checkbox toggle the same saved orbit setting.
+Group and light orbit remain temporary navigation.
 
 ## Imported node adjustments
 

@@ -120,6 +120,8 @@ target_sources(
 		SceneHierarchyPanel.hpp
 		SceneHierarchyPanel.cpp
         ModelMaterialInspection.hpp
+        TexturePreview.hpp
+        TexturePreviewCache.hpp
 		SceneInspectorPanel.hpp
 		SceneInspectorPanel.cpp
 		SceneLightEditing.hpp

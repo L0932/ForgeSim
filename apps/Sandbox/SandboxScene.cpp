@@ -102,7 +102,11 @@ namespace ForgeSim::Sandbox
         return true;
     }
     bool SandboxScene::RemoveObject(SandboxObjectId id)
-    { return RemoveEntity(m_Objects, m_HiddenObjects, id); }
+    {
+        if (!RemoveEntity(m_Objects, m_HiddenObjects, id)) return false;
+        if (m_RenderingSettings.orbitObjectId == id) m_RenderingSettings.orbitObjectId.reset();
+        return true;
+    }
     bool SandboxScene::RemovePointLight(SceneLightId id)
     { return RemoveEntity(m_PointLights, m_HiddenLights, id); }
     bool SandboxScene::RemoveSpotLight(SceneLightId id)

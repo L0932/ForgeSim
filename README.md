@@ -80,6 +80,9 @@ Rendering features include:
 - [`KHR_materials_unlit`](docs/UnlitMaterials.md) base-color shading with alpha support
 - Runtime shader validation and hot reloading
 
+Inspector texture preview conventions are documented in [Material Texture Previews](docs/MaterialTexturePreviews.md).
+See [Display Transforms](docs/DisplayTransforms.md) for Standard/sRGB output and Blender lighting comparisons.
+
 ### PBR Material Validation Gallery
 
 The Sandbox opens an empty workspace with an editor reference grid, one white

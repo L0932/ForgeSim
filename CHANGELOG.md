@@ -5,61 +5,86 @@ This file records meaningful changes in published ForgeSim releases.
 Changes under Unreleased have not yet been published. Git history
 contains the detailed implementation record.
 
-## [Unreleased]
+## [0.1.0-preview.11] - 2026-11-21
 
 ### Fixed
 
-- Refresh owning model bounds immediately after node undo/redo so whole-model
-  picking and directional shadow fitting match the current geometry in the same frame.
-
+- Keep Ctrl+F object orbit and the Camera checkbox synchronized through the same
+  saved orbit action.
+- Save viewport grid, light guide, bounds, selection highlight and transform gizmo
+  visibility per scene, restoring defaults for older files and new scenes.
+- Correct split-sum environment specular lighting to use normal-incidence
+  reflectance, avoiding duplicate Fresnel brightening at grazing view angles.
+- Correct normal-map bitangent handedness for glTF meshes without tangents and
+  for transformed normal-map UVs, preserving authored tangent attributes.
+- Correct Inspector base-color and emissive previews using independent source-color
+  textures. Add packed RGB, roughness (G), and metallic (B) views without changing
+  rendering textures, source images, or material factors.
 - Startup and New Scene now share an empty workspace with a reference grid,
   directional light, neutral background, studio environment lighting, and an angled
   camera with a 0.1 near clip. The Material Gallery remains available through Samples.
   Empty scene startup no longer loads an unused gallery model.
+- Creating a new scene restores default viewport visibility, including the reference
+  grid, scene light guides, selection highlight and transform gizmo.
 
 ### Added
 
+- A scene-persistent Camera checkbox for orbiting one selected showcase object,
+  restoring its target, viewpoint and Orbit mode hint when opened.
+- Separate GUI controls for selection highlighting and transform gizmo visibility,
+  with Shift+H retained as a combined hide/show shortcut.
+- Shift+H toggles the selection tint and transform gizmo together,
+  keeping the Inspector selection active. It works over viewport content.
+- Scene-persistent Standard/sRGB display output alongside the default ACES
+  approximation, with exposure retained and HDR highlights clipped for comparison.
+- Full-resolution Inspector texture inspection with fit, 1:1, pointer-centered
+  zoom, drag panning, and source pixel values for comparing exported texture data.
+  Fit follows window resizing; manual zoom and pan remain stable until Fit is selected.
 - Support glTF `KHR_materials_unlit` materials, including required extension
   declarations, base-color textures, vertex colors and existing alpha modes.
 
-- Bundled Chess Board sample with the supplied saved camera, node adjustments,
-  screenshot preview, Poly Haven chess/table models and Thatch Chapel HDRI.
-  Runtime packaging includes the assets and their attribution.
+## [0.1.0-preview.10] - 2026-11-16
 
-- Reference grid, scene light guides and object bounds visibility are saved as
-  editor preferences across scene changes and application restarts.
+### Added
 
-- Scene and full-editor PNG screenshots through Capture, F9 and Ctrl+F9, with
-  selectable output folder, unique filenames, and feedback after readback.
-  Shift+Space maximizes/restores Scene without changing the dock layout.
+- Bundled Chess Board sample with chess pieces, a wooden tea table, Thatch
+  Chapel HDRI, saved viewpoint, node adjustments, preview image, and packaged
+  Poly Haven asset attribution.
+- Scene and full-editor PNG screenshots through Capture, F9, and Ctrl+F9,
+  with an output-folder picker, unique filenames, and capture feedback.
+- Shift+Space maximizes or restores Scene while preserving the dock layout.
+- Per-scene vertical HDRI flipping, applied consistently to the environment
+  background, diffuse lighting, and specular reflections.
+- Persistent editor preferences for reference grid, scene light guides,
+  and object bounds visibility across scene changes and application restarts.
+- Imported model node selection through Hierarchy or Alt-click geometry,
+  with subtree highlighting, focus, and inspection of local transforms,
+  world bounds, mesh references, and associated materials.
+- Per-instance node transform adjustments through Inspector and scene gizmos,
+  including translation, rotation, local-axis scale, world/local axes, Reset,
+  undo/redo, and version 5 scene persistence. Rendering, shadows, picking,
+  bounds, and focus follow the adjusted hierarchy. Model instances retain
+  independent adjustments without changing shared source assets.
+- Toggle selection focus and the previous camera view with F, Hierarchy label
+  double-clicks, or Camera controls. Supports objects, groups, node subtrees,
+  and lights.
+- Ctrl+F selection orbit with RMB-drag rotation, wheel zoom, Camera controls,
+  and an on-screen navigation hint. Exiting orbit can restore the previous view.
+- Shift+H toggles selection highlighting without clearing the selection.
 
-- Per-scene vertical environment flipping, applied consistently to the HDRI
-  background, diffuse lighting and specular reflections. The Environment asset
-  section now groups orientation and background visibility with source controls.
+### Changed
 
-- Scene gizmos for imported node adjustments: move, rotate and local-axis scale,
-  world/local axes, one-step drag undo/redo, and the existing scene persistence.
-  Parent transforms remain intact; unsupported shear-producing drags report feedback.
+- Startup loads the bundled Material Gallery scene with its saved camera,
+  navigation speed, lighting, and rendering settings.
+- Group environment background visibility and vertical flipping under
+  Environment asset.
+- Centralize JSON schema-version constants for editor preferences and
+  project manifests.
 
-- Per-instance node adjustments in the Inspector: local position/rotation offsets,
-  scale multipliers, Reset, undo/redo, and version 5 scene persistence. Rendering,
-  shadows, picking, bounds and focus follow the adjusted hierarchy. Model copies
-  retain independent adjustments; shared source assets stay unchanged.
+### Fixed
 
-- Shift+H toggles selection highlighting from Scene or Hierarchy without clearing
-  the selection or changing the active editing target.
-
-- Ctrl+F selection orbit mode with RMB-drag rotation, wheel zoom, a Scene status
-  hint, and Camera-panel controls. Ctrl+F, F or Hierarchy double-click restores
-  the pre-orbit view; Esc keeps the current view. The Camera panel also exposes
-  the selection highlight toggle without clearing the selection.
-- Toggle between framing the selection and the previous camera view with F,
-  Hierarchy label double-clicks, or the Camera-panel action. Supports objects,
-  groups, imported node subtrees and lights; return state resets on selection or
-  scene changes and refocuses after manual camera movement.
-- Select imported model nodes through Hierarchy labels or Alt-click geometry in
-  Scene. Highlight and focus the selected subtree, and inspect its local
-  transform, world bounds, mesh references and associated materials.
+- Refresh model bounds immediately after node undo/redo so model picking
+  and directional shadow fitting use the current geometry.
 
 ## [0.1.0-preview.9] - 2026-11-12
 

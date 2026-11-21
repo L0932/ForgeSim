@@ -1,11 +1,13 @@
 #pragma once
 #include "ModelMaterialInspection.hpp"
+#include "TexturePreviewCache.hpp"
 #include "ModelNodeQuery.hpp"
 #include "SceneSelection.hpp"
 #include <map>
 #include <memory>
 
 #include "DirectionalShadowSettings.hpp"
+#include "SceneRenderingSettings.hpp"
 #include "SandboxObject.hpp"
 #include "SceneLight.hpp"
 #include "ShaderFileMonitor.hpp"
@@ -65,6 +67,7 @@ namespace ForgeSim::Sandbox
 		glm::vec3 backgroundColor{ 0.0f };
 
 		float exposure = 1.0f;
+        SceneToneMapping toneMapping = SceneToneMapping::AcesApproximation;
 		float environmentIntensity = 0.2f;
 
 		bool showEnvironmentBackground = false;
@@ -295,6 +298,7 @@ namespace ForgeSim::Sandbox
         };
         std::map<std::filesystem::path, std::shared_ptr<ModelResources>> m_Models;
         mutable std::map<const Assets::SceneAsset*, ModelNodeQuery> m_NodeQueries;
+        mutable TexturePreviewCache m_TexturePreviews;
         std::map<std::string, std::filesystem::path> m_ModelBindings;
 
 		void UploadObjectModelResources(

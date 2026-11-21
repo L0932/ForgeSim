@@ -21,9 +21,12 @@ namespace ForgeSim::Renderer::OpenGL
 			constexpr std::string_view exposure =
 				"uExposure";
 
+            constexpr std::string_view applyToneMapping = "uApplyToneMapping";
+
 			constexpr std::array required{
 				hdrTexture,
-				exposure
+				exposure,
+                applyToneMapping
 			};
 		}
 
@@ -59,7 +62,8 @@ namespace ForgeSim::Renderer::OpenGL
 
 	void ToneMappingRenderer::RenderToDefaultFramebuffer(
 		const HdrRenderTarget& source,
-		float exposure)
+		float exposure,
+        bool applyToneMapping)
 	{
 		HdrRenderTarget::BindDefault();
 
@@ -69,13 +73,14 @@ namespace ForgeSim::Renderer::OpenGL
 			static_cast<GLsizei>(source.Width()),
 			static_cast<GLsizei>(source.Height()));
 
-		Draw(source, exposure);
+		Draw(source, exposure, applyToneMapping);
 	}
 
 	void ToneMappingRenderer::RenderToTarget(
 		const HdrRenderTarget& source,
 		ColorRenderTarget& destination,
-		float exposure)
+		float exposure,
+        bool applyToneMapping)
 	{
 		destination.Resize(source.Width(), source.Height());
 		destination.Bind();
@@ -86,14 +91,15 @@ namespace ForgeSim::Renderer::OpenGL
 			static_cast<GLsizei>(destination.Width()),
 			static_cast<GLsizei>(destination.Height()));
 
-		Draw(source, exposure);
+		Draw(source, exposure, applyToneMapping);
 
 		HdrRenderTarget::BindDefault();
 	}
 
 	void ToneMappingRenderer::Draw(
 		const HdrRenderTarget& source,
-		float exposure)
+		float exposure,
+        bool applyToneMapping)
 	{
 		const GLboolean depthTestWasEnabled =
 			glIsEnabled(GL_DEPTH_TEST);
@@ -118,6 +124,8 @@ namespace ForgeSim::Renderer::OpenGL
 		m_ShaderProgram.SetFloat(
 			ToneMappingShaderUniform::exposure,
 			exposure);
+
+        m_ShaderProgram.SetInt(ToneMappingShaderUniform::applyToneMapping, applyToneMapping ? 1 : 0);
 
 		m_VertexArray.Bind();
 

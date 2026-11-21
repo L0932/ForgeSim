@@ -416,10 +416,14 @@ namespace ForgeSim::Assets
 							"non-finite handedness.");
 					}
 
+					// glTF UVs have a top-left origin, while the normal
+					// texture's +Y points up. The raw UV derivative
+					// follows increasing V (down), so reverse its sign.
+					// Authored glTF tangents already encode this convention.
 					handedness =
 						handednessValue < 0.0f
-						? -1.0f
-						: 1.0f;
+						? 1.0f
+						: -1.0f;
 				}
 
 				generatedTangents.push_back({

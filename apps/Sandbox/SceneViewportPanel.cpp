@@ -60,7 +60,6 @@ namespace ForgeSim::Sandbox
         }
 
         m_ToggleMaximizeAfterFrame=SceneShortcutPressed(ImGuiKey_Space,false,false,true);
-        m_State.toggleSelectionHighlightRequested = ToggleSelectionHighlightShortcutPressed();
         m_State.deleteSelectionRequested = DeleteSelectionShortcutPressed();
         m_State.duplicateSelectionRequested = DuplicateSelectionShortcutPressed();
 
@@ -107,8 +106,10 @@ namespace ForgeSim::Sandbox
                     position.y + size.y
                 });
 
-        // F, Ctrl+F and Esc opt into hover routing; other shortcuts retain keyboard-focus
+        // F, Ctrl+F, selection overlays and Esc opt into hover routing; other shortcuts retain keyboard-focus
         // requirements. Hover must be over scene content, not its tab/title bar.
+        m_State.toggleSelectionHighlightRequested =
+            ToggleSelectionHighlightShortcutPressed(false, m_State.hovered);
         m_State.focusSelectionRequested = FocusSelectionShortcutPressed(false, m_State.hovered);
         m_State.orbitSelectionRequested = OrbitSelectionShortcutPressed(false, m_State.hovered);
         const bool escapeRequested = SceneShortcutPressed(ImGuiKey_Escape, false, false, false, m_State.hovered);

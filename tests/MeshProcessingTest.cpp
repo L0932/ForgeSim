@@ -254,12 +254,48 @@ int main()
 
                 if (!NearlyEqual(lengthSquared, 1.0f) ||
                     !NearlyEqual(normalDotTangent, 0.0f) ||
-                    !NearlyEqual(vertex.tangent[3], 1.0f))
+                    !NearlyEqual(vertex.tangent[3], -1.0f))
                 {
                     std::cerr
                         << "Generated tangent basis was incorrect\n";
 
                     return EXIT_FAILURE;
+                }
+            }
+        }
+
+        // The same normal map must shade identically with exported glTF
+        // tangents and generated tangents. This triangle uses top-left UVs:
+        // increasing V is +Y in geometry, so normal-map +Y must be -Y.
+        {
+            MeshData mesh;
+            mesh.vertices = {
+                MeshVertex{.position = {0, 0, 0}, .normal = {0, 0, 1},
+                    .textureCoordinates = {0, 0}},
+                MeshVertex{.position = {1, 0, 0}, .normal = {0, 0, 1},
+                    .textureCoordinates = {1, 0}},
+                MeshVertex{.position = {0, 1, 0}, .normal = {0, 0, 1},
+                    .textureCoordinates = {0, 1}}
+            };
+            mesh.indices = {0, 1, 2};
+            mesh.availableAttributes.normals = true;
+            mesh.availableAttributes.textureCoordinates = true;
+            for (const bool mirroredV : {false, true})
+            {
+                MeshData generated = mesh;
+                if (mirroredV)
+                    generated.vertices[2].textureCoordinates[1] = -1.0f;
+                GenerateMissingNormalsAndTangents(generated, true);
+                for (const auto& vertex : generated.vertices)
+                {
+                    // Decode tangent-space (0, .6, .8) via B = cross(N,T)*w.
+                    const float mappedY = .6f * vertex.tangent[0] * vertex.tangent[3];
+                    const float expectedY = mirroredV ? .6f : -.6f;
+                    if (!NearlyEqual(mappedY, expectedY))
+                    {
+                        std::cerr << "Generated frame reverses normal-map green\n";
+                        return EXIT_FAILURE;
+                    }
                 }
             }
         }
@@ -475,8 +511,8 @@ int main()
             }
         }
 
-        // Mirrored texture coordinates should generate negative
-        // tangent-space handedness.
+        // Mirroring U/V changes glTF tangent-space handedness from
+        // negative to positive (normal-map +Y opposes increasing V).
         {
             MeshData mesh;
 
@@ -515,7 +551,7 @@ int main()
                 if (!NearlyEqual(vertex.tangent[0], 0.0f) ||
                     !NearlyEqual(vertex.tangent[1], 1.0f) ||
                     !NearlyEqual(vertex.tangent[2], 0.0f) ||
-                    !NearlyEqual(vertex.tangent[3], -1.0f))
+                    !NearlyEqual(vertex.tangent[3], 1.0f))
                 {
                     std::cerr
                         << "Mirrored UV tangent had incorrect "
