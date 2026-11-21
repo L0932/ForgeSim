@@ -17,7 +17,6 @@ Update both when bindings change; list only implemented commands.
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
 | Camera | Ctrl+F | Toggle orbit mode around selection | Scene hovered or focused, or Hierarchy focused; navigation stopped; no active focus return |
 | Camera | RMB drag / Wheel | Orbit / zoom around selection | Orbit mode active; wheel over Scene |
-| Camera | Esc | Exit orbit at current view | Scene or Hierarchy focused; no text entry or modal |
 | Selection | Shift+H | Show / hide selection highlight | Scene or Hierarchy focused; selection stays active |
 | Selection | F | Toggle selection focus / previous view | Scene hovered or focused, or Hierarchy focused; navigation stopped; orbit inactive |
 | Selection | Double-click label | Select and toggle focus on object, imported node, or light | Hierarchy |
@@ -33,7 +32,7 @@ Update both when bindings change; list only implemented commands.
 | Capture | F9 | Save Scene PNG | Navigation stopped; no text input, active edit or popup |
 | Capture | Ctrl+F9 | Save full editor PNG | Feedback appears after image readback |
 | Panels | Shift+Space | Maximize / restore Scene | Scene focused; existing layout preserved |
-| Panels | Esc | Restore maximized Scene | Takes priority over orbit exit |
+| Panels | Esc | Restore maximized Scene | Preserves orbit mode |
 | Panels | F1 | Show / hide ForgeSim Debug | No text entry or active control |
 | Console | Enter | Execute command | Console input focused |
 | Console | Up / Down | Recall command history | Console input focused |
@@ -69,7 +68,7 @@ subtrees without geometry have no focus bounds.
 
 F is suppressed while typing, editing a numeric control, using a gizmo, navigating
 with RMB, holding modifier keys, or while a popup/scene-change dialog is open.
-Hovering the scene allows F and Ctrl+F even when another panel has keyboard focus, provided
+Hovering the scene allows F, Ctrl+F and Esc even when another panel has keyboard focus, provided
 no text or numeric input is active. Other scene shortcuts retain their existing
 keyboard-focus requirements. With no selection F does nothing. Hierarchy double-click focus is also suppressed while interactions are
 blocked or modifier keys are held.
@@ -191,13 +190,14 @@ without geometry cannot start orbit mode.
 - While orbiting, WASD fly movement is suspended. Pitch and zoom distance are
   bounded to avoid camera flips or crossing through the pivot.
 - Ctrl+F again or the Camera panel's Exit orbit button restores the view from
-  before orbit started. Esc exits while keeping the current orbit view.
+  before orbit started. Ctrl+F also works while hovering Scene. Esc does not
+  exit orbit; it only restores the panel layout when Scene is maximized.
   An active-mode hint appears in Scene.
 - Changing selection, deleting the target, New/Open/import, explicit Frame scene,
   or restoring/editing a camera pose exits orbit. Moving the same selected target
   updates the pivot while retaining the orbit offset.
 - Ordinary F, Hierarchy double-click focus, and the Camera focus button do
-  nothing while orbit is active. Exit orbit with Ctrl+F or Esc first.
+  nothing while orbit is active. Exit orbit with Ctrl+F first.
 - Ctrl+F and the Camera orbit button cannot start orbit while a focus return view
   is active. Press F to return, or navigate to end focus, before entering orbit.
 

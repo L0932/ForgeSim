@@ -389,7 +389,7 @@ namespace ForgeSim::Sandbox
             ImGui::BeginDisabled(!context.canFocusSelection || (context.focusActive && !context.orbitActive));
             if (ImGui::Button(context.orbitActive ? "Exit orbit (Ctrl+F)" : "Orbit selection (Ctrl+F)") && context.toggleOrbit)
                 context.toggleOrbit();
-            ImGui::SetItemTooltip("RMB drag orbits; wheel zooms. Ctrl+F returns to the previous view; Esc keeps the current view.");
+            ImGui::SetItemTooltip("RMB drag orbits; wheel zooms. Ctrl+F exits orbit and returns to the previous view.");
             ImGui::EndDisabled();
             ImGui::Checkbox("Show selection highlight (Shift+H)##Camera", &m_SelectionHighlightEnabled);
             ImGui::SetItemTooltip("Hide the selection tint while keeping objects selected. Also available under ForgeSim Debug > Selection.");

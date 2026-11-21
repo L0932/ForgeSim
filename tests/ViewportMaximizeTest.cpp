@@ -41,11 +41,11 @@ int main()
         Require(panel.Maximized(),"Shift+Space should maximize a focused Scene");
         io.AddKeyEvent(ImGuiKey_Space,false);io.AddKeyEvent(ImGuiMod_Shift,false);frame();
         io.AddKeyEvent(ImGuiKey_Escape,true);frame();
-        Require(!panel.Maximized() && !state.exitOrbitRequested,"Escape should restore maximized Scene without exiting orbit");
+        Require(!panel.Maximized(),"Escape should restore maximized Scene");
         io.AddKeyEvent(ImGuiKey_Escape,false);frame();
         blocked=true;io.AddKeyEvent(ImGuiMod_Shift,true);io.AddKeyEvent(ImGuiKey_Space,true);frame();
         Require(!panel.Maximized(),"Text input should block viewport maximize shortcut");
-        std::cout<<"Viewport maximize, dock restoration, keyboard controls and Escape priority passed\n";
+        std::cout<<"Viewport maximize, dock restoration, keyboard controls and Escape layout restoration passed\n";
     }
     catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
     ImGui::DestroyContext();

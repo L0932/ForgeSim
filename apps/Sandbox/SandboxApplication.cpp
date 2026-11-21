@@ -1136,7 +1136,7 @@ namespace ForgeSim::Sandbox
 
             if (selectionOrbit.Active() && viewport.IsDrawable())
                 ImGui::GetWindowDrawList()->AddText(ImVec2(viewport.position.x+12,viewport.position.y+viewport.size.y-24),
-                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return | Esc: keep view");
+                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return");
             if (!transformEditor.NodeGizmoMessage().empty() && viewport.IsDrawable())
                 ImGui::GetWindowDrawList()->AddText(nullptr,0,ImVec2(viewport.position.x+12,viewport.position.y+12),
                     IM_COL32(255,210,130,255),transformEditor.NodeGizmoMessage().data(),nullptr,
@@ -1185,13 +1185,6 @@ namespace ForgeSim::Sandbox
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard())
                 m_DebugUI.ToggleSelectionHighlight();
-            if (selectionOrbit.Active() && (viewport.exitOrbitRequested || hierarchyPanel.ExitOrbitRequested()) &&
-                !changePending && !transformEditor.IsActive() && !sceneFilePanel.ConsoleWantsKeyboard())
-            {
-                selectionOrbit.Stop();
-                viewportNavigationActive=false;
-                m_Window.SetCursorMode(Platform::CursorMode::Normal);
-            }
             if ((viewport.orbitSelectionRequested || hierarchyPanel.OrbitSelectionRequested()) &&
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable()) toggleOrbit();
