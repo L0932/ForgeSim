@@ -81,6 +81,7 @@ Rendering features include:
 - Runtime shader validation and hot reloading
 
 Inspector texture preview conventions are documented in [Material Texture Previews](docs/MaterialTexturePreviews.md).
+See [Display Transforms](docs/DisplayTransforms.md) for Standard/sRGB output and Blender lighting comparisons.
 
 ### PBR Material Validation Gallery
 

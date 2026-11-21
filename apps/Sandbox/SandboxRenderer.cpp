@@ -2155,7 +2155,8 @@ namespace ForgeSim::Sandbox
             if (!m_FxaaSource)
                 m_FxaaSource.emplace(settings.framebufferWidth, settings.framebufferHeight);
             m_ToneMappingRenderer.RenderToTarget(
-                *m_HdrRenderTarget, *m_FxaaSource, settings.exposure);
+                *m_HdrRenderTarget, *m_FxaaSource, settings.exposure,
+                settings.toneMapping == SceneToneMapping::AcesApproximation);
             if (settings.renderToTexture)
             {
                 if (!m_ColorRenderTarget)
@@ -2180,13 +2181,15 @@ namespace ForgeSim::Sandbox
 			m_ToneMappingRenderer.RenderToTarget(
 				*m_HdrRenderTarget,
 				*m_ColorRenderTarget,
-				settings.exposure);
+				settings.exposure,
+                settings.toneMapping == SceneToneMapping::AcesApproximation);
 		}
 		else
 		{
 			m_ToneMappingRenderer.RenderToDefaultFramebuffer(
 				*m_HdrRenderTarget,
-				settings.exposure);
+				settings.exposure,
+                settings.toneMapping == SceneToneMapping::AcesApproximation);
 		}
 	}
 

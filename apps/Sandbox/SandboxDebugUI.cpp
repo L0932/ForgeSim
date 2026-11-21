@@ -568,7 +568,18 @@ namespace ForgeSim::Sandbox
 
             ImGui::EndDisabled();
 
-            ImGui::TextWrapped("Exposure");
+            ImGui::TextWrapped("Display transform");
+            ImGui::SetNextItemWidth(-1.0f);
+            int toneMapping = static_cast<int>(rendering.toneMapping);
+            if (ImGui::Combo("##DisplayTransform", &toneMapping, "ACES approximation\0Standard / sRGB\0"))
+            {
+                rendering.toneMapping = static_cast<SceneToneMapping>(toneMapping);
+                renderingChanged = true;
+            }
+            if (rendering.toneMapping == SceneToneMapping::Standard)
+                ImGui::TextWrapped("Standard clips highlights above 1; exposure and sRGB conversion still apply.");
+
+            ImGui::TextWrapped("Exposure (multiplier)");
             ImGui::SetNextItemWidth(-1.0f);
             renderingChanged |= ImGui::SliderFloat(
                 "##Exposure",

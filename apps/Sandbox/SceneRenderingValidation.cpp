@@ -28,6 +28,10 @@ namespace ForgeSim::Sandbox
             };
         }
 
+        if (settings.toneMapping != SceneToneMapping::AcesApproximation &&
+            settings.toneMapping != SceneToneMapping::Standard)
+            return RenderingValidationError{.property = "toneMapping", .message = "Unknown tone mapping mode."};
+
         if (!std::isfinite(settings.exposure) ||
             settings.exposure <= 0.0f)
         {

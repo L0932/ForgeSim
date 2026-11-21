@@ -155,6 +155,35 @@ namespace
         ExpectFailure([&] { static_cast<void>(CreateSceneCamera(impossible)); }, "position");
     }
 
+    void TestToneMappingPersistence()
+    {
+        TemporaryDirectory directory;
+        SceneDocument document;
+        Require(document.rendering.toneMapping == SceneToneMapping::AcesApproximation,
+            "Existing scenes must retain the ACES approximation by default.");
+        EditorSession session{document, directory.Path()};
+        auto settings = session.Scene().RenderingSettings();
+        settings.toneMapping = SceneToneMapping::Standard;
+        Require(!session.Scene().TrySetRenderingSettings(settings), "Standard output was rejected.");
+        Require(session.HasUnsavedChanges(), "Changing the display transform must mark the scene modified.");
+        session.SaveAs("Standard.scene.json");
+        const auto reopened = session.PrepareOpen("Standard.scene.json");
+        Require(reopened.Scene().RenderingSettings().toneMapping == SceneToneMapping::Standard &&
+            !reopened.HasUnsavedChanges(), "Saved display transform was not restored.");
+        Require(reopened.PrepareNew().Scene().RenderingSettings().toneMapping == SceneToneMapping::AcesApproximation,
+            "New scene must reset the display transform.");
+        auto legacy = Json::parse(SerializeSceneDocument(document));
+        legacy["rendering"].erase("toneMapping");
+        Require(DeserializeSceneDocument(legacy.dump()).rendering.toneMapping == SceneToneMapping::AcesApproximation,
+            "Omitted display transform must retain the previous rendering behavior.");
+        legacy["rendering"]["toneMapping"] = "unknown";
+        ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(legacy.dump())); }, "rendering.toneMapping");
+        legacy["rendering"]["toneMapping"] = 1;
+        ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(legacy.dump())); }, "rendering.toneMapping");
+        document.rendering.toneMapping = static_cast<SceneToneMapping>(99);
+        ExpectFailure([&] { static_cast<void>(SerializeSceneDocument(document)); }, "toneMapping");
+    }
+
     void TestShadowPersistenceAndDefaults()
     {
         TemporaryDirectory directory;
@@ -355,6 +384,7 @@ int main()
     {
         TestBookmarksAndCameraRestoration();
         TestShadowPersistenceAndDefaults();
+        TestToneMappingPersistence();
         TestMalformedShowcaseData();
         TestEnvironmentFiles();
         TestEnvironmentOrientation();

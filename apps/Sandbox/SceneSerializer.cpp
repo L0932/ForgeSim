@@ -82,6 +82,7 @@ namespace ForgeSim::Sandbox
                     WriteVector(settings.backgroundColor)
                 },
                 { "exposure", settings.exposure },
+                { "toneMapping", settings.toneMapping == SceneToneMapping::Standard ? "standard" : "acesApproximation" },
                 {
                     "environmentIntensity",
                     settings.environmentIntensity
@@ -426,6 +427,14 @@ namespace ForgeSim::Sandbox
                     ReadMember(value, "showEnvironmentBackground", property),
                     property + ".showEnvironmentBackground")
             };
+
+            if (const auto toneMapping = value.find("toneMapping"); toneMapping != value.end())
+            {
+                const auto mode = ReadString(*toneMapping, property + ".toneMapping");
+                if (mode == "standard") settings.toneMapping = SceneToneMapping::Standard;
+                else if (mode != "acesApproximation")
+                    ReadError(property + ".toneMapping", "Unknown tone mapping mode.");
+            }
 
             const auto shadows = value.find("directionalShadows");
 

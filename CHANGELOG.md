@@ -23,6 +23,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Scene-persistent Standard/sRGB display output alongside the default ACES
+  approximation, with exposure retained and HDR highlights clipped for comparison.
+
 - Full-resolution Inspector texture inspection with fit, 1:1, pointer-centered
   zoom, drag panning, and source pixel values for comparing exported texture data.
   Fit follows window resizing; manual zoom and pan remain stable until Fit is selected.

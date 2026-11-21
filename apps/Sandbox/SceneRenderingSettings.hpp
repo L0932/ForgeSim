@@ -15,6 +15,8 @@ namespace ForgeSim::Sandbox
         ProjectAsset
     };
 
+    enum class SceneToneMapping { AcesApproximation, Standard };
+
     struct SceneRenderingSettings
     {
         glm::vec3 backgroundColor{
@@ -24,6 +26,7 @@ namespace ForgeSim::Sandbox
         };
 
         float exposure = 1.0f;
+        SceneToneMapping toneMapping = SceneToneMapping::AcesApproximation;
         float environmentIntensity = 0.2f;
 
         bool showEnvironmentBackground = false;

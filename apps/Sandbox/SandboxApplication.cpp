@@ -1076,6 +1076,7 @@ namespace ForgeSim::Sandbox
 					scene.RenderingSettings().backgroundColor,
 
 				.exposure = scene.RenderingSettings().exposure,
+                .toneMapping = scene.RenderingSettings().toneMapping,
 
 				.environmentIntensity =
 					scene.RenderingSettings().environmentIntensity,

@@ -4,6 +4,7 @@ in vec2 vTextureCoordinates;
 
 uniform sampler2D uHdrTexture;
 uniform float uExposure;
+uniform int uApplyToneMapping;
 
 out vec4 fragColor;
 
@@ -56,7 +57,8 @@ void main()
 		max(uExposure, 0.0);
 
 	vec3 toneMappedColor =
-		ToneMapAces(exposedColor);
+        uApplyToneMapping != 0 ? ToneMapAces(exposedColor)
+            : clamp(exposedColor, 0.0, 1.0);
 
 	fragColor =
 		vec4(

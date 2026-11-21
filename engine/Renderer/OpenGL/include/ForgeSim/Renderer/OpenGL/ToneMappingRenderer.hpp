@@ -18,9 +18,12 @@ namespace ForgeSim::Renderer::OpenGL
 			std::string_view vertexShaderSource,
 			std::string_view fragmentShaderSource);
 
+        // Disabling tone mapping preserves exposure and sRGB conversion, with
+        // clipping to the SDR display range instead of the ACES approximation.
 		void RenderToDefaultFramebuffer(
 			const HdrRenderTarget& source,
-			float exposure);
+			float exposure,
+            bool applyToneMapping = true);
 
 		void ReloadShaders(
 			std::string_view vertexShaderSource,
@@ -29,12 +32,14 @@ namespace ForgeSim::Renderer::OpenGL
 		void RenderToTarget(
 			const HdrRenderTarget& source,
 			ColorRenderTarget& destination,
-			float exposure);
+			float exposure,
+            bool applyToneMapping = true);
 
 	private:
 		void Draw(
 			const HdrRenderTarget& source,
-			float exposure);
+			float exposure,
+            bool applyToneMapping);
 
 		ShaderProgram m_ShaderProgram;
 		Sampler m_Sampler;

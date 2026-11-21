@@ -43,6 +43,11 @@ namespace
             !ValidateSceneRendering(settings).has_value(),
             "Default rendering settings were rejected.");
 
+        settings.toneMapping = SceneToneMapping::Standard;
+        Require(!ValidateSceneRendering(settings), "Standard output was rejected.");
+        settings.toneMapping = static_cast<SceneToneMapping>(99);
+        ExpectError(settings, "toneMapping");
+        settings.toneMapping = SceneToneMapping::AcesApproximation;
         settings.backgroundColor = { 0.0f, 1.0f, 0.5f };
         settings.environmentIntensity = 0.0f;
         settings.showEnvironmentBackground = true;

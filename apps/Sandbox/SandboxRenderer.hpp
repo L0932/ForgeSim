@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "DirectionalShadowSettings.hpp"
+#include "SceneRenderingSettings.hpp"
 #include "SandboxObject.hpp"
 #include "SceneLight.hpp"
 #include "ShaderFileMonitor.hpp"
@@ -66,6 +67,7 @@ namespace ForgeSim::Sandbox
 		glm::vec3 backgroundColor{ 0.0f };
 
 		float exposure = 1.0f;
+        SceneToneMapping toneMapping = SceneToneMapping::AcesApproximation;
 		float environmentIntensity = 0.2f;
 
 		bool showEnvironmentBackground = false;
