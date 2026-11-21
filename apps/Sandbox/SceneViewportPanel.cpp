@@ -61,7 +61,6 @@ namespace ForgeSim::Sandbox
 
         const bool restoreMaximized=m_Maximized && ExitOrbitShortcutPressed();
         m_ToggleMaximizeAfterFrame=restoreMaximized || SceneShortcutPressed(ImGuiKey_Space,false,false,true);
-        m_State.focusSelectionRequested = FocusSelectionShortcutPressed();
         m_State.orbitSelectionRequested = OrbitSelectionShortcutPressed();
         m_State.exitOrbitRequested = !restoreMaximized && ExitOrbitShortcutPressed();
         m_State.toggleSelectionHighlightRequested = ToggleSelectionHighlightShortcutPressed();
@@ -110,6 +109,10 @@ namespace ForgeSim::Sandbox
                     position.x + size.x,
                     position.y + size.y
                 });
+
+        // Only F opts into hover routing; other shortcuts retain keyboard-focus
+        // requirements. Hover must be over scene content, not its tab/title bar.
+        m_State.focusSelectionRequested = FocusSelectionShortcutPressed(false, m_State.hovered);
 
         return m_State;
     }

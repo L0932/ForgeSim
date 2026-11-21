@@ -87,10 +87,70 @@ namespace
         const auto afterReset=toggle.Toggle(selection,bounds,world,beforeReset,1.6f);
         Require(!SameView(afterReset,original), "Scene reset invalidates return camera even when IDs are reused");
     }
+    void TestClippingEditsAndNavigation()
+    {
+        SceneSelection selection; selection.SelectObject(1);
+        SelectionFocusToggle toggle;
+        const auto original=Original();
+        const Renderer::AxisAlignedBoundingBox card{{-.01f,-.01f,0},{.01f,.01f,0}};
+        auto focused=toggle.Toggle(selection,card,world,original,1.6f);
+        Require(focused.NearClippingPlane()==.0001f, "Tiny selection reproduces reduced near clipping");
+        Require(toggle.HasReturnView(focused), "Focus owns a return view");
+        focused=toggle.ObserveNavigation(focused);
+        Require(toggle.HasReturnView(focused) && focused.NearClippingPlane()==.0001f,
+            "No actual movement preserves close inspection and return view");
+
+        auto edited=CaptureSceneCamera(focused);
+        edited.nearClippingPlane=.002f;
+        edited.farClippingPlane=500;
+        const auto changed=CreateSceneCamera(edited);
+        Require(toggle.HasReturnView(changed), "Clipping edits preserve focus state");
+        const auto back=toggle.Toggle(selection,card,world,changed,1.6f);
+        Require(Near(back.Position(),original.Position()) && Near(back.ForwardDirection(),original.ForwardDirection()),
+            "F restores previous pose after Inspector clipping edits");
+        Require(back.NearClippingPlane()==.002f && back.FarClippingPlane()==500,
+            "F preserves explicitly edited near and far clips");
+        Require(!toggle.HasReturnView(back), "Returning ends focus state");
+
+        focused=toggle.Toggle(selection,card,world,original,1.6f);
+        focused.Translate({0,0,5});
+        const auto moved=toggle.ObserveNavigation(focused);
+        Require(Near(moved.Position(),focused.Position()) && Near(moved.ForwardDirection(),focused.ForwardDirection()),
+            "Ending focus after movement never snaps camera pose back");
+        Require(moved.NearClippingPlane()==original.NearClippingPlane() &&
+            moved.FarClippingPlane()==original.FarClippingPlane(), "Movement restores temporary clipping");
+        Require(!toggle.HasReturnView(moved), "Movement clears focus state so orbit can start");
+        Require(SameView(toggle.ObserveNavigation(moved),moved), "Free navigation without focus is unchanged");
+
+        focused=toggle.Toggle(selection,card,world,original,1.6f);
+        edited=CaptureSceneCamera(focused);
+        edited.nearClippingPlane=.000105f; // Below the old approximate-comparison tolerance.
+        focused=CreateSceneCamera(edited);
+        focused.Rotate(.1f,.05f);
+        const auto rotated=toggle.ObserveNavigation(focused);
+        Require(Near(rotated.ForwardDirection(),focused.ForwardDirection()), "Rotation retains new orientation");
+        Require(rotated.NearClippingPlane()==.000105f && rotated.FarClippingPlane()==original.FarClippingPlane(),
+            "Navigation preserves small explicit near edits and restores unedited far clip");
+
+        focused=toggle.Toggle(selection,card,world,original,1.6f);
+        edited=CaptureSceneCamera(focused);
+        edited.farClippingPlane=.01f; // Valid while near=.0001, invalid with original near=.05.
+        focused=CreateSceneCamera(edited);
+        focused.Translate({0,0,1});
+        const auto mixed=toggle.ObserveNavigation(focused);
+        Require(mixed.NearClippingPlane()==.0001f && mixed.FarClippingPlane()==.01f,
+            "Incompatible manual far edit retains valid clipping instead of throwing");
+
+        focused=toggle.Toggle(selection,card,world,original,1.6f);
+        edited=CaptureSceneCamera(focused); edited.farClippingPlane=.01f;
+        const auto mixedReturn=toggle.Toggle(selection,card,world,CreateSceneCamera(edited),1.6f);
+        Require(Near(mixedReturn.Position(),original.Position()) && mixedReturn.NearClippingPlane()==.0001f &&
+            mixedReturn.FarClippingPlane()==.01f, "Return with incompatible manual far edit remains valid");
+    }
 }
 int main()
 {
-    try { TestRoundTrips(); TestSelectionIdentity(); TestNavigationAndSceneChanges(); }
+    try { TestRoundTrips(); TestSelectionIdentity(); TestNavigationAndSceneChanges(); TestClippingEditsAndNavigation(); }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
     std::cout << "Selection focus toggle round trips, selection identity and reset behavior passed\n";
 }

@@ -905,10 +905,14 @@ namespace ForgeSim::Sandbox
 			{
                 if (cameraController.AdjustMovementSpeed(input.GetScrollDelta()))
                     static_cast<void>(scene.TrySetCameraMovementSpeed(cameraController.MovementSpeed()));
+
+				camera = selectionFocusToggle.EndForNavigation(camera);
+
 				cameraController.Update(
 					camera,
 					input,
 					deltaSeconds);
+                camera = selectionFocusToggle.ObserveNavigation(camera);
 			}
 
 			const glm::mat4 view =
@@ -1142,12 +1146,8 @@ namespace ForgeSim::Sandbox
             selectionFocusToggle.ObserveSelection(selection);
             const auto focusSelection = [&]
             {
-                if (selectionOrbit.Active())
-                {
-                    cameraRestoreRequest = CaptureSceneCamera(selectionOrbit.RestorePreviousView(camera));
-                    selectionFocusToggle.Reset();
-                    return;
-                }
+                // Focus and orbit own independent return views; never nest them.
+                if (selectionOrbit.Active()) return;
                 const auto focusBounds = getSelectionBounds();
                 if (!focusBounds) return;
                 const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
@@ -1163,6 +1163,9 @@ namespace ForgeSim::Sandbox
 
             const auto toggleOrbit = [&]
             {
+                // Also guard panel callbacks and a focus request queued this frame.
+                if (!selectionOrbit.Active() &&
+                    (selectionFocusToggle.HasReturnView(camera) || cameraRestoreRequest)) return;
                 if (selectionOrbit.Active())
                 {
                     camera = selectionOrbit.RestorePreviousView(camera);
@@ -1213,6 +1216,7 @@ namespace ForgeSim::Sandbox
                 .canFocusSelection = !selection.Empty(),
                 .focusSelection = focusSelection,
                 .orbitActive = selectionOrbit.Active(),
+                .focusActive = selectionFocusToggle.HasReturnView(camera),
                 .toggleOrbit = toggleOrbit,
                 .frameScene = [&]
                 {

@@ -70,6 +70,7 @@ namespace ForgeSim::Sandbox
         bool canFocusSelection = false;
         std::function<void()> focusSelection;
         bool orbitActive = false;
+        bool focusActive = false;
         std::function<void()> toggleOrbit;
         std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;

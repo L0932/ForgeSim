@@ -6,11 +6,11 @@
 namespace ForgeSim::Sandbox
 {
     [[nodiscard]] inline bool SceneShortcutPressed(ImGuiKey key, bool editingBlocked = false,
-        bool requireCtrl = false, bool requireShift = false)
+        bool requireCtrl = false, bool requireShift = false, bool viewportHovered = false)
     {
         const auto& io = ImGui::GetIO();
         return AllowSceneShortcut({
-            .windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows),
+            .windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || viewportHovered,
             .editingBlocked = editingBlocked,
             .textInput = io.WantTextInput,
             .itemActive = ImGui::IsAnyItemActive(),
@@ -28,8 +28,8 @@ namespace ForgeSim::Sandbox
     { return SceneShortcutPressed(ImGuiKey_F, blocked, true); }
     [[nodiscard]] inline bool ExitOrbitShortcutPressed(bool blocked = false)
     { return SceneShortcutPressed(ImGuiKey_Escape, blocked); }
-    [[nodiscard]] inline bool FocusSelectionShortcutPressed(bool blocked = false)
-    { return SceneShortcutPressed(ImGuiKey_F, blocked); }
+    [[nodiscard]] inline bool FocusSelectionShortcutPressed(bool blocked = false, bool viewportHovered = false)
+    { return SceneShortcutPressed(ImGuiKey_F, blocked, false, false, viewportHovered); }
     [[nodiscard]] inline bool DeleteSelectionShortcutPressed(bool blocked = false)
     { return SceneShortcutPressed(ImGuiKey_Delete, blocked); }
 }
