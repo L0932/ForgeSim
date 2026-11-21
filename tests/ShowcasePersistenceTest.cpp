@@ -184,6 +184,48 @@ namespace
         ExpectFailure([&] { static_cast<void>(SerializeSceneDocument(document)); }, "toneMapping");
     }
 
+    void TestViewportDisplayPersistence()
+    {
+        TemporaryDirectory directory;
+        EditorSession session{SceneDocument{}, directory.Path()};
+        session.SaveAs("Visibility.scene.json");
+        auto settings = session.Scene().RenderingSettings();
+        for (int mask = 0; mask < 32; ++mask)
+        {
+            settings.viewport = {bool(mask & 1), bool(mask & 2), bool(mask & 4),
+                bool(mask & 8), bool(mask & 16)};
+            settings.toneMapping = mask & 1 ? SceneToneMapping::Standard : SceneToneMapping::AcesApproximation;
+            Require(!session.Scene().TrySetRenderingSettings(settings), "Visibility settings were rejected.");
+            Require(session.HasUnsavedChanges(), "Visibility edit did not mark scene modified.");
+            session.Save();
+            Require(!session.HasUnsavedChanges(), "Saving visibility did not reset dirty state.");
+            const auto reopened = session.PrepareOpen("Visibility.scene.json");
+            Require(reopened.Scene().RenderingSettings().viewport == settings.viewport &&
+                reopened.Scene().RenderingSettings().toneMapping == settings.toneMapping,
+                "Visibility or display transform did not survive save/reopen.");
+        }
+        Require(session.PrepareNew().Scene().RenderingSettings().viewport == SceneViewportDisplaySettings{},
+            "New scene inherited viewport visibility.");
+        auto legacy = Json::parse(SerializeSceneDocument(session.Scene().ToDocument()));
+        legacy["rendering"].erase("viewport");
+        Require(DeserializeSceneDocument(legacy.dump()).rendering.viewport == SceneViewportDisplaySettings{},
+            "Older scene did not receive viewport defaults.");
+        legacy["rendering"]["viewport"] = {{"showSceneLights", false}};
+        auto partial = SceneViewportDisplaySettings{};
+        partial.showSceneLights = false;
+        Require(DeserializeSceneDocument(legacy.dump()).rendering.viewport == partial,
+            "Missing visibility fields did not receive defaults.");
+        for (const char* field : {"showReferenceGrid", "showSceneLights", "showObjectBounds",
+            "showSelectionHighlight", "showTransformGizmo"})
+        {
+            auto malformed = legacy;
+            malformed["rendering"]["viewport"][field] = "false";
+            ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(malformed.dump())); }, field);
+        }
+        legacy["rendering"]["viewport"] = false;
+        ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(legacy.dump())); }, "rendering.viewport");
+    }
+
     void TestShadowPersistenceAndDefaults()
     {
         TemporaryDirectory directory;
@@ -385,6 +427,7 @@ int main()
         TestBookmarksAndCameraRestoration();
         TestShadowPersistenceAndDefaults();
         TestToneMappingPersistence();
+        TestViewportDisplayPersistence();
         TestMalformedShowcaseData();
         TestEnvironmentFiles();
         TestEnvironmentOrientation();

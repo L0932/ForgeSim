@@ -33,18 +33,6 @@
 
 namespace ForgeSim::Sandbox
 {
-    void SandboxDebugUI::ShowWorkspaceGrid()
-    {
-        m_ViewportDisplay.showReferenceGrid = true;
-    }
-
-    void SandboxDebugUI::ResetViewportDisplay()
-    {
-        m_ViewportDisplay = {};
-        m_SelectionHighlightEnabled = true;
-        m_TransformGizmoEnabled = true;
-    }
-
     void SandboxDebugUI::ResetSceneControls()
     {
         m_SelectedBookmark.clear();
@@ -65,7 +53,6 @@ namespace ForgeSim::Sandbox
 
 		m_Workspace.Initialize();
         m_ViewportTools.Load(EditorSettingsDirectory() / "viewport-tools.json");
-        m_ViewportDisplay.Load(EditorSettingsDirectory() / "viewport-display.json");
 
 
 		if (!ImGui_ImplGlfw_InitForOpenGL(
@@ -290,6 +277,8 @@ namespace ForgeSim::Sandbox
             return;
         }
 
+        auto viewportDisplay = context.scene.RenderingSettings().viewport;
+
         ImGui::Begin(
             "ForgeSim Debug",
             &m_IsVisible);
@@ -304,23 +293,17 @@ namespace ForgeSim::Sandbox
         ImGui::Spacing();
         if (EditorSectionHeader("Viewport", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            bool displayChanged = ImGui::Checkbox(
+            ImGui::Checkbox(
                 "Show reference grid",
-                &m_ViewportDisplay.showReferenceGrid);
+                &viewportDisplay.showReferenceGrid);
 
-            displayChanged |= ImGui::Checkbox(
+            ImGui::Checkbox(
                 "Show object bounds",
-                &m_ViewportDisplay.showObjectBounds);
+                &viewportDisplay.showObjectBounds);
 
-            displayChanged |= ImGui::Checkbox(
+            ImGui::Checkbox(
                 "Show scene lights",
-                &m_ViewportDisplay.showSceneLights);
-
-            if (displayChanged && !m_ViewportDisplay.Save(
-                EditorSettingsDirectory() / "viewport-display.json"))
-            {
-                Core::LogWarning("Could not save viewport display preferences.");
-            }
+                &viewportDisplay.showSceneLights);
 
             ImGui::Spacing();
         }
@@ -403,9 +386,9 @@ namespace ForgeSim::Sandbox
                 context.toggleOrbit();
             ImGui::SetItemTooltip("RMB drag orbits; wheel zooms. Ctrl+F exits orbit and returns to the previous view.");
             ImGui::EndDisabled();
-            ImGui::Checkbox("Show selection highlight##Camera", &m_SelectionHighlightEnabled);
+            ImGui::Checkbox("Show selection highlight##Camera", &viewportDisplay.showSelectionHighlight);
             ImGui::SetItemTooltip("Control selection tint independently. Shift+H hides or shows both tint and gizmo.");
-            ImGui::Checkbox("Show transform gizmo##Camera", &m_TransformGizmoEnabled);
+            ImGui::Checkbox("Show transform gizmo##Camera", &viewportDisplay.showTransformGizmo);
             ImGui::SetItemTooltip("Control transform handles independently. Shift+H hides or shows both tint and gizmo.");
             ImGui::EndDisabled();
 
@@ -753,12 +736,12 @@ namespace ForgeSim::Sandbox
 
         if (EditorSectionHeader("Selection"))
         {
-            ImGui::Checkbox("Show selection highlight", &m_SelectionHighlightEnabled);
-            ImGui::Checkbox("Show transform gizmo", &m_TransformGizmoEnabled);
+            ImGui::Checkbox("Show selection highlight", &viewportDisplay.showSelectionHighlight);
+            ImGui::Checkbox("Show transform gizmo", &viewportDisplay.showTransformGizmo);
             ImGui::TextDisabled("Shift+H: hide/show both");
 
             ImGui::BeginDisabled(
-                !m_SelectionHighlightEnabled);
+                !viewportDisplay.showSelectionHighlight);
 
             ImGui::TextWrapped("Highlight color");
             ImGui::SetNextItemWidth(-1.0f);
@@ -838,6 +821,13 @@ namespace ForgeSim::Sandbox
             }
         }
 
+        if (viewportDisplay != context.scene.RenderingSettings().viewport)
+        {
+            auto settings = context.scene.RenderingSettings();
+            settings.viewport = viewportDisplay;
+            static_cast<void>(context.scene.TrySetRenderingSettings(settings));
+        }
+
         ImGui::End();
     }
 
@@ -869,31 +859,10 @@ namespace ForgeSim::Sandbox
 		return ImGui::GetIO().WantCaptureKeyboard;
 	}
 
-	bool SandboxDebugUI::ShowGrid() const noexcept
-	{
-		return m_ViewportDisplay.showReferenceGrid;
-	}
-
-	bool SandboxDebugUI::ShowLights() const noexcept
-	{
-		return m_ViewportDisplay.showSceneLights;
-	}
-
-	bool SandboxDebugUI::ShowObjectBounds() const noexcept
-	{
-		return m_ViewportDisplay.showObjectBounds;
-	}
-
 	bool SandboxDebugUI::RuntimeDiagnosticsEnabled()
 		const noexcept
 	{
 		return m_RuntimeDiagnosticsEnabled;
-	}
-
-	bool SandboxDebugUI::SelectionHighlightEnabled()
-		const noexcept
-	{
-		return m_SelectionHighlightEnabled;
 	}
 
 	const glm::vec3&

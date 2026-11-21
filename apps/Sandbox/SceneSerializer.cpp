@@ -81,6 +81,13 @@ namespace ForgeSim::Sandbox
                     "backgroundColor",
                     WriteVector(settings.backgroundColor)
                 },
+                { "viewport", {
+                    { "showReferenceGrid", settings.viewport.showReferenceGrid },
+                    { "showSceneLights", settings.viewport.showSceneLights },
+                    { "showObjectBounds", settings.viewport.showObjectBounds },
+                    { "showSelectionHighlight", settings.viewport.showSelectionHighlight },
+                    { "showTransformGizmo", settings.viewport.showTransformGizmo }
+                } },
                 { "exposure", settings.exposure },
                 { "toneMapping", settings.toneMapping == SceneToneMapping::Standard ? "standard" : "acesApproximation" },
                 {
@@ -434,6 +441,22 @@ namespace ForgeSim::Sandbox
                 if (mode == "standard") settings.toneMapping = SceneToneMapping::Standard;
                 else if (mode != "acesApproximation")
                     ReadError(property + ".toneMapping", "Unknown tone mapping mode.");
+            }
+
+            if (const auto viewport = value.find("viewport"); viewport != value.end())
+            {
+                const std::string parent = property + ".viewport";
+                if (!viewport->is_object()) ReadError(parent, "Expected an object.");
+                if (const auto item = viewport->find("showReferenceGrid"); item != viewport->end())
+                    settings.viewport.showReferenceGrid = ReadBool(*item, parent + ".showReferenceGrid");
+                if (const auto item = viewport->find("showSceneLights"); item != viewport->end())
+                    settings.viewport.showSceneLights = ReadBool(*item, parent + ".showSceneLights");
+                if (const auto item = viewport->find("showObjectBounds"); item != viewport->end())
+                    settings.viewport.showObjectBounds = ReadBool(*item, parent + ".showObjectBounds");
+                if (const auto item = viewport->find("showSelectionHighlight"); item != viewport->end())
+                    settings.viewport.showSelectionHighlight = ReadBool(*item, parent + ".showSelectionHighlight");
+                if (const auto item = viewport->find("showTransformGizmo"); item != viewport->end())
+                    settings.viewport.showTransformGizmo = ReadBool(*item, parent + ".showTransformGizmo");
             }
 
             const auto shadows = value.find("directionalShadows");

@@ -9,6 +9,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Save viewport grid, light guide, bounds, selection highlight and transform gizmo
+  visibility per scene, restoring defaults for older files and new scenes.
+
 - Correct split-sum environment specular lighting to use normal-incidence
   reflectance, avoiding duplicate Fresnel brightening at grazing view angles.
 

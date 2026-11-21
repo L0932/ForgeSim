@@ -208,8 +208,6 @@ namespace ForgeSim::Sandbox
             ResolveSceneEnvironment(m_EditorSession->Scene().RenderingSettings(), projectRoot,
                 BundledAssetDirectory() / "environments"));
 
-        if (spec.initialScene && spec.initialScene->objects.empty() && !spec.scenePath)
-            m_DebugUI.ShowWorkspaceGrid();
 
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
@@ -507,7 +505,7 @@ namespace ForgeSim::Sandbox
 
 			lightPickTargets.clear();
 
-			if (m_DebugUI.ShowLights())
+			if (scene.RenderingSettings().viewport.showSceneLights)
 			{
 				const LightDebugLayout layout =
 					CalculateLightDebugLayout(lightDebugBounds);
@@ -941,13 +939,19 @@ namespace ForgeSim::Sandbox
             if ((viewport.toggleSelectionHighlightRequested || hierarchyPanel.ToggleSelectionHighlightRequested()) &&
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard())
-                m_DebugUI.ToggleSelectionOverlays();
+            {
+                auto settings = scene.RenderingSettings();
+                const bool show = !(settings.viewport.showSelectionHighlight || settings.viewport.showTransformGizmo);
+                settings.viewport.showSelectionHighlight = show;
+                settings.viewport.showTransformGizmo = show;
+                static_cast<void>(scene.TrySetRenderingSettings(settings));
+            }
 
             // Keep the Inspector selection when hiding an object, but omit its gizmo.
             SceneSelection gizmoSelection = selection;
             // Gizmo visibility is independent of selection tint. Keep the real
             // selection intact for the Inspector, focus/orbit and later restore.
-            if (!m_DebugUI.TransformGizmoEnabled()) gizmoSelection.Clear();
+            if (!scene.RenderingSettings().viewport.showTransformGizmo) gizmoSelection.Clear();
             // Hidden members still participate when another selected object has a visible gizmo.
             const bool anyVisibleObject = std::any_of(selection.SelectedObjectIds().begin(),
                 selection.SelectedObjectIds().end(), [&](auto id) { return scene.IsObjectVisible(id); });
@@ -966,7 +970,7 @@ namespace ForgeSim::Sandbox
 					.viewportHovered = viewport.hovered && !changePending,
 					.operation = editorUI.operation,
 					.space = editorUI.space,
-					.showLights = m_DebugUI.ShowLights(),				
+					.showLights = scene.RenderingSettings().viewport.showSceneLights,
 					.navigationActive = changePending|| rightMouseDown,
                     .inspectNodes = [this](const std::string& reference) { return m_Renderer.InspectModelNodes(reference); }
 				});
@@ -1094,12 +1098,12 @@ namespace ForgeSim::Sandbox
 
                 .flipEnvironmentVertically = scene.RenderingSettings().flipEnvironmentVertically,
 
-				.showGrid = m_DebugUI.ShowGrid(),
+				.showGrid = scene.RenderingSettings().viewport.showReferenceGrid,
 
 				.showObjectBounds =
-					m_DebugUI.ShowObjectBounds(),
+					scene.RenderingSettings().viewport.showObjectBounds,
 
-				.showLights = m_DebugUI.ShowLights(),
+				.showLights = scene.RenderingSettings().viewport.showSceneLights,
                 .showDirectionalLightGuide = scene.HasDirectionalLight() && scene.IsLightVisible(scene.MainDirectionalLight().id),
 
 				.directionalShadows = scene.RenderingSettings().directionalShadows,
@@ -1111,7 +1115,7 @@ namespace ForgeSim::Sandbox
 
 				.selectionHighlight = {
 					.enabled =
-						m_DebugUI.SelectionHighlightEnabled(),
+						scene.RenderingSettings().viewport.showSelectionHighlight,
 
 					.color =
 						m_DebugUI.SelectionHighlightColor(),
@@ -1571,7 +1575,6 @@ namespace ForgeSim::Sandbox
 							lightPickTargets.clear();
 							cameraFramingRequested = true;
 
-                            m_DebugUI.ResetViewportDisplay();
 							pendingAction = PendingSceneAction::None;
 							sceneFileMessage = "New scene created.";
                             Core::LogInfo(sceneFileMessage);

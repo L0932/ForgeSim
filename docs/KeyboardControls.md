@@ -224,8 +224,9 @@ be disabled while the other remains visible.
 Press **Shift+H** with Scene hovered/focused or Hierarchy focused to control both
 at once: if either overlay is visible, both are hidden; if both are hidden, both
 are shown. The selection, Inspector target, and focus/orbit target stay active.
-These display options do not hide objects or mark the scene modified. Text entry,
-active controls, popups, navigation, and active gizmo drags block the shortcut.
+These display options do not hide objects. They mark the scene modified and are
+saved with it. Text entry, active controls, popups, navigation, and active gizmo
+drags block the shortcut.
 
 Mouse input pauses during text entry, active controls, gizmo edits, scene-change
 confirmation, and popups. RMB capture still begins only inside Scene and releases
