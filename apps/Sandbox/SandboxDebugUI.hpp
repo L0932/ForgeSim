@@ -97,6 +97,7 @@ namespace ForgeSim::Sandbox
 			std::optional<std::string_view> error = std::nullopt);
 		void BeginFrame();
         void ResetSceneControls();
+        void ResetViewportDisplay();
         void ShowWorkspaceGrid();
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();

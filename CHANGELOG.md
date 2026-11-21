@@ -27,6 +27,9 @@ contains the detailed implementation record.
   camera with a 0.1 near clip. The Material Gallery remains available through Samples.
   Empty scene startup no longer loads an unused gallery model.
 
+- Creating a new scene restores default viewport visibility, including the reference
+  grid, scene light guides, selection highlight and transform gizmo.
+
 ### Added
 
 - Separate GUI controls for selection highlighting and transform gizmo visibility,

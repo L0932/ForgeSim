@@ -38,6 +38,13 @@ namespace ForgeSim::Sandbox
         m_ViewportDisplay.showReferenceGrid = true;
     }
 
+    void SandboxDebugUI::ResetViewportDisplay()
+    {
+        m_ViewportDisplay = {};
+        m_SelectionHighlightEnabled = true;
+        m_TransformGizmoEnabled = true;
+    }
+
     void SandboxDebugUI::ResetSceneControls()
     {
         m_SelectedBookmark.clear();

@@ -1571,7 +1571,7 @@ namespace ForgeSim::Sandbox
 							lightPickTargets.clear();
 							cameraFramingRequested = true;
 
-                            m_DebugUI.ShowWorkspaceGrid();
+                            m_DebugUI.ResetViewportDisplay();
 							pendingAction = PendingSceneAction::None;
 							sceneFileMessage = "New scene created.";
                             Core::LogInfo(sceneFileMessage);

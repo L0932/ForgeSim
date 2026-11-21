@@ -2,7 +2,11 @@
 
 In **ForgeSim Debug > Viewport**, set **Show reference grid**, **Show scene lights**
 (light guides) and **Show object bounds**. These editor preferences survive opening
-or creating scenes and restarting ForgeSim. They do not change actual scene lighting.
+scenes and restarting ForgeSim. Creating a new scene resets the current viewport
+to its defaults: reference grid and light guides visible, object bounds hidden,
+and selection highlight and transform gizmo enabled. This reset does not overwrite
+saved preferences; changing a viewport checkbox saves the current preferences.
+These options do not change actual scene lighting.
 
 Changes are saved immediately to `Settings/viewport-display.json` in the ForgeSim
 user data directory, beside `imgui.ini` and `viewport-tools.json`. They do not mark
