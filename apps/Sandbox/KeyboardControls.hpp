@@ -26,7 +26,7 @@ namespace ForgeSim::Sandbox
         {"Camera", "Ctrl+F", "Toggle orbit mode around the selection", "Scene hovered or focused, or Hierarchy focused; navigation stopped; no active focus return"},
         {"Camera", "RMB drag / Wheel", "Orbit / zoom around the focused selection", "Orbit mode active; wheel over Scene"},
         {"Selection", "Double-click label", "Toggle focus on object, node, or light", "Hierarchy; expansion arrows and visibility buttons are separate"},
-        {"Selection", "Shift+H", "Show / hide selection highlight", "Scene or Hierarchy focused; selection stays active"},
+        {"Selection", "Shift+H", "Show / hide selection tint and transform gizmo", "Scene hovered or focused, or Hierarchy focused; selection stays active"},
         {"Selection", "F", "Toggle selection focus / previous view", "Scene hovered or focused, or Hierarchy focused; navigation stopped; orbit inactive"},
         {"Selection", "Ctrl+D", "Duplicate selected models, point light, or spot light", "Scene or Hierarchy focused; navigation stopped"},
         {"Selection", "Delete", "Delete selected models or light", "Scene or Hierarchy focused; navigation stopped"},

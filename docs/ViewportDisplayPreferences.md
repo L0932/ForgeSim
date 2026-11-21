@@ -14,4 +14,4 @@ Missing or invalid settings fall back to those defaults. If saving fails, the ed
 keeps the current values for the session and reports a warning in the log.
 
 For screenshots without guides, disable all three checkboxes and use **Shift+H**
-to hide selection highlighting while keeping the selection.
+to hide the selection tint and transform gizmo while keeping the selection.

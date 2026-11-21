@@ -396,8 +396,10 @@ namespace ForgeSim::Sandbox
                 context.toggleOrbit();
             ImGui::SetItemTooltip("RMB drag orbits; wheel zooms. Ctrl+F exits orbit and returns to the previous view.");
             ImGui::EndDisabled();
-            ImGui::Checkbox("Show selection highlight (Shift+H)##Camera", &m_SelectionHighlightEnabled);
-            ImGui::SetItemTooltip("Hide the selection tint while keeping objects selected. Also available under ForgeSim Debug > Selection.");
+            ImGui::Checkbox("Show selection highlight##Camera", &m_SelectionHighlightEnabled);
+            ImGui::SetItemTooltip("Control selection tint independently. Shift+H hides or shows both tint and gizmo.");
+            ImGui::Checkbox("Show transform gizmo##Camera", &m_TransformGizmoEnabled);
+            ImGui::SetItemTooltip("Control transform handles independently. Shift+H hides or shows both tint and gizmo.");
             ImGui::EndDisabled();
 
             if (ImGui::Button("Copy camera pose", ImVec2(-1.0f, 0.0f)))
@@ -744,9 +746,9 @@ namespace ForgeSim::Sandbox
 
         if (EditorSectionHeader("Selection"))
         {
-            ImGui::Checkbox(
-                "Show selection highlight (Shift+H)",
-                &m_SelectionHighlightEnabled);
+            ImGui::Checkbox("Show selection highlight", &m_SelectionHighlightEnabled);
+            ImGui::Checkbox("Show transform gizmo", &m_TransformGizmoEnabled);
+            ImGui::TextDisabled("Shift+H: hide/show both");
 
             ImGui::BeginDisabled(
                 !m_SelectionHighlightEnabled);

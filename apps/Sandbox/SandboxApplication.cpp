@@ -938,8 +938,16 @@ namespace ForgeSim::Sandbox
                 visible && !changePending && !transformEditor.IsActive())
                 static_cast<void>(transformEditor.SetSelectionVisible(scene, selection, *visible));
 
+            if ((viewport.toggleSelectionHighlightRequested || hierarchyPanel.ToggleSelectionHighlightRequested()) &&
+                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
+                !sceneFilePanel.ConsoleWantsKeyboard())
+                m_DebugUI.ToggleSelectionOverlays();
+
             // Keep the Inspector selection when hiding an object, but omit its gizmo.
             SceneSelection gizmoSelection = selection;
+            // Gizmo visibility is independent of selection tint. Keep the real
+            // selection intact for the Inspector, focus/orbit and later restore.
+            if (!m_DebugUI.TransformGizmoEnabled()) gizmoSelection.Clear();
             // Hidden members still participate when another selected object has a visible gizmo.
             const bool anyVisibleObject = std::any_of(selection.SelectedObjectIds().begin(),
                 selection.SelectedObjectIds().end(), [&](auto id) { return scene.IsObjectVisible(id); });
@@ -1185,10 +1193,6 @@ namespace ForgeSim::Sandbox
                 viewportNavigationActive=false;
                 m_Window.SetCursorMode(Platform::CursorMode::Normal);
             };
-            if ((viewport.toggleSelectionHighlightRequested || hierarchyPanel.ToggleSelectionHighlightRequested()) &&
-                !changePending && !transformEditor.IsActive() && !rightMouseDown &&
-                !sceneFilePanel.ConsoleWantsKeyboard())
-                m_DebugUI.ToggleSelectionHighlight();
             if ((viewport.orbitSelectionRequested || hierarchyPanel.OrbitSelectionRequested()) &&
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable()) toggleOrbit();

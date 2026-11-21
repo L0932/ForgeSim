@@ -119,7 +119,13 @@ namespace ForgeSim::Sandbox
 
 		[[nodiscard]] bool ShowGrid() const noexcept;
         [[nodiscard]] const Renderer::FxaaSettings& Fxaa() const noexcept { return m_FxaaSettings; }
-        void ToggleSelectionHighlight() noexcept { m_SelectionHighlightEnabled = !m_SelectionHighlightEnabled; }
+        void ToggleSelectionOverlays() noexcept
+        {
+            const bool show = !(m_SelectionHighlightEnabled || m_TransformGizmoEnabled);
+            m_SelectionHighlightEnabled = show;
+            m_TransformGizmoEnabled = show;
+        }
+        [[nodiscard]] bool TransformGizmoEnabled() const noexcept { return m_TransformGizmoEnabled; }
 		[[nodiscard]] bool ShowLights() const noexcept;
 
 		[[nodiscard]] bool ShowObjectBounds() const noexcept;
@@ -148,6 +154,7 @@ namespace ForgeSim::Sandbox
         ViewportDisplayPreferences m_ViewportDisplay;
 		bool m_RuntimeDiagnosticsEnabled = false;
 		bool m_SelectionHighlightEnabled = true;
+        bool m_TransformGizmoEnabled = true;
 
 		glm::vec3 m_SelectionHighlightColor{
 			1.0f,

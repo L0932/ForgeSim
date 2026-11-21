@@ -29,6 +29,12 @@ contains the detailed implementation record.
 
 ### Added
 
+- Separate GUI controls for selection highlighting and transform gizmo visibility,
+  with Shift+H retained as a combined hide/show shortcut.
+
+- Shift+H toggles the selection tint and transform gizmo together,
+  keeping the Inspector selection active. It works over viewport content.
+
 - Scene-persistent Standard/sRGB display output alongside the default ACES
   approximation, with exposure retained and HDR highlights clipped for comparison.
 

@@ -9,7 +9,8 @@ active edits and popup menus.
 Scene images include tone mapping and anti-aliasing. They exclude ImGui windows,
 viewport tools and gizmo handles. Rendered grid lines, light guides, object bounds
 and selection tint follow the existing display settings. Disable those guides
-and use **Shift+H** to hide selection highlighting when preparing a clean preview.
+and use **Shift+H** to hide the selection tint and transform gizmo when preparing
+a clean preview.
 
 Use **Capture > Maximize Scene viewport**, or focus Scene and press **Shift+Space**,
 to fill the workspace. Repeat to restore the previous dock layout. **Escape** also
