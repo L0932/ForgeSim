@@ -126,7 +126,6 @@ namespace ForgeSim::Sandbox
         m_SelectionVisibilityRequested.reset();
         m_FocusSelectionRequested = false;
         m_OrbitSelectionRequested = false;
-        m_ExitOrbitRequested = false;
         m_ToggleSelectionHighlightRequested = false;
         m_DeleteSelectionRequested = false;
         m_DuplicateSelectionRequested = false;
@@ -137,7 +136,6 @@ namespace ForgeSim::Sandbox
         }
         m_FocusSelectionRequested = FocusSelectionShortcutPressed(context.interactionDisabled);
         m_OrbitSelectionRequested = OrbitSelectionShortcutPressed(context.interactionDisabled);
-        m_ExitOrbitRequested = ExitOrbitShortcutPressed(context.interactionDisabled);
         m_ToggleSelectionHighlightRequested = ToggleSelectionHighlightShortcutPressed(context.interactionDisabled);
         m_DeleteSelectionRequested = DeleteSelectionShortcutPressed(context.interactionDisabled);
         m_DuplicateSelectionRequested = DuplicateSelectionShortcutPressed(context.interactionDisabled);

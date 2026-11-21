@@ -15,11 +15,10 @@ Update both when bindings change; list only implemented commands.
 | Selection | Ctrl+Left click | Toggle object membership; last selected object is active | Scene or Hierarchy |
 | Selection | Shift+Left click | Select a visible range from the anchor / add an object | Hierarchy range / Scene add |
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
-| Camera | Ctrl+F | Toggle orbit mode around selection | Scene or Hierarchy focused; navigation stopped |
+| Camera | Ctrl+F | Toggle orbit mode around selection | Scene hovered or focused, or Hierarchy focused; navigation stopped; no active focus return |
 | Camera | RMB drag / Wheel | Orbit / zoom around selection | Orbit mode active; wheel over Scene |
-| Camera | Esc | Exit orbit at current view | Scene or Hierarchy focused; no text entry or modal |
 | Selection | Shift+H | Show / hide selection highlight | Scene or Hierarchy focused; selection stays active |
-| Selection | F | Toggle selection focus / previous view | Scene or Hierarchy focused; navigation stopped |
+| Selection | F | Toggle selection focus / previous view | Scene hovered or focused, or Hierarchy focused; navigation stopped; orbit inactive |
 | Selection | Double-click label | Select and toggle focus on object, imported node, or light | Hierarchy |
 | Selection | Ctrl+D | Duplicate selected model, point light, or spot light | Scene or Hierarchy focused; navigation stopped |
 | Selection | Delete | Delete selected model or light | Scene or Hierarchy focused; navigation stopped |
@@ -33,17 +32,33 @@ Update both when bindings change; list only implemented commands.
 | Capture | F9 | Save Scene PNG | Navigation stopped; no text input, active edit or popup |
 | Capture | Ctrl+F9 | Save full editor PNG | Feedback appears after image readback |
 | Panels | Shift+Space | Maximize / restore Scene | Scene focused; existing layout preserved |
-| Panels | Esc | Restore maximized Scene | Takes priority over orbit exit |
+| Panels | Esc | Restore maximized Scene | Preserves orbit mode |
 | Panels | F1 | Show / hide ForgeSim Debug | No text entry or active control |
 | Console | Enter | Execute command | Console input focused |
 | Console | Up / Down | Recall command history | Console input focused |
 | Fields | Ctrl+click slider | Type a precise value | Supported numeric sliders, including fly speed |
 | Fields | Enter | Apply clipping value | Near clip or Far clip field focused |
 
+## Scene framing
+
+Frame scene fits the complete scene bounding box, including trees and other
+geometry in an imported model, with 10% padding in the current viewport. The
+camera remains outside the bounds so the complete scene is visible.
+Automatic near clipping is 1% of the bounding-sphere radius, limited to
+0.0001 through 0.1 scene units. This improves ordinary scene depth precision
+while allowing smaller clips for small assets. It is a default policy, not a
+universal solution for nearly coplanar geometry or every scene scale.
+Far clipping covers the farthest corner in any viewing direction with 10%
+headroom and a minimum range of 10 units. Manual clipping controls remain
+available; loading a saved viewpoint preserves its authored clipping values.
+Frame scene explicitly recalculates these values. A larger near clip can hide
+surfaces very close to the camera; use selection focus or manual clipping for
+close inspection. Frame scene also continues to reset fly speed to its default.
+
 ## Selection focus
 
-Click the Scene viewport or a Hierarchy row, then press **F** to frame the selected
-objects, imported node subtree, or light. Press F again on the same selection to
+Hover over the Scene viewport, or focus Scene or a Hierarchy row, then press **F**
+to frame the selected objects, imported node subtree, or light. Press F again on the same selection to
 restore the view from before focusing; another press frames the selection again.
 Double-clicking an object, imported-node, or light label in Hierarchy uses the same
 toggle. Expansion arrows and visibility buttons do not focus. Node-label double
@@ -51,9 +66,14 @@ clicks no longer collapse/expand the node; use the arrow for that.
 
 The Camera panel's **Toggle focus (F)** button shares this behavior. Focusing and
 returning preserve fly speed, saved viewpoints, scene data, and the viewing
-parameters captured for the return view. Selection changes, New/Open/import, and
-explicit Frame scene reset the return state. If the camera is moved or edited, or
-the selected geometry moves, the next focus starts a new pair from the current view.
+parameters captured for the return view. Editing near/far clipping in the Camera
+panel preserves the focus return view, and explicitly edited clipping values
+survive returning. Clicking panels or the viewport does not cancel focus.
+Actual fly movement or rotation ends focus and restores temporary clipping values
+while preserving the new pose and explicit clipping edits. A restored larger near
+plane may clip a tiny target until the camera moves away.
+Selection changes, New/Open/import, and explicit Frame scene reset the return
+state. Moving the selected geometry starts a new focus pair.
 
 Model focus fits transformed bounds, including pivot and scale, while preserving
 the current viewing direction and field of view. Group focus covers all selected
@@ -64,8 +84,9 @@ subtrees without geometry have no focus bounds.
 
 F is suppressed while typing, editing a numeric control, using a gizmo, navigating
 with RMB, holding modifier keys, or while a popup/scene-change dialog is open.
-It does not fire from the Console or an unrelated panel. With no selection it does
-nothing. Hierarchy double-click focus is also suppressed while interactions are
+Hovering the scene allows F, Ctrl+F and Esc even when another panel has keyboard focus, provided
+no text or numeric input is active. Other scene shortcuts retain their existing
+keyboard-focus requirements. With no selection F does nothing. Hierarchy double-click focus is also suppressed while interactions are
 blocked or modifier keys are held.
 
 ## Deletion and undo
@@ -175,7 +196,7 @@ Selection itself is temporary editor state; node adjustments are authored scene 
 
 ## Selection orbit mode
 
-Press Ctrl+F with Scene or Hierarchy focused to frame the current selection and
+Press Ctrl+F with Scene hovered or focused, or Hierarchy focused, to frame the current selection and
 enter an upright orbit mode. Objects, object groups, imported node subtrees and
 lights use the same bounds as ordinary focus. An empty selection or node subtree
 without geometry cannot start orbit mode.
@@ -185,14 +206,16 @@ without geometry cannot start orbit mode.
 - While orbiting, WASD fly movement is suspended. Pitch and zoom distance are
   bounded to avoid camera flips or crossing through the pivot.
 - Ctrl+F again or the Camera panel's Exit orbit button restores the view from
-  before orbit started. Esc exits while keeping the current orbit view.
+  before orbit started. Ctrl+F also works while hovering Scene. Esc does not
+  exit orbit; it only restores the panel layout when Scene is maximized.
   An active-mode hint appears in Scene.
 - Changing selection, deleting the target, New/Open/import, explicit Frame scene,
   or restoring/editing a camera pose exits orbit. Moving the same selected target
   updates the pivot while retaining the orbit offset.
-- Ordinary F and Hierarchy double-click also restore the pre-orbit view while
-  orbit is active. Outside orbit, the existing selection-focus/previous-view
-  toggle remains available. Entering or explicitly toggling orbit resets that pair.
+- Ordinary F, Hierarchy double-click focus, and the Camera focus button do
+  nothing while orbit is active. Exit orbit with Ctrl+F first.
+- Ctrl+F and the Camera orbit button cannot start orbit while a focus return view
+  is active. Press F to return, or navigate to end focus, before entering orbit.
 
 Press **Shift+H** with Scene or Hierarchy focused, or uncheck **Show selection highlight** in the Camera panel to hide the selection
 tint while retaining the selection, Inspector target, and editing controls.

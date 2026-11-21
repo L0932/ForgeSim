@@ -905,10 +905,14 @@ namespace ForgeSim::Sandbox
 			{
                 if (cameraController.AdjustMovementSpeed(input.GetScrollDelta()))
                     static_cast<void>(scene.TrySetCameraMovementSpeed(cameraController.MovementSpeed()));
+
+				camera = selectionFocusToggle.EndForNavigation(camera);
+
 				cameraController.Update(
 					camera,
 					input,
 					deltaSeconds);
+                camera = selectionFocusToggle.ObserveNavigation(camera);
 			}
 
 			const glm::mat4 view =
@@ -1132,7 +1136,7 @@ namespace ForgeSim::Sandbox
 
             if (selectionOrbit.Active() && viewport.IsDrawable())
                 ImGui::GetWindowDrawList()->AddText(ImVec2(viewport.position.x+12,viewport.position.y+viewport.size.y-24),
-                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return | Esc: keep view");
+                    IM_COL32(240,220,135,255),"Orbit mode | RMB drag: orbit | Wheel: zoom | Ctrl+F: return");
             if (!transformEditor.NodeGizmoMessage().empty() && viewport.IsDrawable())
                 ImGui::GetWindowDrawList()->AddText(nullptr,0,ImVec2(viewport.position.x+12,viewport.position.y+12),
                     IM_COL32(255,210,130,255),transformEditor.NodeGizmoMessage().data(),nullptr,
@@ -1142,12 +1146,8 @@ namespace ForgeSim::Sandbox
             selectionFocusToggle.ObserveSelection(selection);
             const auto focusSelection = [&]
             {
-                if (selectionOrbit.Active())
-                {
-                    cameraRestoreRequest = CaptureSceneCamera(selectionOrbit.RestorePreviousView(camera));
-                    selectionFocusToggle.Reset();
-                    return;
-                }
+                // Focus and orbit own independent return views; never nest them.
+                if (selectionOrbit.Active()) return;
                 const auto focusBounds = getSelectionBounds();
                 if (!focusBounds) return;
                 const auto sceneBounds = CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
@@ -1163,6 +1163,9 @@ namespace ForgeSim::Sandbox
 
             const auto toggleOrbit = [&]
             {
+                // Also guard panel callbacks and a focus request queued this frame.
+                if (!selectionOrbit.Active() &&
+                    (selectionFocusToggle.HasReturnView(camera) || cameraRestoreRequest)) return;
                 if (selectionOrbit.Active())
                 {
                     camera = selectionOrbit.RestorePreviousView(camera);
@@ -1182,13 +1185,6 @@ namespace ForgeSim::Sandbox
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard())
                 m_DebugUI.ToggleSelectionHighlight();
-            if (selectionOrbit.Active() && (viewport.exitOrbitRequested || hierarchyPanel.ExitOrbitRequested()) &&
-                !changePending && !transformEditor.IsActive() && !sceneFilePanel.ConsoleWantsKeyboard())
-            {
-                selectionOrbit.Stop();
-                viewportNavigationActive=false;
-                m_Window.SetCursorMode(Platform::CursorMode::Normal);
-            }
             if ((viewport.orbitSelectionRequested || hierarchyPanel.OrbitSelectionRequested()) &&
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable()) toggleOrbit();
@@ -1213,6 +1209,7 @@ namespace ForgeSim::Sandbox
                 .canFocusSelection = !selection.Empty(),
                 .focusSelection = focusSelection,
                 .orbitActive = selectionOrbit.Active(),
+                .focusActive = selectionFocusToggle.HasReturnView(camera),
                 .toggleOrbit = toggleOrbit,
                 .frameScene = [&]
                 {

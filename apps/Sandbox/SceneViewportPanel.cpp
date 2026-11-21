@@ -59,11 +59,7 @@ namespace ForgeSim::Sandbox
             return m_State;
         }
 
-        const bool restoreMaximized=m_Maximized && ExitOrbitShortcutPressed();
-        m_ToggleMaximizeAfterFrame=restoreMaximized || SceneShortcutPressed(ImGuiKey_Space,false,false,true);
-        m_State.focusSelectionRequested = FocusSelectionShortcutPressed();
-        m_State.orbitSelectionRequested = OrbitSelectionShortcutPressed();
-        m_State.exitOrbitRequested = !restoreMaximized && ExitOrbitShortcutPressed();
+        m_ToggleMaximizeAfterFrame=SceneShortcutPressed(ImGuiKey_Space,false,false,true);
         m_State.toggleSelectionHighlightRequested = ToggleSelectionHighlightShortcutPressed();
         m_State.deleteSelectionRequested = DeleteSelectionShortcutPressed();
         m_State.duplicateSelectionRequested = DuplicateSelectionShortcutPressed();
@@ -110,6 +106,15 @@ namespace ForgeSim::Sandbox
                     position.x + size.x,
                     position.y + size.y
                 });
+
+        // F, Ctrl+F and Esc opt into hover routing; other shortcuts retain keyboard-focus
+        // requirements. Hover must be over scene content, not its tab/title bar.
+        m_State.focusSelectionRequested = FocusSelectionShortcutPressed(false, m_State.hovered);
+        m_State.orbitSelectionRequested = OrbitSelectionShortcutPressed(false, m_State.hovered);
+        const bool escapeRequested = SceneShortcutPressed(ImGuiKey_Escape, false, false, false, m_State.hovered);
+        // Esc only restores the panel layout; orbit is toggled with Ctrl+F.
+        const bool restoreMaximized = m_Maximized && escapeRequested;
+        m_ToggleMaximizeAfterFrame = m_ToggleMaximizeAfterFrame || restoreMaximized;
 
         return m_State;
     }

@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <glm/trigonometric.hpp>
 #include <stdexcept>
 #include <glm/vec4.hpp>
 
@@ -93,8 +94,11 @@ int main()
             }
         }
         const auto fittedGround = CreateSelectionFocusCamera(ground, fullScene, original, 2.4f);
-        const auto oldGround = CreateSceneCameraFraming(ground, 2.4f).camera;
-        Require(glm::length(fittedGround.Position()) < glm::length(oldGround.Position()) * 0.8f,
+        // Reference the previous sphere fit explicitly: Frame scene now also
+        // uses corner fitting, so it is no longer the old loose-framing baseline.
+        const float oldRadius = glm::length(ground.maximum-ground.minimum)*.5f;
+        const float oldDistance = oldRadius/std::sin(glm::radians(45.0f)*.5f)*1.25f;
+        Require(glm::length(fittedGround.Position()) < oldDistance * 0.8f,
             "Long flat models should frame more tightly than the old bounding sphere");
         const Renderer::AxisAlignedBoundingBox lightBounds{{-0.1f,2,-0.1f}, {0.1f,2.2f,0.1f}};
         const auto lightCamera = CreateSelectionFocusCamera(lightBounds, fullScene, original, 2.4f);

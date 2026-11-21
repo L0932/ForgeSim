@@ -2,6 +2,7 @@
 #include <ForgeSim/Renderer/DebugGeometry.hpp>
 #include <cmath>
 #include <iostream>
+#include <glm/trigonometric.hpp>
 #include <limits>
 #include <stdexcept>
 
@@ -17,11 +18,47 @@ int main()
 {
     try
     {
+        // Test portrait and wide views, thin/deep bounds, shifted origins,
+        // small props, large scenes, and a degenerate point asset.
+        for (const auto& box : {
+            Renderer::AxisAlignedBoundingBox{{-30,-4,-20},{30,4,20}},
+            Renderer::AxisAlignedBoundingBox{{-40,-.001f,-10},{40,.001f,10}},
+            Renderer::AxisAlignedBoundingBox{{100,20,-50},{101,50,-49}},
+            Renderer::AxisAlignedBoundingBox{glm::vec3{-.01f},glm::vec3{.01f}},
+            Renderer::AxisAlignedBoundingBox{glm::vec3{-1000},glm::vec3{1000}},
+            Renderer::AxisAlignedBoundingBox{{0,0,0},{0,0,0}}})
+        {
+            for (float aspect : {.5f, 1.6f, 2.4f})
+            {
+                const auto camera=Sandbox::CreateSceneCameraFraming(box,aspect).camera;
+                const auto projectionView=camera.ProjectionMatrix(aspect)*camera.ViewMatrix();
+                for (unsigned int corner=0;corner<8;++corner)
+                {
+                    const glm::vec3 point{corner&1u?box.maximum.x:box.minimum.x,
+                        corner&2u?box.maximum.y:box.minimum.y,corner&4u?box.maximum.z:box.minimum.z};
+                    const auto clip=projectionView*glm::vec4{point,1};
+                    Require(clip.w>0 && std::abs(clip.x/clip.w)<1 && std::abs(clip.y/clip.w)<1 &&
+                        clip.z/clip.w>-1 && clip.z/clip.w<1, "Scene framing must contain every bounding-box corner");
+                    Require(glm::length(point-camera.Position())<camera.FarClippingPlane(),
+                        "Far clipping must retain all corners when rotating in place");
+                }
+            }
+        }
+        const Renderer::AxisAlignedBoundingBox shed{{-30,-4,-20},{30,4,20}};
+        const auto shedCamera=Sandbox::CreateSceneCameraFraming(shed,2.0f).camera;
+        Require(shedCamera.NearClippingPlane()==.1f,
+            "Shed-scale automatic framing must not reintroduce a millimetric near plane");
+        const float oldRadius=glm::length(shed.maximum-shed.minimum)*.5f;
+        const float oldDistance=oldRadius/std::sin(glm::radians(45.0f)*.5f)*1.25f;
+        Require(shedCamera.Position().z<oldDistance*.7f,
+            "Wide scene framing should fit the box substantially closer than the old sphere fit");
+        Require(shedCamera.FarClippingPlane()<oldDistance+oldRadius*4,
+            "Automatic far clipping avoids the old excessive range");
         const Renderer::AxisAlignedBoundingBox city{glm::vec3{-1000.0f}, glm::vec3{1000.0f}};
         const Renderer::AxisAlignedBoundingBox prop{glm::vec3{-0.01f}, glm::vec3{0.01f}};
         auto large = Sandbox::CreateSceneCameraFraming(city, 1.6f);
         auto small = Sandbox::CreateSceneCameraFraming(prop, 1.6f);
-        Require(large.camera.NearClippingPlane() <= 0.05f, "Large-scene near clip remains suitable for close navigation");
+        Require(large.camera.NearClippingPlane() == 0.1f, "Large-scene near clip remains suitable for close navigation");
         Require(small.camera.NearClippingPlane() < 0.001f, "Small scene has a proportionally smaller near clip");
         Require(large.controller.MovementSpeed() == 10.0f && small.controller.MovementSpeed() == 10.0f &&
             Sandbox::FreeCameraController{}.MovementSpeed() == 10.0f,

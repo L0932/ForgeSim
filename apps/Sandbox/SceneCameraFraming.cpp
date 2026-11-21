@@ -121,20 +121,39 @@ namespace ForgeSim::Sandbox
         constexpr float verticalFieldOfView =
             glm::radians(45.0f);
 
-        // Fit the bounding sphere inside the narrower field of view.
-        const float halfAngle =
-            std::atan(
-                std::tan(verticalFieldOfView * 0.5f) *
-                std::min(aspectRatio, 1.0f));
+        // Automatic scene framing favors depth precision. Small assets retain a
+        // scale-relative near plane; larger scenes cap at 0.1 for close navigation.
+        // Selection focus may temporarily lower this for tiny details.
+        const float nearPlane = std::clamp(radius * 0.01f, 0.0001f, 0.1f);
+        const float tangentY = std::tan(verticalFieldOfView * 0.5f);
+        const float tangentX = tangentY * aspectRatio;
+        if (!std::isfinite(tangentX) || tangentX <= 0.0f)
+            throw std::invalid_argument("Camera framing requires a usable aspect ratio.");
 
-        const float distance =
-            radius / std::sin(halfAngle) * 1.25f;
-
-        const float nearPlane =
-            std::clamp(radius * 0.0001f, 0.0001f, 0.05f);
-
-        const float farPlane =
-            std::max(distance + radius * 4.0f, 10.0f);
+        // The scene view faces -Z. Fit every corner to the horizontal and vertical
+        // frustum planes with 10% padding, rather than fitting a bounding sphere.
+        const auto cornerOffset = [&](unsigned int corner)
+        {
+            return glm::vec3{
+                ((corner & 1u) ? bounds.maximum.x : bounds.minimum.x) - center.x,
+                ((corner & 2u) ? bounds.maximum.y : bounds.minimum.y) - center.y,
+                ((corner & 4u) ? bounds.maximum.z : bounds.minimum.z) - center.z};
+        };
+        float distance = std::max(0.001f, nearPlane * 2.0f);
+        for (unsigned int corner = 0; corner < 8; ++corner)
+        {
+            const auto offset = cornerOffset(corner);
+            distance = std::max({distance,
+                std::abs(offset.x) * 1.1f / tangentX + offset.z,
+                std::abs(offset.y) * 1.1f / tangentY + offset.z,
+                nearPlane * 2.0f + offset.z});
+        }
+        // Cover the scene even when rotating in place, without the old four-radius
+        // far-plane allowance. Retain a modest workspace range for tiny assets.
+        float farPlane = std::max(nearPlane * 2.0f, 10.0f);
+        for (unsigned int corner = 0; corner < 8; ++corner)
+            farPlane = std::max(farPlane,
+                glm::length(cornerOffset(corner) - glm::vec3{0.0f, 0.0f, distance}) * 1.1f);
 
         const glm::vec3 position =
             center + glm::vec3{ 0.0f, 0.0f, distance };
