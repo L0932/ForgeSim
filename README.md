@@ -77,6 +77,7 @@ Rendering features include:
 - Explicit linear and sRGB color-space handling
 - Opaque, masked, and blended material rendering
 - Single-sided and double-sided material support
+- [`KHR_materials_unlit`](docs/UnlitMaterials.md) base-color shading with alpha support
 - Runtime shader validation and hot reloading
 
 ### PBR Material Validation Gallery

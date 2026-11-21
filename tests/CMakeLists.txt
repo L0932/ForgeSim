@@ -297,12 +297,14 @@ target_sources(
         GltfLoaderTest.cpp
         GltfImageCacheTest.cpp
         GltfTextureFallbackTest.cpp
+        GltfUnlitTest.cpp
 )
 
 target_link_libraries(
     ForgeSimGltfLoaderTests
     PRIVATE
         ForgeSim::Assets
+        nlohmann_json::nlohmann_json
 )
 
 target_compile_features(

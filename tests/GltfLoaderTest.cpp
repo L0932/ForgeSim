@@ -11,6 +11,7 @@
 
 void RunGltfTextureFallbackTests();
 void RunGltfImageCacheTests();
+void RunGltfUnlitTests();
 
 int main()
 {
@@ -18,6 +19,7 @@ int main()
 	{
 		RunGltfTextureFallbackTests();
 		RunGltfImageCacheTests();
+		RunGltfUnlitTests();
 
 		const std::filesystem::path assetDirectory{
 			FORGESIM_TEST_ASSET_DIRECTORY
