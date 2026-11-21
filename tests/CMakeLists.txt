@@ -1667,3 +1667,11 @@ target_compile_features(ForgeSimViewportDisplayPreferencesTests PRIVATE cxx_std_
 forgesim_set_project_warnings(ForgeSimViewportDisplayPreferencesTests)
 set_target_properties(ForgeSimViewportDisplayPreferencesTests PROPERTIES FOLDER "ForgeSim/Tests")
 add_test(NAME ForgeSim.Sandbox.ViewportDisplayPreferences COMMAND ForgeSimViewportDisplayPreferencesTests)
+
+add_executable(ForgeSimTexturePreviewTests TexturePreviewTest.cpp)
+target_include_directories(ForgeSimTexturePreviewTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox" "${PROJECT_SOURCE_DIR}/engine/Assets/include")
+target_compile_features(ForgeSimTexturePreviewTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimTexturePreviewTests)
+set_target_properties(ForgeSimTexturePreviewTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.TexturePreview COMMAND ForgeSimTexturePreviewTests)

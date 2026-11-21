@@ -9,6 +9,10 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Correct Inspector base-color and emissive previews using independent source-color
+  textures. Add packed RGB, roughness (G), and metallic (B) views without changing
+  rendering textures, source images, or material factors.
+
 - Refresh owning model bounds immediately after node undo/redo so whole-model
   picking and directional shadow fitting match the current geometry in the same frame.
 
@@ -18,6 +22,10 @@ contains the detailed implementation record.
   Empty scene startup no longer loads an unused gallery model.
 
 ### Added
+
+- Full-resolution Inspector texture inspection with fit, 1:1, pointer-centered
+  zoom, drag panning, and source pixel values for comparing exported texture data.
+  Fit follows window resizing; manual zoom and pan remain stable until Fit is selected.
 
 - Support glTF `KHR_materials_unlit` materials, including required extension
   declarations, base-color textures, vertex colors and existing alpha modes.

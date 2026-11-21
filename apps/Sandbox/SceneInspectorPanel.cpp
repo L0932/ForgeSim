@@ -48,6 +48,7 @@ namespace ForgeSim::Sandbox
         m_NodeEditError.clear();
         m_ObjectEdit.reset();
         m_EditTargets.clear();
+        m_TextureViewer.reset();
     }
 
     void SceneInspectorPanel::FinishObjectEdit(SceneTransformEditor* editor)
@@ -66,6 +67,7 @@ namespace ForgeSim::Sandbox
         if (!ImGui::Begin("Inspector"))
         {
             ImGui::End();
+            DrawTextureViewer(context.materials);
             return;
         }
 
@@ -100,6 +102,7 @@ namespace ForgeSim::Sandbox
 
         ImGui::EndDisabled();
         ImGui::End();
+        DrawTextureViewer(context.materials);
     }
 
     void SceneInspectorPanel::DrawNode(const SceneInspectorPanelContext& context)
@@ -315,10 +318,110 @@ namespace ForgeSim::Sandbox
         DrawMaterials(context.materials);
     }
 
+    void SceneInspectorPanel::DrawTextureViewer(const ModelMaterialInspection& inspection)
+    {
+        if (!m_TextureViewer) return;
+        if (m_TextureViewer->asset != inspection.asset ||
+            m_TextureViewer->generation != inspection.previewGeneration || !inspection.asset ||
+            !inspection.texturePreview || m_TextureViewer->imageIndex >= inspection.asset->textureResources.images.size())
+        { m_TextureViewer.reset(); return; }
+        auto& viewer = *m_TextureViewer;
+        const auto& image = inspection.asset->textureResources.images[viewer.imageIndex];
+        bool open = true;
+        ImGui::SetNextWindowSize(ImVec2{800, 700}, ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Texture inspection", &open))
+        {
+            ImGui::Text("%s | Image %zu | %u x %u", viewer.name.c_str(), viewer.imageIndex, image.width, image.height);
+            ImGui::TextWrapped("Source values; alpha ignored. No lighting, material factors, exposure, or tone mapping.");
+            if (viewer.packed)
+            {
+                int selected = static_cast<int>(viewer.mode);
+                if (ImGui::Combo("Channel", &selected, "Packed RGB\0Roughness (G)\0Metallic (B)\0"))
+                    viewer.mode = static_cast<TexturePreviewMode>(selected);
+            }
+            if (ImGui::Button("Fit")) viewer.fit = true;
+            ImGui::SameLine();
+            const bool oneToOne = ImGui::Button("1:1");
+            if (oneToOne) viewer.fit = false;
+            ImGui::SameLine();
+            ImGui::Text("%s | %.1f%% | Wheel: zoom | Drag: pan | Hover: source pixel",
+                viewer.fit ? "Fit" : "Manual", viewer.zoom * 100.0f);
+            const auto handle = inspection.texturePreview(viewer.imageIndex, viewer.mode, TexturePreviewResolution::Full);
+            if (handle && image.width && image.height)
+            {
+                ImGui::BeginChild("TextureCanvas", ImVec2{0, 0}, ImGuiChildFlags_Borders,
+                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                const auto origin = ImGui::GetCursorScreenPos();
+                const auto available = ImGui::GetContentRegionAvail();
+                if (viewer.fit || oneToOne)
+                {
+                    viewer.zoom = oneToOne ? 1.0f : std::clamp(std::min(available.x / static_cast<float>(image.width),
+                        available.y / static_cast<float>(image.height)), 0.001f, 32.0f);
+                    viewer.panX = (available.x - static_cast<float>(image.width) * viewer.zoom) * 0.5f;
+                    viewer.panY = (available.y - static_cast<float>(image.height) * viewer.zoom) * 0.5f;
+                }
+                ImGui::InvisibleButton("ImageCanvas", ImVec2{std::max(1.0f, available.x), std::max(1.0f, available.y)},
+                    ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle);
+                const bool hovered = ImGui::IsItemHovered();
+                const auto& io = ImGui::GetIO();
+                if (hovered && io.MouseWheel != 0.0f)
+                {
+                    viewer.fit = false;
+                    const float nextZoom = std::clamp(viewer.zoom * std::pow(1.25f,
+                        std::clamp(io.MouseWheel, -16.0f, 16.0f)), 0.001f, 32.0f);
+                    const float x = io.MousePos.x - origin.x;
+                    const float y = io.MousePos.y - origin.y;
+                    viewer.panX = x - (x - viewer.panX) * nextZoom / viewer.zoom;
+                    viewer.panY = y - (y - viewer.panY) * nextZoom / viewer.zoom;
+                    viewer.zoom = nextZoom;
+                }
+                if (ImGui::IsItemActive() && (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f) ||
+                    ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0f)))
+                {
+                    viewer.fit = false;
+                    viewer.panX += io.MouseDelta.x;
+                    viewer.panY += io.MouseDelta.y;
+                }
+                const ImVec2 topLeft{origin.x + viewer.panX, origin.y + viewer.panY};
+                ImGui::GetWindowDrawList()->AddImage(ImTextureRef{static_cast<ImTextureID>(handle)}, topLeft,
+                    ImVec2{topLeft.x + static_cast<float>(image.width) * viewer.zoom,
+                        topLeft.y + static_cast<float>(image.height) * viewer.zoom});
+                const float pixelX = std::floor((io.MousePos.x - topLeft.x) / viewer.zoom);
+                const float pixelY = std::floor((io.MousePos.y - topLeft.y) / viewer.zoom);
+                if (hovered && image.channelCount == 4 && pixelX >= 0 && pixelY >= 0 &&
+                    pixelX < static_cast<float>(image.width) && pixelY < static_cast<float>(image.height))
+                {
+                    const auto x = static_cast<std::uint32_t>(pixelX);
+                    const auto y = static_cast<std::uint32_t>(pixelY);
+                    const auto offset = (static_cast<std::size_t>(y) * image.width + x) * 4;
+                    if (image.pixels.size() >= offset + 4)
+                    {
+                        const auto* rgba = image.pixels.data() + offset;
+                        ImGui::BeginTooltip();
+                        ImGui::Text("Pixel (%u, %u), origin top-left", x, y);
+                        ImGui::Text("RGBA bytes: %u, %u, %u, %u", static_cast<unsigned>(rgba[0]),
+                            static_cast<unsigned>(rgba[1]), static_cast<unsigned>(rgba[2]), static_cast<unsigned>(rgba[3]));
+                        if (viewer.packed)
+                            ImGui::Text("G roughness: %.6f | B metallic: %.6f", rgba[1] / 255.0f, rgba[2] / 255.0f);
+                        else
+                            ImGui::Text("RGB / 255: %.6f, %.6f, %.6f", rgba[0] / 255.0f, rgba[1] / 255.0f, rgba[2] / 255.0f);
+                        ImGui::EndTooltip();
+                    }
+                }
+                ImGui::EndChild();
+            }
+            else ImGui::TextDisabled("Full-resolution preview unavailable");
+        }
+        ImGui::End();
+        if (!open) m_TextureViewer.reset();
+    }
+
     void SceneInspectorPanel::DrawMaterials(const ModelMaterialInspection& inspection)
     {
         if (!EditorSectionHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen)) return;
         ImGui::TextDisabled("Read-only asset materials");
+        ImGui::TextWrapped("Texture previews show source RGB or channel values with alpha ignored. "
+            "Material factors, lighting, exposure, and tone mapping are not applied.");
         if (!inspection.asset)
         {
             ImGui::TextWrapped("Material resources are unavailable.");
@@ -376,16 +479,35 @@ namespace ForgeSim::Sandbox
                         {
                             const auto& image = resources.images[imageIndex];
                             ImGui::Text("Image %zu: %u x %u (%u channels)", imageIndex, image.width, image.height, image.channelCount);
-                            const auto handle = index < inspection.textureHandles.size() ? inspection.textureHandles[index][slot] : 0;
+                            TexturePreviewMode mode = TexturePreviewMode::Rgb;
+                            if (slot == 1)
+                            {
+                                auto* state = ImGui::GetStateStorage();
+                                const auto key = ImGui::GetID("PreviewChannel");
+                                int selected = std::clamp(state->GetInt(key, 0), 0, 2);
+                                if (ImGui::Combo("View", &selected, "Packed RGB\0Roughness (G)\0Metallic (B)\0"))
+                                    state->SetInt(key, selected);
+                                mode = selected == 1 ? TexturePreviewMode::Roughness :
+                                    selected == 2 ? TexturePreviewMode::Metallic : TexturePreviewMode::Rgb;
+                                if (mode != TexturePreviewMode::Rgb)
+                                    ImGui::TextWrapped("Raw channel: black = 0, white = 1. Factor not applied.");
+                            }
+                            const auto handle = inspection.texturePreview
+                                ? inspection.texturePreview(imageIndex, mode, TexturePreviewResolution::Thumbnail) : 0;
                             if (handle && image.width && image.height)
                             {
                                 const float width = std::min(128.0f, std::max(1.0f, ImGui::GetContentRegionAvail().x));
                                 const float height = std::min(128.0f, width * static_cast<float>(image.height) / static_cast<float>(image.width));
                                 const float fittedWidth = height * static_cast<float>(image.width) / static_cast<float>(image.height);
                                 ImGui::Image(ImTextureRef{static_cast<ImTextureID>(handle)}, ImVec2(fittedWidth, height));
+                                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                    m_TextureViewer = TextureViewer{.asset = inspection.asset,
+                                        .generation = inspection.previewGeneration, .imageIndex = imageIndex,
+                                        .mode = mode, .packed = slot == 1, .name = name};
                                 if (ImGui::IsItemHovered())
                                 {
                                     ImGui::BeginTooltip();
+                                    ImGui::TextUnformatted("Click to inspect at full resolution");
                                     const float largeWidth = std::min(320.0f, 320.0f * static_cast<float>(image.width) / static_cast<float>(image.height));
                                     ImGui::Image(ImTextureRef{static_cast<ImTextureID>(handle)},
                                         ImVec2(largeWidth, largeWidth * static_cast<float>(image.height) / static_cast<float>(image.width)));
@@ -399,11 +521,11 @@ namespace ForgeSim::Sandbox
                     else ImGui::TextDisabled("Texture unavailable");
                     ImGui::PopID();
                 };
-                drawMap("Base Color", pbr.baseColorTexture ? &*pbr.baseColorTexture : nullptr, 0, "sRGB color; multiplied by base RGBA");
+                drawMap("Base Color", pbr.baseColorTexture ? &*pbr.baseColorTexture : nullptr, 0, "sRGB source color; rendered color is multiplied by base RGBA");
                 drawMap("Metallic / Roughness", pbr.metallicRoughnessTexture ? &*pbr.metallicRoughnessTexture : nullptr, 1, "Linear data: G = roughness, B = metallic; multiplied by factors");
                 drawMap("Normal", material.normalTexture ? &material.normalTexture->texture : nullptr, 2, "Linear tangent-space normal map");
                 drawMap("Occlusion", material.occlusionTexture ? &material.occlusionTexture->texture : nullptr, 3, "Linear data: R = ambient occlusion");
-                drawMap("Emissive", material.emissiveTexture ? &*material.emissiveTexture : nullptr, 4, "sRGB color; multiplied by emissive RGB");
+                drawMap("Emissive", material.emissiveTexture ? &*material.emissiveTexture : nullptr, 4, "sRGB source color; rendered emission is multiplied by emissive RGB");
                 ImGui::EndTable();
             }
             std::string missingMaps;

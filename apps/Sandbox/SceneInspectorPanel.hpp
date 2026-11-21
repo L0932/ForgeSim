@@ -46,6 +46,21 @@ namespace ForgeSim::Sandbox
         std::vector<SandboxObjectId> m_EditTargets;
         void FinishObjectEdit(SceneTransformEditor* editor);
         void DrawMaterials(const ModelMaterialInspection& inspection);
+        void DrawTextureViewer(const ModelMaterialInspection& inspection);
+        struct TextureViewer
+        {
+            const Assets::SceneAsset* asset = nullptr; // Identity only; never dereferenced across frames.
+            std::uint64_t generation = 0;
+            std::size_t imageIndex = 0;
+            TexturePreviewMode mode = TexturePreviewMode::Rgb;
+            bool packed = false;
+            bool fit = true;
+            float zoom = 1.0f;
+            float panX = 0.0f;
+            float panY = 0.0f;
+            std::string name;
+        };
+        std::optional<TextureViewer> m_TextureViewer;
 
 		[[nodiscard]] static float CalculatePositionDragSpeed(
 			const Renderer::AxisAlignedBoundingBox& bounds);

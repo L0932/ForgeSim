@@ -1522,6 +1522,7 @@ namespace ForgeSim::Sandbox
 		const SceneLightingView& lighting,
 		const SandboxRenderSettings& settings)
 	{
+        m_TexturePreviews.BeginFrame();
 		if (settings.framebufferWidth == 0 ||
 			settings.framebufferHeight == 0)
 		{
@@ -2509,6 +2510,7 @@ namespace ForgeSim::Sandbox
 
 		m_ObjectModelPath.swap(replacementPath);
         m_NodeQueries.clear();
+        m_TexturePreviews.Invalidate();
 		swap(m_ObjectSceneAsset, replacementScene);
 		m_ObjectLocalBounds = replacementBounds;
 
@@ -2546,13 +2548,10 @@ namespace ForgeSim::Sandbox
         const auto* model = cached == m_Models.end() ? nullptr : cached->second.get();
         ModelMaterialInspection result;
         result.asset = model ? &model->asset : &m_ObjectSceneAsset;
-        const auto& materials = model ? model->materials : m_GpuMaterialResources;
-        const auto handle = [](const GpuTextureBinding& texture) -> std::uint32_t
-        { return texture.texture ? texture.texture->Handle() : 0; };
-        result.textureHandles.reserve(materials.size());
-        for (const auto& material : materials)
-            result.textureHandles.push_back({handle(material.baseColor), handle(material.metallicRoughness),
-                handle(material.normal), handle(material.occlusion), handle(material.emissive)});
+        result.previewGeneration = m_TexturePreviews.Generation();
+        result.texturePreview = [this, asset = result.asset](std::size_t imageIndex, TexturePreviewMode mode,
+            TexturePreviewResolution resolution)
+        { return m_TexturePreviews.Get(*asset, imageIndex, mode, resolution); };
         return result;
     }
 
@@ -2601,6 +2600,7 @@ namespace ForgeSim::Sandbox
         m_RenderSubmissions.clear();
         m_ModelBindings.swap(bindings);
         m_NodeQueries.clear();
+        m_TexturePreviews.Invalidate();
         m_Models.swap(models);
         // Release the initial model when a replacement scene no longer uses it.
         // Bounds remain available as the empty-scene fallback.

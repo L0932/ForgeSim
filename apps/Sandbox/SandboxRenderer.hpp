@@ -1,5 +1,6 @@
 #pragma once
 #include "ModelMaterialInspection.hpp"
+#include "TexturePreviewCache.hpp"
 #include "ModelNodeQuery.hpp"
 #include "SceneSelection.hpp"
 #include <map>
@@ -295,6 +296,7 @@ namespace ForgeSim::Sandbox
         };
         std::map<std::filesystem::path, std::shared_ptr<ModelResources>> m_Models;
         mutable std::map<const Assets::SceneAsset*, ModelNodeQuery> m_NodeQueries;
+        mutable TexturePreviewCache m_TexturePreviews;
         std::map<std::string, std::filesystem::path> m_ModelBindings;
 
 		void UploadObjectModelResources(
