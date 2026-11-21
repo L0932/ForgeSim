@@ -39,6 +39,22 @@ Update both when bindings change; list only implemented commands.
 | Fields | Ctrl+click slider | Type a precise value | Supported numeric sliders, including fly speed |
 | Fields | Enter | Apply clipping value | Near clip or Far clip field focused |
 
+## Scene framing
+
+Frame scene fits the complete scene bounding box, including trees and other
+geometry in an imported model, with 10% padding in the current viewport. The
+camera remains outside the bounds so the complete scene is visible.
+Automatic near clipping is 1% of the bounding-sphere radius, limited to
+0.0001 through 0.1 scene units. This improves ordinary scene depth precision
+while allowing smaller clips for small assets. It is a default policy, not a
+universal solution for nearly coplanar geometry or every scene scale.
+Far clipping covers the farthest corner in any viewing direction with 10%
+headroom and a minimum range of 10 units. Manual clipping controls remain
+available; loading a saved viewpoint preserves its authored clipping values.
+Frame scene explicitly recalculates these values. A larger near clip can hide
+surfaces very close to the camera; use selection focus or manual clipping for
+close inspection. Frame scene also continues to reset fly speed to its default.
+
 ## Selection focus
 
 Hover over the Scene viewport, or focus Scene or a Hierarchy row, then press **F**
