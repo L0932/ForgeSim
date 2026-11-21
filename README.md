@@ -82,11 +82,12 @@ Rendering features include:
 
 ### PBR Material Validation Gallery
 
-The Sandbox loads a glTF material gallery that exercises ForgeSim's
-supported metallic-roughness material path using imported scene and
-material data.
+The Sandbox opens an empty workspace with an editor reference grid, one white
+directional light, neutral background, and studio environment lighting. New Scene
+uses the same setup. The initial camera looks down toward the origin with a `0.1`
+near clip. No ground geometry is added; the grid is an editor aid. The Material
+Gallery remains available from File > Samples.
 
-The Sandbox currently loads `PbrMaterialGallery.glb` by default.
 Build and launch the Sandbox using the Debug or Release instructions
 under [Building from Source on Windows](#building-from-source-on-windows).
 

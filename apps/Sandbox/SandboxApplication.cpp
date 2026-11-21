@@ -208,6 +208,9 @@ namespace ForgeSim::Sandbox
             ResolveSceneEnvironment(m_EditorSession->Scene().RenderingSettings(), projectRoot,
                 BundledAssetDirectory() / "environments"));
 
+        if (spec.initialScene && spec.initialScene->objects.empty() && !spec.scenePath)
+            m_DebugUI.ShowWorkspaceGrid();
+
 		Core::LogInfo(
 			"Scene project root: " + projectRoot.string());
         Core::LogInfo("Scene loaded: " + m_EditorSession->DisplayName());
@@ -1563,6 +1566,7 @@ namespace ForgeSim::Sandbox
 							lightPickTargets.clear();
 							cameraFramingRequested = true;
 
+                            m_DebugUI.ShowWorkspaceGrid();
 							pendingAction = PendingSceneAction::None;
 							sceneFileMessage = "New scene created.";
                             Core::LogInfo(sceneFileMessage);

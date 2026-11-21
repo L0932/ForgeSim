@@ -75,8 +75,8 @@ namespace ForgeSim::Sandbox
         auto framing = CreateSceneCameraFraming(workspace, aspectRatio);
         // Empty scenes have no asset scale. A workspace range must cover the
         // reference grid and allow navigation instead of clipping at ~12 units.
-        framing.camera = Renderer::PerspectiveCamera{framing.camera.Position(), glm::vec3{0.0f},
-            framing.camera.UpDirection(), framing.camera.VerticalFieldOfViewRadians(), 0.05f, 1000.0f};
+        framing.camera = Renderer::PerspectiveCamera{glm::vec3{6.0f, 4.0f, 6.0f}, glm::vec3{0.0f},
+            glm::vec3{0.0f, 1.0f, 0.0f}, framing.camera.VerticalFieldOfViewRadians(), 0.1f, 1000.0f};
         return framing;
     }
 

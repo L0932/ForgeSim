@@ -1,4 +1,5 @@
 #include "EditorSession.hpp"
+#include "DefaultWorkspace.hpp"
 #include "ModelImportLocation.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneSerializer.hpp"
@@ -129,7 +130,7 @@ namespace ForgeSim::Sandbox
     EditorSession EditorSession::PrepareNew() const
     {
         return EditorSession{
-            SceneDocument{},
+            CreateDefaultWorkspace(),
             m_ProjectRoot,
             std::nullopt,
             m_DefaultSceneDirectory
