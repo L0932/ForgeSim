@@ -83,6 +83,7 @@ namespace ForgeSim::Assets
 		AlphaMode alphaMode = AlphaMode::Opaque;
 		float alphaCutoff = 0.5f;
 		bool doubleSided = false;
+		bool unlit = false;
 
 		std::optional<DirectionalTransmissionData> directionalTransmission;
 	};

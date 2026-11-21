@@ -309,6 +309,9 @@ namespace ForgeSim::Sandbox
 			constexpr std::string_view doubleSided =
 				"uDoubleSided";
 
+			constexpr std::string_view unlit = 
+				"uUnlit";
+
 			constexpr std::string_view metallicRoughnessTexture =
 				"uMetallicRoughnessTexture";
 
@@ -424,6 +427,7 @@ namespace ForgeSim::Sandbox
 				alphaMaskEnabled,
 				alphaCutoff,
 				doubleSided,
+				unlit,
 				metallicRoughnessTexture,
 				normalTexture,
 				occlusionTexture,
@@ -1492,6 +1496,7 @@ namespace ForgeSim::Sandbox
 				.alphaCutoff = material.alphaCutoff,
 
 				.doubleSided = material.doubleSided,
+				.unlit = material.unlit,
 				.directionalTransmission = material.directionalTransmission
 			};
 
@@ -2728,6 +2733,7 @@ namespace ForgeSim::Sandbox
 
 		float alphaCutoff = 0.5f;
 		bool doubleSided = false;
+		bool unlit = false;
 
 		glm::vec3 emissiveFactor{ 0.0f };
 
@@ -2745,6 +2751,8 @@ namespace ForgeSim::Sandbox
 			alphaCutoff = material.alphaCutoff;
 
 			doubleSided = material.doubleSided;
+
+			unlit = material.unlit;
 
 			metallicRoughness =
 				material.metallicRoughness;
@@ -2848,6 +2856,10 @@ namespace ForgeSim::Sandbox
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::doubleSided,
 			doubleSided ? 1 : 0);
+
+		m_ObjectShaderProgram.SetInt(
+			SandboxRendererShaderUniform::unlit,
+			unlit ? 1 : 0);
 
 		m_ObjectShaderProgram.SetInt(
 			SandboxRendererShaderUniform::metallicRoughnessTexture,
