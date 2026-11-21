@@ -36,10 +36,10 @@ namespace ForgeSim::Sandbox
         }
         [[nodiscard]] Renderer::PerspectiveCamera Start(const SceneSelection& selection,
             const Renderer::AxisAlignedBoundingBox& bounds, const Renderer::AxisAlignedBoundingBox& sceneBounds,
-            const Renderer::PerspectiveCamera& current, float aspectRatio)
+            const Renderer::PerspectiveCamera& current, float aspectRatio, bool preserveView = false)
         {
             if (selection.Empty()) throw std::invalid_argument("Orbit requires a selection.");
-            const auto framed = CreateSelectionFocusCamera(bounds,sceneBounds,current,aspectRatio);
+            const auto framed = preserveView ? current : CreateSelectionFocusCamera(bounds,sceneBounds,current,aspectRatio);
             const auto center = bounds.minimum*.5f + bounds.maximum*.5f;
             const auto offset = framed.Position()-center;
             const float distance = glm::length(offset);

@@ -446,6 +446,8 @@ namespace ForgeSim::Sandbox
         std::optional<SceneCameraData> cameraRestoreRequest;
         SelectionFocusToggle selectionFocusToggle;
         SelectionOrbitController selectionOrbit;
+        bool restoreSavedOrbitRequested = true;
+        bool captureSavedOrbitRequested = false;
         std::vector<SandboxObject> visibleObjects;
         std::vector<PointLight> visiblePointLights;
         std::vector<SpotLight> visibleSpotLights;
@@ -760,6 +762,13 @@ namespace ForgeSim::Sandbox
             {
                 selectionFocusToggle.Reset();
                 selectionOrbit.Stop();
+                captureSavedOrbitRequested = false;
+                if (!restoreSavedOrbitRequested && scene.RenderingSettings().orbitObjectId)
+                {
+                    auto settings = scene.RenderingSettings();
+                    settings.orbitObjectId.reset();
+                    static_cast<void>(scene.TrySetRenderingSettings(settings));
+                }
                 const auto navigationBounds = scene.Objects().empty() ? emptySceneBounds :
                     CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds());
                 cameraController = CreateSceneCameraController(navigationBounds, scene.CameraMovementSpeed());
@@ -824,6 +833,18 @@ namespace ForgeSim::Sandbox
 					Core::LogError(sceneFileMessage);
 				}
 			}
+
+            if (restoreSavedOrbitRequested && viewport.IsDrawable())
+            {
+                restoreSavedOrbitRequested = false;
+                if (const auto target = scene.RenderingSettings().orbitObjectId; target && scene.FindObject(*target))
+                {
+                    selection.SelectObject(*target);
+                    if (const auto bounds = getSelectionBounds())
+                        camera = selectionOrbit.Start(selection, *bounds,
+                            CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds()), camera, aspectRatio, true);
+                }
+            }
 
 			const auto frameDelta = timer.Restart();
 
@@ -893,6 +914,9 @@ namespace ForgeSim::Sandbox
                 {
                     const auto delta = input.GetCursorDelta();
                     const double wheel = viewport.hovered || viewportNavigationActive ? input.GetScrollDelta() : 0.0;
+                    if (scene.RenderingSettings().orbitObjectId &&
+                        ((viewportNavigationActive && (delta.x != 0.0 || delta.y != 0.0)) || wheel != 0.0))
+                        captureSavedOrbitRequested = true;
                     camera = selectionOrbit.Update(*orbitBounds,
                         CalculateSceneBounds(scene.Objects(),m_Renderer.ObjectLocalBounds()),camera,
                         viewportNavigationActive ? delta.x : 0.0, viewportNavigationActive ? delta.y : 0.0,wheel);
@@ -1177,8 +1201,48 @@ namespace ForgeSim::Sandbox
                 !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable())
                 focusSelection();
 
+            const auto setSavedObjectOrbit = [&](bool enabled)
+            {
+                if (enabled && !selectionOrbit.Active() &&
+                    (selectionFocusToggle.HasReturnView(camera) || cameraRestoreRequest)) return;
+                auto settings = scene.RenderingSettings();
+                if (enabled && selection.SelectedObjectIds().size() == 1 && !selection.SelectedLightId())
+                {
+                    const auto id = selection.SelectedObjectIds().front();
+                    selection.SelectObject(id);
+                    if (const auto bounds = getSelectionBounds())
+                    {
+                        const bool preserveView = selectionOrbit.Active();
+                        selectionOrbit.Stop();
+                        camera = selectionOrbit.Start(selection, *bounds,
+                            CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds()), camera, aspectRatio, preserveView);
+                        settings.orbitObjectId = id;
+                        captureSavedOrbitRequested = true;
+                        cameraRestoreRequest.reset();
+                        selectionFocusToggle.Reset();
+                    }
+                }
+                else if (!enabled)
+                {
+                    camera = selectionOrbit.RestorePreviousView(camera);
+                    settings.orbitObjectId.reset();
+                    cameraRestoreRequest.reset();
+                    selectionFocusToggle.Reset();
+                }
+                static_cast<void>(scene.TrySetRenderingSettings(settings));
+                viewportNavigationActive = false;
+                m_Window.SetCursorMode(Platform::CursorMode::Normal);
+            };
+
             const auto toggleOrbit = [&]
             {
+                // Object orbit uses the same saved state and action as the Camera checkbox.
+                if ((selection.SelectedObjectIds().size() == 1 && !selection.SelectedLightId()) ||
+                    scene.RenderingSettings().orbitObjectId)
+                {
+                    setSavedObjectOrbit(!selectionOrbit.Active());
+                    return;
+                }
                 // Also guard panel callbacks and a focus request queued this frame.
                 if (!selectionOrbit.Active() &&
                     (selectionFocusToggle.HasReturnView(camera) || cameraRestoreRequest)) return;
@@ -1223,6 +1287,9 @@ namespace ForgeSim::Sandbox
                 .orbitActive = selectionOrbit.Active(),
                 .focusActive = selectionFocusToggle.HasReturnView(camera),
                 .toggleOrbit = toggleOrbit,
+                .canOrbitObject = selection.SelectedObjectIds().size() == 1 && !selection.SelectedLightId() &&
+                    (selectionOrbit.Active() || (!selectionFocusToggle.HasReturnView(camera) && !cameraRestoreRequest)),
+                .setSavedObjectOrbit = setSavedObjectOrbit,
                 .frameScene = [&]
                 {
                     selectionFocusToggle.Reset();
@@ -1251,6 +1318,25 @@ namespace ForgeSim::Sandbox
                 },
 				}
 			);
+
+            if (scene.RenderingSettings().orbitObjectId)
+            {
+                if (!selectionOrbit.Active())
+                {
+                    auto settings = scene.RenderingSettings();
+                    settings.orbitObjectId.reset();
+                    static_cast<void>(scene.TrySetRenderingSettings(settings));
+                }
+                else if (captureSavedOrbitRequested)
+                {
+                    static_cast<void>(scene.TrySetSavedCamera(CaptureSceneCamera(camera,
+                        viewport.IsDrawable() ? std::optional<SceneCaptureExtent>{SceneCaptureExtent{
+                            static_cast<std::uint32_t>(viewport.framebufferExtent.width),
+                            static_cast<std::uint32_t>(viewport.framebufferExtent.height)}} : std::nullopt)));
+                }
+            }
+
+            captureSavedOrbitRequested = false;
 
 			inspectorPanel.Draw(
 				SceneInspectorPanelContext{
@@ -1698,6 +1784,7 @@ namespace ForgeSim::Sandbox
                         ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),
 							replacement.ProjectRoot(), BundledAssetDirectory() / "environments"), drawProgress, pendingTexturePolicy, false);
                     logTiming("Scene resources ready", resourcesStart);
+                    restoreSavedOrbitRequested = true;
 
 					// Empty scenes render no objects and can retain
 					// the renderer's existing unused model resources.

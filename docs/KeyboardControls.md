@@ -230,8 +230,13 @@ drags block the shortcut.
 
 Mouse input pauses during text entry, active controls, gizmo edits, scene-change
 confirmation, and popups. RMB capture still begins only inside Scene and releases
-when navigation stops. Orbit is temporary navigation state; it does not mark the
-scene modified, change saved viewpoints, or save an orbit mode in the scene file.
+when navigation stops. The Camera **Orbit selected object** checkbox saves a showcase orbit target and
+updates the saved viewpoint as you orbit. It is available with one object selected.
+Saving and reopening restores that object selection, orbit mode, and the bottom
+**Orbit mode** navigation hint. New scenes and older scenes start with it disabled.
+Changing selection, importing a model, framing the scene, restoring a camera pose, or exiting orbit
+clears the saved orbit option. Ctrl+F on one object and the checkbox toggle the same saved orbit setting.
+Group and light orbit remain temporary navigation.
 
 ## Imported node adjustments
 

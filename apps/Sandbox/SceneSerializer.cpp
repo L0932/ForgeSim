@@ -88,6 +88,7 @@ namespace ForgeSim::Sandbox
                     { "showSelectionHighlight", settings.viewport.showSelectionHighlight },
                     { "showTransformGizmo", settings.viewport.showTransformGizmo }
                 } },
+                { "orbitObjectId", settings.orbitObjectId ? Json(*settings.orbitObjectId) : Json(nullptr) },
                 { "exposure", settings.exposure },
                 { "toneMapping", settings.toneMapping == SceneToneMapping::Standard ? "standard" : "acesApproximation" },
                 {
@@ -458,6 +459,9 @@ namespace ForgeSim::Sandbox
                 if (const auto item = viewport->find("showTransformGizmo"); item != viewport->end())
                     settings.viewport.showTransformGizmo = ReadBool(*item, parent + ".showTransformGizmo");
             }
+
+            if (const auto orbit = value.find("orbitObjectId"); orbit != value.end() && !orbit->is_null())
+                settings.orbitObjectId = ReadUnsigned(*orbit, property + ".orbitObjectId");
 
             const auto shadows = value.find("directionalShadows");
 

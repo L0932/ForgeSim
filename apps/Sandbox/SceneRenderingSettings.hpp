@@ -3,6 +3,8 @@
 #include "DirectionalShadowSettings.hpp"
 
 #include <string>
+#include <optional>
+#include <cstdint>
 
 #include <glm/vec3.hpp>
 
@@ -48,5 +50,6 @@ namespace ForgeSim::Sandbox
             SceneEnvironmentSource::BundledStudio;
         std::string environmentAsset{};
         SceneViewportDisplaySettings viewport{};
+        std::optional<std::uint64_t> orbitObjectId;
     };
 }

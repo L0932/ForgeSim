@@ -9,6 +9,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Keep Ctrl+F object orbit and the Camera checkbox synchronized through the same
+  saved orbit action.
+
 - Save viewport grid, light guide, bounds, selection highlight and transform gizmo
   visibility per scene, restoring defaults for older files and new scenes.
 
@@ -34,6 +37,9 @@ contains the detailed implementation record.
   grid, scene light guides, selection highlight and transform gizmo.
 
 ### Added
+
+- A scene-persistent Camera checkbox for orbiting one selected showcase object,
+  restoring its target, viewpoint and Orbit mode hint when opened.
 
 - Separate GUI controls for selection highlighting and transform gizmo visibility,
   with Shift+H retained as a combined hide/show shortcut.

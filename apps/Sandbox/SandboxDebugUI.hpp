@@ -71,6 +71,8 @@ namespace ForgeSim::Sandbox
         bool orbitActive = false;
         bool focusActive = false;
         std::function<void()> toggleOrbit;
+        bool canOrbitObject = false;
+        std::function<void(bool)> setSavedObjectOrbit;
         std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
 	};

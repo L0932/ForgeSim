@@ -357,7 +357,7 @@ namespace ForgeSim::Sandbox
                 if (!context.scene.TrySetCameraMovementSpeed(speed))
                     context.cameraController.SetMovementSpeed(speed);
             }
-            ImGui::TextWrapped("Fly speed is saved with the scene. Capture the viewpoint separately to save position and clipping.");
+            ImGui::TextWrapped("Fly speed is saved with the scene. Capture the viewpoint to save position and clipping; saved object orbit updates it automatically.");
             ImGui::TextDisabled("RMB + WASD to fly; wheel adjusts speed. Ctrl moves 10x slower.");
             ImGui::TextDisabled("Ctrl-click the speed slider to type a precise value.");
             float nearPlane = camera.NearClippingPlane();
@@ -385,6 +385,12 @@ namespace ForgeSim::Sandbox
             if (ImGui::Button(context.orbitActive ? "Exit orbit (Ctrl+F)" : "Orbit selection (Ctrl+F)") && context.toggleOrbit)
                 context.toggleOrbit();
             ImGui::SetItemTooltip("RMB drag orbits; wheel zooms. Ctrl+F exits orbit and returns to the previous view.");
+            ImGui::EndDisabled();
+            bool savedOrbit = context.scene.RenderingSettings().orbitObjectId.has_value();
+            ImGui::BeginDisabled(!context.canOrbitObject);
+            if (ImGui::Checkbox("Orbit selected object", &savedOrbit) && context.setSavedObjectOrbit)
+                context.setSavedObjectOrbit(savedOrbit);
+            ImGui::SetItemTooltip("Ctrl+F and this checkbox toggle the same saved object orbit. Select one object to enable.");
             ImGui::EndDisabled();
             ImGui::Checkbox("Show selection highlight##Camera", &viewportDisplay.showSelectionHighlight);
             ImGui::SetItemTooltip("Control selection tint independently. Shift+H hides or shows both tint and gizmo.");

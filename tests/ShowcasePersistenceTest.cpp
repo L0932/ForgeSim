@@ -184,6 +184,43 @@ namespace
         ExpectFailure([&] { static_cast<void>(SerializeSceneDocument(document)); }, "toneMapping");
     }
 
+    void TestShowcaseOrbitPersistence()
+    {
+        TemporaryDirectory directory;
+        WriteFile(directory.Path() / "model.glb", "asset placeholder");
+        SceneDocument document;
+        document.objects.push_back({.id = 17, .name = "Showcase", .modelPath = "model.glb"});
+        EditorSession session{document, directory.Path()};
+        session.SaveAs("Orbit.scene.json");
+        auto settings = session.Scene().RenderingSettings();
+        settings.orbitObjectId = 17;
+        Require(!session.Scene().TrySetRenderingSettings(settings), "Object orbit was rejected");
+        Require(!session.Scene().TrySetSavedCamera(Camera()), "Showcase camera was rejected");
+        Require(session.HasUnsavedChanges(), "Saved orbit must mark the scene modified");
+        session.Save();
+        auto reopened = session.PrepareOpen("Orbit.scene.json");
+        Require(reopened.Scene().RenderingSettings().orbitObjectId == 17 &&
+            reopened.Scene().SavedCamera()->position == Camera().position,
+            "Orbit target and viewpoint must survive save/reopen");
+        Require(!session.PrepareNew().Scene().RenderingSettings().orbitObjectId,
+            "New scenes must not inherit orbit");
+        auto legacy = Json::parse(SerializeSceneDocument(session.Scene().ToDocument()));
+        legacy["rendering"].erase("orbitObjectId");
+        Require(!DeserializeSceneDocument(legacy.dump()).rendering.orbitObjectId,
+            "Older scenes must start without orbit");
+        for (const auto& invalid : {Json(0), Json(999), Json(-1), Json(true), Json("17")})
+        {
+            auto malformed = legacy;
+            malformed["rendering"]["orbitObjectId"] = invalid;
+            ExpectFailure([&] { static_cast<void>(DeserializeSceneDocument(malformed.dump())); }, "orbitObjectId");
+        }
+        Require(reopened.Scene().RemoveObject(17) && !reopened.Scene().RenderingSettings().orbitObjectId,
+            "Deleting the target must clear saved orbit");
+        reopened.Save();
+        Require(!reopened.PrepareOpen("Orbit.scene.json").Scene().RenderingSettings().orbitObjectId,
+            "Deleted target orbit must remain disabled after reopening");
+    }
+
     void TestViewportDisplayPersistence()
     {
         TemporaryDirectory directory;
@@ -428,6 +465,7 @@ int main()
         TestShadowPersistenceAndDefaults();
         TestToneMappingPersistence();
         TestViewportDisplayPersistence();
+        TestShowcaseOrbitPersistence();
         TestMalformedShowcaseData();
         TestEnvironmentFiles();
         TestEnvironmentOrientation();

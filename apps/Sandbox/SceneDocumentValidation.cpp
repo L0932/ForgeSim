@@ -219,6 +219,9 @@ namespace ForgeSim::Sandbox
             }
         }
 
+        if (document.rendering.orbitObjectId && !objectIds.contains(*document.rendering.orbitObjectId))
+            return Error{"rendering.orbitObjectId", "Orbit target must name an existing object."};
+
         std::unordered_set<SceneLightId> lightIds;
 
         if (document.hasDirectionalLight)

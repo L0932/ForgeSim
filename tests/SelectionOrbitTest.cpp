@@ -95,6 +95,20 @@ namespace
         selection.SelectObject(1);camera=orbit.Start(selection,bounds,world,Original(),1.6f);
         selection.Clear();orbit.ObserveSelection(selection);Require(!orbit.Active(),"Deselecting exits orbit");
     }
+    void TestRestoreShowcaseView()
+    {
+        SceneSelection selection; selection.SelectObject(1);
+        SelectionOrbitController original;
+        auto camera = original.Start(selection, bounds, world, Original(), 1.6f);
+        camera = original.Update(bounds, world, camera, 83, -29, 2);
+        SelectionOrbitController restored;
+        const auto reopened = restored.Start(selection, bounds, world, camera, 1.6f, true);
+        Require(restored.Active(), "Showcase restore must enter orbit mode");
+        Require(Near(reopened.Position(), camera.Position()), "Restoring showcase orbit must retain its saved viewpoint");
+        RequireCentered(reopened, center);
+        Require(Near(restored.Update(bounds, world, reopened, 0, 0, 0).Position(), reopened.Position()),
+            "First orbit update must not jump after restore");
+    }
     void TestInvalidInputAndClipping()
     {
         SelectionOrbitController orbit;SceneSelection selection;selection.SelectObject(1);
@@ -118,7 +132,7 @@ namespace
 }
 int main()
 {
-    try { TestMovement();TestReturnView();TestSelectionAndTracking();TestInvalidInputAndClipping(); }
+    try { TestMovement();TestRestoreShowcaseView();TestReturnView();TestSelectionAndTracking();TestInvalidInputAndClipping(); }
     catch(const std::exception& error) { std::cerr<<error.what()<<'\n';return 1; }
     std::cout<<"Selection orbit rotation, zoom, target identity, clipping and exit tests passed\n";
 }
