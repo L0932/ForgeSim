@@ -104,7 +104,9 @@ When scale, rotation, or reflection changes that mapping, the fragment shader
 uses screen-space derivatives of world position and transformed normal-map UVs
 to reconstruct the directions of increasing U and V. It projects and normalizes
 the tangent against the interpolated surface normal, then determines bitangent
-handedness from the reconstructed V direction. Mirroring U and mirroring V must
+handedness opposite the reconstructed V direction: glTF UVs increase downward,
+while normal-map +Y points upward. Generated tangents use the same convention;
+authored `TANGENT.w` is preserved. Mirroring U and mirroring V must
 produce different direction changes.
 
 All derivatives and the normal sample are evaluated before alpha discard or
@@ -117,6 +119,9 @@ normalization. Normal strength remains independent of UV scale.
 The derivative frame is calculated per fragment, rather than re-baking tangent
 attributes. Results can differ from artist-authored tangent frames at seams or
 under strong distortion; the original frame is preserved for identity mappings.
+
+See [NormalMapHandedness.md](NormalMapHandedness.md) for the glTF convention
+and the brass-pot investigation.
 
 ## Headless tests
 

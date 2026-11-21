@@ -9,6 +9,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Correct normal-map bitangent handedness for glTF meshes without tangents and
+  for transformed normal-map UVs, preserving authored tangent attributes.
+
 - Correct Inspector base-color and emissive previews using independent source-color
   textures. Add packed RGB, roughness (G), and metallic (B) views without changing
   rendering textures, source images, or material factors.
