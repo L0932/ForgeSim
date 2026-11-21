@@ -23,7 +23,7 @@ namespace ForgeSim::Sandbox
         {"Selection", "Ctrl+Left click", "Toggle an object in the selection", "Scene or Hierarchy; last selected object is active"},
         {"Selection", "Shift+Left click", "Select an object range / add an object", "Hierarchy: visible range from anchor; Scene: add clicked object"},
         {"Selection", "Ctrl+Shift+Left click", "Add an object range to selection", "Hierarchy; includes only rows matching the filter"},
-        {"Camera", "Ctrl+F", "Toggle orbit mode around the selection", "Scene or Hierarchy focused; navigation stopped; no active focus return"},
+        {"Camera", "Ctrl+F", "Toggle orbit mode around the selection", "Scene hovered or focused, or Hierarchy focused; navigation stopped; no active focus return"},
         {"Camera", "RMB drag / Wheel", "Orbit / zoom around the focused selection", "Orbit mode active; wheel over Scene"},
         {"Camera", "Esc", "Exit orbit at the current viewpoint", "Scene or Hierarchy focused; no text entry or modal"},
         {"Selection", "Double-click label", "Toggle focus on object, node, or light", "Hierarchy; expansion arrows and visibility buttons are separate"},

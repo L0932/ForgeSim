@@ -15,7 +15,7 @@ Update both when bindings change; list only implemented commands.
 | Selection | Ctrl+Left click | Toggle object membership; last selected object is active | Scene or Hierarchy |
 | Selection | Shift+Left click | Select a visible range from the anchor / add an object | Hierarchy range / Scene add |
 | Selection | Ctrl+Shift+Left click | Add a visible range to the selection | Hierarchy |
-| Camera | Ctrl+F | Toggle orbit mode around selection | Scene or Hierarchy focused; navigation stopped; no active focus return |
+| Camera | Ctrl+F | Toggle orbit mode around selection | Scene hovered or focused, or Hierarchy focused; navigation stopped; no active focus return |
 | Camera | RMB drag / Wheel | Orbit / zoom around selection | Orbit mode active; wheel over Scene |
 | Camera | Esc | Exit orbit at current view | Scene or Hierarchy focused; no text entry or modal |
 | Selection | Shift+H | Show / hide selection highlight | Scene or Hierarchy focused; selection stays active |
@@ -69,7 +69,7 @@ subtrees without geometry have no focus bounds.
 
 F is suppressed while typing, editing a numeric control, using a gizmo, navigating
 with RMB, holding modifier keys, or while a popup/scene-change dialog is open.
-Hovering the scene allows F even when another panel has keyboard focus, provided
+Hovering the scene allows F and Ctrl+F even when another panel has keyboard focus, provided
 no text or numeric input is active. Other scene shortcuts retain their existing
 keyboard-focus requirements. With no selection F does nothing. Hierarchy double-click focus is also suppressed while interactions are
 blocked or modifier keys are held.
@@ -181,7 +181,7 @@ Selection itself is temporary editor state; node adjustments are authored scene 
 
 ## Selection orbit mode
 
-Press Ctrl+F with Scene or Hierarchy focused to frame the current selection and
+Press Ctrl+F with Scene hovered or focused, or Hierarchy focused, to frame the current selection and
 enter an upright orbit mode. Objects, object groups, imported node subtrees and
 lights use the same bounds as ordinary focus. An empty selection or node subtree
 without geometry cannot start orbit mode.
