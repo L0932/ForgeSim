@@ -558,6 +558,7 @@ namespace ForgeSim::Sandbox
 		[[nodiscard]] std::filesystem::path ResolveObjectModelPath(
 			const std::filesystem::path& filename)
 		{
+            if (filename.empty()) return {};
 			const std::filesystem::path modelPath =
 				filename.is_absolute()
 				? filename
@@ -877,11 +878,13 @@ namespace ForgeSim::Sandbox
         , m_ObjectModelPath(
 			ResolveObjectModelPath(specification.sceneFilename))
 		, m_ObjectSceneAsset(
+            m_ObjectModelPath.empty() ? Assets::SceneAsset{} :
 			LoadSceneWithTexturePolicy(m_ObjectModelPath, m_TexturePolicy, m_LoadingDiagnostics,
 				m_ParallelImageDecode, m_CacheDecodedImages, m_ImageCacheBudgetBytes, m_OnLoadProgress, specification.drawStartupProgress))
 		, m_ObjectLocalBounds(
-			CalculateSceneBounds(
-				m_ObjectSceneAsset))
+            m_ObjectModelPath.empty()
+                ? Renderer::AxisAlignedBoundingBox{glm::vec3{-1.0f}, glm::vec3{1.0f}}
+                : CalculateSceneBounds(m_ObjectSceneAsset))
 		, m_ObjectShaderMonitor(
 			ShaderPath("Object.vert"),
 			ShaderPath("Object.frag")
@@ -973,13 +976,16 @@ namespace ForgeSim::Sandbox
 			m_OnLoadProgress({"Prepare GPU resources", Assets::GltfProgressPhase::Started,
 				0, std::nullopt, std::chrono::milliseconds{0}});
 		const auto uploadStart = std::chrono::steady_clock::now();
-		UploadObjectModelResources(
-			m_ObjectSceneAsset,
-			m_GpuPrimitiveResources,
-			m_GpuTextures,
-			m_GpuSamplers,
-			m_GpuMaterialResources,
-			specification.drawStartupProgress);
+        if (!m_ObjectModelPath.empty())
+        {
+            UploadObjectModelResources(
+                m_ObjectSceneAsset,
+                m_GpuPrimitiveResources,
+                m_GpuTextures,
+                m_GpuSamplers,
+                m_GpuMaterialResources,
+                specification.drawStartupProgress);
+        }
 		const auto uploadMs = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now() - uploadStart);
 		if (m_OnLoadProgress)

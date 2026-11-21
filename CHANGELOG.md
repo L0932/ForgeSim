@@ -12,9 +12,10 @@ contains the detailed implementation record.
 - Refresh owning model bounds immediately after node undo/redo so whole-model
   picking and directional shadow fitting match the current geometry in the same frame.
 
-- Default startup opens the bundled Material Gallery scene document, restoring
-  its saved camera speed, view, lighting and rendering settings instead of
-  importing the gallery model with generic defaults.
+- Startup and New Scene now share an empty workspace with a reference grid,
+  directional light, neutral background, studio environment lighting, and an angled
+  camera with a 0.1 near clip. The Material Gallery remains available through Samples.
+  Empty scene startup no longer loads an unused gallery model.
 
 ### Added
 

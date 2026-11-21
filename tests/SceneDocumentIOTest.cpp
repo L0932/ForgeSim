@@ -1,4 +1,5 @@
 #include "EditorSession.hpp"
+#include "DefaultWorkspace.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneSerializer.hpp"
 
@@ -563,6 +564,21 @@ namespace
             !fresh.ScenePath() &&
             !fresh.HasUnsavedChanges(),
             "New should prepare an empty, unmodified scene without a path.");
+
+        const auto workspace = CreateDefaultWorkspace();
+        Require(SerializeSceneDocument(fresh.Scene().ToDocument()) == SerializeSceneDocument(workspace),
+            "Startup and New must use identical workspace defaults.");
+        Require(workspace.objects.empty() && workspace.hasDirectionalLight &&
+            workspace.directionalLight.enabled && workspace.directionalLight.color == glm::vec3{1.0f} &&
+            workspace.directionalLight.intensity > 0.0f &&
+            workspace.directionalLight.directionToLight.y > 0.0f &&
+            workspace.rendering.environmentIntensity > 0.0f && !workspace.rendering.showEnvironmentBackground &&
+            !workspace.camera && workspace.cameraBookmarks.empty(),
+            "Workspace must provide basic lighting without models or inherited cameras.");
+        fresh.SaveAs("Workspace.scene.json");
+        const auto restoredWorkspace = LoadSceneDocument(*fresh.ScenePath(), projectRoot);
+        Require(SerializeSceneDocument(restoredWorkspace) == SerializeSceneDocument(workspace),
+            "Default workspace must survive save and reopen.");
 
         Require(
             SerializeSceneDocument(active.Scene().ToDocument()) ==

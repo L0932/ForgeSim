@@ -78,13 +78,16 @@ int main()
         Require(navigation.MovementSpeed() == small.controller.MovementSpeed(),
             "Returning to a scene without a saved speed must restore the default 10");
         auto workspace = Sandbox::CreateEmptySceneCameraFraming(1.6f);
-        Require(workspace.camera.NearClippingPlane() == 0.05f && workspace.camera.FarClippingPlane() == 1000.0f &&
+        Require(workspace.camera.NearClippingPlane() == 0.1f && workspace.camera.FarClippingPlane() == 1000.0f &&
             workspace.controller.MovementSpeed() == 10.0f,
             "Fresh scenes need workspace clipping and default navigation speed");
+        Require(workspace.camera.Position().y > 0.0f && workspace.camera.ForwardDirection().y < 0.0f &&
+            glm::dot(glm::normalize(-workspace.camera.Position()), workspace.camera.ForwardDirection()) > 0.999f,
+            "Workspace camera must look down toward the origin");
         // Simulate replacing the previous scene's camera, including custom clips.
         workspace.camera = Renderer::PerspectiveCamera{{0,0,5}, {0,0,0}, {0,1,0}, 0.9f, 2.0f, 3.0f};
         workspace = Sandbox::CreateEmptySceneCameraFraming(0.5f);
-        Require(workspace.camera.NearClippingPlane() == 0.05f && workspace.camera.FarClippingPlane() == 1000.0f,
+        Require(workspace.camera.NearClippingPlane() == 0.1f && workspace.camera.FarClippingPlane() == 1000.0f,
             "New workspace must not inherit previous near/far values or depend on viewport aspect");
         const Renderer::ReferenceGridSpecification grid;
         const float halfExtent = static_cast<float>(grid.halfLineCount) * grid.spacing;

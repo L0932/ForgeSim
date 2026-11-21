@@ -1,4 +1,5 @@
 #include "SandboxApplication.hpp"
+#include "DefaultWorkspace.hpp"
 #include "SandboxPaths.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneAssetRoot.hpp"
@@ -27,7 +28,7 @@ namespace
 
     struct CommandLine
     {
-        fs::path modelFilename{ "PbrMaterialGallery.glb" };
+        fs::path modelFilename{};
 
         bool modelSpecified = false;
         bool help = false;
@@ -205,7 +206,7 @@ namespace
             "Scene files and model imports discover project manifests automatically.\n"
             "Standalone model imports use their containing folder without a manifest.\n"
             "Relative scene-file paths use the working directory.\n"
-            "Without a model or --scene, load the bundled Material Gallery scene.\n"
+            "Without a model or --scene, open an empty workspace with basic lighting.\n"
             "The save destination directory must already exist.\n";
     }
 
@@ -221,9 +222,7 @@ namespace
         // Initialize the first model here; the application prepares the remaining models.
         if (document.objects.empty())
         {
-            // No object is drawn. Keep the default model resource
-            // available for the current renderer.
-            return fs::path{ "PbrMaterialGallery.glb" };
+            return {};
         }
 
         const std::string& reference =
@@ -287,12 +286,9 @@ int main(int argumentCount, char* arguments[])
 
         std::optional<ForgeSim::Sandbox::SceneDocument> document;
 
-        const bool useBundledStartupScene =
-            !commandLine.scenePath && !commandLine.modelSpecified;
-        const std::optional<fs::path> scenePath = useBundledStartupScene
-            ? std::optional<fs::path>{ForgeSim::Sandbox::BundledAssetDirectory() /
-                "scenes" / "MaterialGallery.scene.json"}
-            : commandLine.scenePath;
+        const auto& scenePath = commandLine.scenePath;
+        if (!scenePath && !commandLine.modelSpecified)
+            document = ForgeSim::Sandbox::CreateDefaultWorkspace();
 
         fs::path modelFilename = commandLine.modelFilename;
 
@@ -311,7 +307,7 @@ int main(int argumentCount, char* arguments[])
                 const auto sceneStart = std::chrono::steady_clock::now();
                 projectRoot = ForgeSim::Sandbox::ResolveSceneAssetRoot(
                     fs::absolute(*scenePath),
-                    useBundledStartupScene ? std::nullopt : commandLine.projectRoot,
+                    commandLine.projectRoot,
                     DefaultProjectRoot()).root;
                 document = ForgeSim::Sandbox::LoadSceneDocument(
                     *scenePath,
@@ -363,7 +359,7 @@ int main(int argumentCount, char* arguments[])
                 },
                 .initialScene = std::move(document),
                 .projectRoot = projectRoot,
-                // Keep bundled startup editable as a copy, like the Samples menu.
+                // The default workspace has no save path until Save As.
                 .scenePath = commandLine.scenePath,
                 .explicitSceneRoot = commandLine.projectRoot
             }

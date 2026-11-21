@@ -33,6 +33,11 @@
 
 namespace ForgeSim::Sandbox
 {
+    void SandboxDebugUI::ShowWorkspaceGrid()
+    {
+        m_ViewportDisplay.showReferenceGrid = true;
+    }
+
     void SandboxDebugUI::ResetSceneControls()
     {
         m_SelectedBookmark.clear();

@@ -156,6 +156,7 @@ target_sources(
 		LightSubmission.hpp
 		LightSubmission.cpp
 		SandboxSceneDocument.cpp
+        DefaultWorkspace.hpp
 		SceneDocument.hpp
 		SceneDocumentIO.hpp
         SceneDocumentIO.cpp
