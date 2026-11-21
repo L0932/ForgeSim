@@ -18,6 +18,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Support glTF `KHR_materials_unlit` materials, including required extension
+  declarations, base-color textures, vertex colors and existing alpha modes.
+
 - Bundled Chess Board sample with the supplied saved camera, node adjustments,
   screenshot preview, Poly Haven chess/table models and Thatch Chapel HDRI.
   Runtime packaging includes the assets and their attribution.

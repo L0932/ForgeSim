@@ -58,6 +58,8 @@ uniform int uDirectionalShadowFilteringEnabled;
 uniform float uDirectionalShadowMinimumBias;
 uniform float uDirectionalShadowSlopeBias;
 
+uniform int uUnlit;
+
 const int maximumPointLights = 16;
 
 struct PointLightData
@@ -509,17 +511,6 @@ void main()
     vec3 sampledTangentNormal = texture(uNormalTexture, normalUv).xyz * 2.0 - 1.0;
     sampledTangentNormal.xy *= uNormalScale;
 
-
-	vec3 shadowNormal = normalize(vWorldNormal);
-
-	if (uDoubleSided != 0 && !gl_FrontFacing)
-	{
-		shadowNormal = -shadowNormal;
-	}
-
-	vec3 directionalVisibility =
-		DirectionalLightVisibility(shadowNormal);
-
 	vec4 sampledBaseColor =
 		texture(
 			uBaseColorTexture,
@@ -527,10 +518,34 @@ void main()
 		uBaseColorFactor *
 		vec4(vColor, 1.0);
 
+	// Evaluate shadow derivatives before alpha discard. The material flag is
+	// uniform across the draw, so unlit surfaces safely skip this work.
+	vec3 directionalVisibility = vec3(1.0);
+	if (uUnlit == 0)
+	{
+		vec3 shadowNormal = normalize(vWorldNormal);
+		if (uDoubleSided != 0 && !gl_FrontFacing)
+		{
+			shadowNormal = -shadowNormal;
+		}
+		directionalVisibility = DirectionalLightVisibility(shadowNormal);
+	}
+
 	if (uAlphaMaskEnabled != 0 &&
 		sampledBaseColor.a < uAlphaCutoff)
 	{
 		discard;
+	}
+
+	if (uUnlit != 0)
+	{
+		vec3 finalColor = mix(
+			sampledBaseColor.rgb,
+			uSelectionColor,
+			uSelectionAmount);
+
+		fragColor = vec4(finalColor, sampledBaseColor.a);
+		return;
 	}
 
 	vec3 geometricNormal =

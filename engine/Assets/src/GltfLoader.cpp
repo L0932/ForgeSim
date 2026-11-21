@@ -235,7 +235,8 @@ namespace ForgeSim::Assets
 			for (cgltf_size index = 0; index < data->extensions_required_count; ++index)
 			{
 				const std::string_view extension{ data->extensions_required[index] };
-				if (extension != "KHR_texture_transform")
+				if (extension != "KHR_texture_transform" && 
+					extension != "KHR_materials_unlit")
 				{
 					throw std::runtime_error(
 						"Unsupported required glTF extension '" + std::string{ extension } +
@@ -944,6 +945,9 @@ namespace ForgeSim::Assets
 
 			material.doubleSided =
 				sourceMaterial.double_sided;
+
+			material.unlit =
+				sourceMaterial.unlit != 0;
 
 			return material;
 		}

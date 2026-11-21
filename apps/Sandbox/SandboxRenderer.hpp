@@ -280,6 +280,7 @@ namespace ForgeSim::Sandbox
 
 			float alphaCutoff = 0.5f;
 			bool doubleSided = false;
+			bool unlit = false;
 			std::optional<Assets::DirectionalTransmissionData> directionalTransmission;
 		};
 
