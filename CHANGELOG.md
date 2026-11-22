@@ -7,6 +7,10 @@ contains the detailed implementation record.
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep the HDR image picker folder history separate from Open Scene.
+
 ### Added
 
 - Native Windows environment HDR image picker with active asset-root display,

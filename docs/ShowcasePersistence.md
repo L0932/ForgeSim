@@ -50,7 +50,8 @@ comes from an explicit project-root override, a discovered `ForgeSim.project.jso
 or the application fallback; no `C:/ForgeSimAssets` directory is hard-coded.
 
 Choose **Browse HDR image...** to open the native Windows file picker and apply a
-Radiance `.hdr` environment. Images already inside the asset root are referenced
+Radiance `.hdr` environment. Its remembered folder is independent of Open Scene,
+Save As, model import, and missing-model recovery. Images inside the asset root are referenced
 in place. Images outside it are copied into its `environments` folder; name
 collisions receive a numeric suffix and existing files are never overwritten.
 Cancel leaves the environment unchanged. Failed loading removes a newly copied

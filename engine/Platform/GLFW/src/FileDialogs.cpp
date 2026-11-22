@@ -77,6 +77,11 @@ namespace ForgeSim::Platform
             { 0xb1, 0x3d, 0x72, 0x6c, 0x83, 0xe0, 0x5f, 0x29 }
         };
 
+        constexpr GUID environmentImageDialogId{
+            0xc1b2a4f8, 0x8327, 0x4ec5,
+            { 0xb7, 0x93, 0x6e, 0x52, 0x20, 0x71, 0xd8, 0x0a }
+        };
+
         constexpr GUID folderDialogId{
             0xa42d21c8, 0x81da, 0x4dd3,
             { 0xa5, 0xef, 0x5e, 0x76, 0x69, 0x54, 0x0d, 0x38 }
@@ -122,7 +127,8 @@ namespace ForgeSim::Platform
 
         const GUID& historyId = saving ? saveDialogId : folder ? folderDialogId :
             specification.purpose == FileDialogPurpose::ModelImport ? importDialogId :
-            specification.purpose == FileDialogPurpose::ModelRecovery ? recoveryDialogId : openDialogId;
+            specification.purpose == FileDialogPurpose::ModelRecovery ? recoveryDialogId :
+            specification.purpose == FileDialogPurpose::EnvironmentImage ? environmentImageDialogId : openDialogId;
         CheckResult(
             dialog->SetClientGuid(historyId),
             "Set file dialog history");

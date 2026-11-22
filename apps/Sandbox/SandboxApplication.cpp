@@ -841,8 +841,8 @@ namespace ForgeSim::Sandbox
                 if (const auto target = scene.RenderingSettings().orbitObjectId; target && scene.FindObject(*target))
                 {
                     selection.SelectObject(*target);
-                    if (const auto bounds = getSelectionBounds())
-                        camera = selectionOrbit.Start(selection, *bounds,
+                    if (const auto orbitBounds = getSelectionBounds())
+                        camera = selectionOrbit.Start(selection, *orbitBounds,
                             CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds()), camera, aspectRatio, true);
                 }
             }
@@ -1211,11 +1211,11 @@ namespace ForgeSim::Sandbox
                 {
                     const auto id = selection.SelectedObjectIds().front();
                     selection.SelectObject(id);
-                    if (const auto bounds = getSelectionBounds())
+                    if (const auto orbitBounds = getSelectionBounds())
                     {
                         const bool preserveView = selectionOrbit.Active();
                         selectionOrbit.Stop();
-                        camera = selectionOrbit.Start(selection, *bounds,
+                        camera = selectionOrbit.Start(selection, *orbitBounds,
                             CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds()), camera, aspectRatio, preserveView);
                         settings.orbitObjectId = id;
                         captureSavedOrbitRequested = true;
@@ -1706,7 +1706,8 @@ namespace ForgeSim::Sandbox
                             .title = L"Choose environment HDR image",
                             .filterName = L"Radiance HDR images",
                             .filterPattern = L"*.hdr",
-                            .defaultExtension = L"hdr"});
+                            .defaultExtension = L"hdr",
+                            .purpose = Platform::FileDialogPurpose::EnvironmentImage});
                     if (selected)
                     {
                         ImportEnvironmentImage(*selected, root, [&](const std::string& asset)
