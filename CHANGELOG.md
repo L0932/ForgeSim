@@ -5,6 +5,13 @@ This file records meaningful changes in published ForgeSim releases.
 Changes under Unreleased have not yet been published. Git history
 contains the detailed implementation record.
 
+## [Unreleased]
+
+### Added
+
+- Native Windows environment HDR image picker with active asset-root display,
+  portable project references and copying of external HDR images without overwrites.
+
 ## [0.1.0-preview.11] - 2026-11-21
 
 ### Fixed

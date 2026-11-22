@@ -44,6 +44,19 @@ Environment sources:
 | None | `none`, asset `null` | Black environment; no environment-map lighting |
 | Project HDR asset | `projectAsset`, project-relative asset string | Loads a Radiance HDR image and rebuilds its IBL maps |
 
+The panel shows the active **Asset root**. This is the scene's asset directory,
+not necessarily the ForgeSim source-code folder or the scene-file directory. It
+comes from an explicit project-root override, a discovered `ForgeSim.project.json`,
+or the application fallback; no `C:/ForgeSimAssets` directory is hard-coded.
+
+Choose **Browse HDR image...** to open the native Windows file picker and apply a
+Radiance `.hdr` environment. Images already inside the asset root are referenced
+in place. Images outside it are copied into its `environments` folder; name
+collisions receive a numeric suffix and existing files are never overwritten.
+Cancel leaves the environment unchanged. Failed loading removes a newly copied
+image and keeps the previous environment active. Save the scene to keep the
+selected environment. OpenEXR `.exr` decoding is not supported by this picker.
+
 For example, with project root `C:/ForgeSimAssets`, type
 `environments/Cathedral.hdr` and choose **Apply project HDR**. The file resolves to
 `C:/ForgeSimAssets/environments/Cathedral.hdr`, independent of the scene-file

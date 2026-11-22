@@ -15,6 +15,7 @@
 
 #include <array>
 #include <functional>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <optional>
@@ -75,6 +76,8 @@ namespace ForgeSim::Sandbox
         std::function<void(bool)> setSavedObjectOrbit;
         std::function<void()> frameScene;
         std::function<void(const SceneRenderingSettings&)> applyEnvironment;
+        std::filesystem::path projectRoot;
+        std::function<void()> browseEnvironment;
 	};
 
 	class SandboxDebugUI final
@@ -98,6 +101,7 @@ namespace ForgeSim::Sandbox
 			std::optional<std::string_view> error = std::nullopt);
 		void BeginFrame();
         void ResetSceneControls();
+        void RefreshEnvironmentInput() noexcept { m_EnvironmentInputInitialized = false; }
 		void Draw(const SandboxDebugUIContext& context);
 		void EndFrame();
 

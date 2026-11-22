@@ -712,6 +712,12 @@ namespace ForgeSim::Sandbox
             ImGui::SetNextItemWidth(-1.0f);
             const bool environmentSourceChanged = ImGui::Combo("##Source", &environmentSource,
                 "Bundled studio\0None\0Project HDR asset\0");
+            const auto rootBytes = context.projectRoot.generic_u8string();
+            const std::string rootText{rootBytes.begin(), rootBytes.end()};
+            ImGui::TextWrapped("Asset root: %s", rootText.c_str());
+            if (ImGui::Button("Browse HDR image...") && context.browseEnvironment)
+                context.browseEnvironment();
+            ImGui::SetItemTooltip("Choose a Radiance .hdr image. Images outside the asset root are copied into its environments folder without overwriting files.");
             ImGui::TextWrapped("Project-relative HDR path");
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputText("##Project-relative HDR path", m_EnvironmentAsset.data(), m_EnvironmentAsset.size());
@@ -733,7 +739,7 @@ namespace ForgeSim::Sandbox
                     m_PresentationMessage = error.what();
                 }
             }
-            ImGui::TextWrapped("Example: environments/Cathedral.hdr (relative to the project root).");
+            ImGui::TextWrapped("Paths are relative to the asset root shown above. Save the scene after applying an image.");
             ImGui::EndDisabled();
         }
 
