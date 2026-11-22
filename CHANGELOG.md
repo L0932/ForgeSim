@@ -14,6 +14,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Opt-in CPU height-displacement prototype with linear 8/16-bit PNG sampling,
+  bounded triangle subdivision, rebuilt surface frames, and a flat/displaced GLB
+  comparison tool. Editor material overrides and reference-scene validation remain
+  follow-up work for #132.
 - Native Windows HDR environment image picker with active asset-root display.
   Images outside the asset root are copied into its environments folder without
   overwriting existing files; selected environments save as portable references.
