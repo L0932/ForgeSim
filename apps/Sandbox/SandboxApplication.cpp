@@ -15,6 +15,7 @@
 #include "SceneCameraFraming.hpp"
 #include "SceneCameraState.hpp"
 #include "SceneEnvironment.hpp"
+#include "EnvironmentImageImport.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneFilePanel.hpp"
 #include "SceneHierarchyPanel.hpp"
@@ -840,8 +841,8 @@ namespace ForgeSim::Sandbox
                 if (const auto target = scene.RenderingSettings().orbitObjectId; target && scene.FindObject(*target))
                 {
                     selection.SelectObject(*target);
-                    if (const auto bounds = getSelectionBounds())
-                        camera = selectionOrbit.Start(selection, *bounds,
+                    if (const auto orbitBounds = getSelectionBounds())
+                        camera = selectionOrbit.Start(selection, *orbitBounds,
                             CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds()), camera, aspectRatio, true);
                 }
             }
@@ -1210,11 +1211,11 @@ namespace ForgeSim::Sandbox
                 {
                     const auto id = selection.SelectedObjectIds().front();
                     selection.SelectObject(id);
-                    if (const auto bounds = getSelectionBounds())
+                    if (const auto orbitBounds = getSelectionBounds())
                     {
                         const bool preserveView = selectionOrbit.Active();
                         selectionOrbit.Stop();
-                        camera = selectionOrbit.Start(selection, *bounds,
+                        camera = selectionOrbit.Start(selection, *orbitBounds,
                             CalculateSceneBounds(scene.Objects(), m_Renderer.ObjectLocalBounds()), camera, aspectRatio, preserveView);
                         settings.orbitObjectId = id;
                         captureSavedOrbitRequested = true;
@@ -1265,6 +1266,21 @@ namespace ForgeSim::Sandbox
                 !changePending && !transformEditor.IsActive() && !rightMouseDown &&
                 !sceneFilePanel.ConsoleWantsKeyboard() && viewport.IsDrawable()) toggleOrbit();
 
+            bool browseEnvironmentAfterFrame = false;
+            const auto applyEnvironment = [&](const SceneRenderingSettings& settings)
+            {
+                // Prepare authored state before touching GPU resources.
+                SandboxScene replacement = scene;
+                if (const auto error = replacement.TrySetRenderingSettings(settings))
+                    throw std::invalid_argument(std::string{ error->message });
+                const auto environment = ResolveSceneEnvironment(settings,
+                    m_EditorSession->ProjectRoot(), BundledAssetDirectory() / "environments");
+                m_Renderer.LoadSceneResources(std::nullopt, environment);
+                static_assert(std::is_nothrow_move_assignable_v<SandboxScene>);
+                scene = std::move(replacement);
+                static_cast<void>(timer.Restart());
+            };
+
 			m_DebugUI.Draw(
 				SandboxDebugUIContext{
 					.diagnosticsSnapshot =
@@ -1303,19 +1319,9 @@ namespace ForgeSim::Sandbox
                         cameraController.SetMovementSpeed(*scene.CameraMovementSpeed());
                 },
 
-                .applyEnvironment = [&](const SceneRenderingSettings& settings)
-                {
-                    // Prepare authored state before touching GPU resources.
-                    SandboxScene replacement = scene;
-                    if (const auto error = replacement.TrySetRenderingSettings(settings))
-                        throw std::invalid_argument(std::string{ error->message });
-                    const auto environment = ResolveSceneEnvironment(settings,
-                        m_EditorSession->ProjectRoot(), BundledAssetDirectory() / "environments");
-                    m_Renderer.LoadSceneResources(std::nullopt, environment);
-                    static_assert(std::is_nothrow_move_assignable_v<SandboxScene>);
-                    scene = std::move(replacement);
-                    static_cast<void>(timer.Restart());
-                },
+                .applyEnvironment = applyEnvironment,
+                .projectRoot = m_EditorSession->ProjectRoot(),
+                .browseEnvironment = [&] { browseEnvironmentAfterFrame = true; },
 				}
 			);
 
@@ -1688,6 +1694,42 @@ namespace ForgeSim::Sandbox
                 static_cast<std::uint32_t>(framebufferExtent.height),viewport.IsDrawable());
 
 			m_Window.SwapBuffers();
+            if (browseEnvironmentAfterFrame)
+            {
+                try
+                {
+                    const auto& root = m_EditorSession->ProjectRoot();
+                    const auto selected = Platform::ShowFileDialog(m_Window, Platform::FileDialogMode::Open,
+                        Platform::FileDialogSpecification{
+                            .defaultDirectory = root,
+                            .suggestedFileName = {},
+                            .title = L"Choose environment HDR image",
+                            .filterName = L"Radiance HDR images",
+                            .filterPattern = L"*.hdr",
+                            .defaultExtension = L"hdr",
+                            .purpose = Platform::FileDialogPurpose::EnvironmentImage});
+                    if (selected)
+                    {
+                        ImportEnvironmentImage(*selected, root, [&](const std::string& asset)
+                        {
+                            auto settings = scene.RenderingSettings();
+                            settings.environmentSource = SceneEnvironmentSource::ProjectAsset;
+                            settings.environmentAsset = asset;
+                            applyEnvironment(settings);
+                        });
+                        m_DebugUI.RefreshEnvironmentInput();
+                        sceneFileMessage = "Environment applied. Save the scene to keep it.";
+                        Core::LogInfo(sceneFileMessage);
+                    }
+                }
+                catch (const std::exception& error)
+                {
+                    sceneFileMessage = "Cannot apply environment image: " + std::string{error.what()};
+                    Core::LogError(sceneFileMessage);
+                }
+                static_cast<void>(timer.Restart());
+            }
+
             if(screenshotTools.TakeDirectoryRequest())
             {
                 try

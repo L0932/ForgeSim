@@ -19,7 +19,8 @@ namespace ForgeSim::Platform
     {
         General,
         ModelImport,
-        ModelRecovery
+        ModelRecovery,
+        EnvironmentImage
     };
 
 	struct FileDialogSpecification

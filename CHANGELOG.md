@@ -5,6 +5,19 @@ This file records meaningful changes in published ForgeSim releases.
 Changes under Unreleased have not yet been published. Git history
 contains the detailed implementation record.
 
+## [Unreleased]
+
+### Fixed
+
+- Keep the HDR image picker folder history separate from Open Scene.
+- Remove shadowed bounds variables in orbit controls, resolving MSVC warning C4456.
+
+### Added
+
+- Native Windows HDR environment image picker with active asset-root display.
+  Images outside the asset root are copied into its environments folder without
+  overwriting existing files; selected environments save as portable references.
+
 ## [0.1.0-preview.11] - 2026-11-21
 
 ### Fixed
