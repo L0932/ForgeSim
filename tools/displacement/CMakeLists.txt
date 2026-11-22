@@ -1,4 +1,4 @@
-add_executable(ForgeSimDisplacementPrototype DisplacementPrototype.cpp)
+add_executable(ForgeSimDisplacementPrototype DisplacementPrototype.cpp GlbDisplacement.cpp)
 target_link_libraries(ForgeSimDisplacementPrototype PRIVATE ForgeSim::Assets nlohmann_json::nlohmann_json)
 target_compile_features(ForgeSimDisplacementPrototype PRIVATE cxx_std_20)
 forgesim_set_project_warnings(ForgeSimDisplacementPrototype)

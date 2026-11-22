@@ -10,8 +10,8 @@ Enable the opt-in target in your existing build tree:
 
 ```bash
 cmake -S . -B out/build/x64-Debug -DFORGESIM_BUILD_DISPLACEMENT_PROTOTYPE=ON
-cmake --build out/build/x64-Debug --config Debug --target ForgeSimDisplacementPrototype ForgeSimMeshDisplacementTests
-ctest --test-dir out/build/x64-Debug -C Debug -R MeshDisplacement --output-on-failure
+cmake --build out/build/x64-Debug --config Debug --target ForgeSimDisplacementPrototype ForgeSimMeshDisplacementTests ForgeSimGlbDisplacementPrototypeTests
+ctest --test-dir out/build/x64-Debug -C Debug -R "MeshDisplacement|GlbDisplacementPrototype" --output-on-failure
 ```
 
 From Git Bash, generate a comparison GLB (choose a new output filename):
@@ -36,6 +36,36 @@ The test asset uses a neutral material, not the original concrete color/normal
 textures. A `--help` option lists the available prototype controls. `--invert`
 reverses the height samples. Output filenames are never silently overwritten.
 
+## Bake the concrete sphere GLB
+
+The GLB mode retains the input's material, textures, samplers, nodes and scenes.
+It changes the selected primitive's geometry and adds prototype bake provenance
+under root `extras.forgeSimHeightBake`. Original binary data remains in the output,
+so this is not a size-optimized export. Use the original input for each bake;
+already-baked inputs and existing output filenames are rejected.
+
+```bash
+./out/build/x64-Debug/tools/displacement/ForgeSimDisplacementPrototype.exe --input "C:/path/concrete_slab_wall_02_1k(1).glb" --output concrete_slab_wall_02_displaced.glb --embedded-height concrete_slab_wall_02_disp --levels 2 --midlevel 0.225 --scale 0.050
+```
+
+Import the resulting GLB in ForgeSim using the existing model workflow. It already
+contains displaced geometry; no height setting in Sandbox is required.
+
+`--mesh` and `--primitive` select zero-based indices (both default to zero).
+Without `--embedded-height`, the tool matches the selected material name followed
+by `_disp`, `_displacement` or `_height`, optionally with an underscore suffix.
+Missing or multiple matches require an explicit choice. Alternatively, supply
+`--height path.png`; external and embedded selectors are mutually exclusive.
+This naming convention is a prototype rule, not a standard glTF height binding.
+
+GLB mode defaults to two subdivision levels and Repeat sampling; plane mode
+defaults to six levels and Clamp to Edge. Only static triangle primitives with
+POSITION, NORMAL, TEXCOORD_0 and optional TANGENT attributes are supported.
+UV0 is required. Extra attributes, primitive extensions and morph targets are
+rejected rather than silently discarded. Skinning and UV transforms are not
+supported. Other primitives remain unchanged; all instances of the selected
+mesh use its baked geometry.
+
 ## Conventions
 
 - Decode PNG height channels as **linear data**; do not apply an sRGB transfer.
@@ -53,16 +83,19 @@ reverses the height samples. Output filenames are never silently overwritten.
   not a world-space distance guarantee.
 - glTF UV0 is used directly, with row zero at the top of the height image.
   Bilinear sampling supports Repeat, Mirrored Repeat and Clamp to Edge.
-  The comparison tool uses Clamp to Edge; library defaults use Repeat.
+  Plane mode uses Clamp to Edge; GLB mode and library defaults use Repeat.
 - Subdivision splits each indexed triangle into four and shares midpoint
   vertices for shared indexed edges. Position, UV and vertex color interpolate;
   source normals interpolate before height evaluation. Normals and glTF tangent
   frames are rebuilt from the final displaced triangles.
-- UV splits, separate primitives and hard-normal boundaries are not welded or
-  stitched. Inconsistent heights/normals across them can produce gaps. Start
-  with a continuous UV-mapped plane; closed/seamed production meshes need
-  additional policy before editor integration. Skinning, morph deformation,
-  self-intersection handling and UV transforms are not addressed here.
+- GLB mode stitches exact coincident vertices with matching normalized source
+  normals by averaging their displaced positions, keeping their UVs and indices
+  separate, then sharing area-weighted rebuilt normals. This prevents gaps where
+  UVs disagree at smooth seams and sphere poles. Averaging changes the sampled
+  boundary height intentionally; it is not a claim of Blender parity. Use
+  `--no-stitch-seams` to disable it. The library setting defaults to off.
+  Hard-normal boundaries and separate primitives remain separate; there is no
+  tolerance-based weld or self-intersection repair.
 - Disabled displacement or zero scale preserves source topology and attributes
   without requiring a height image.
 
@@ -102,12 +135,25 @@ shadow upload, bounds and picking receive actual changed geometry rather than
 a fragment-only effect. Visual shadow matching and interactive focus/picking
 still require review in ForgeSim before this issue's acceptance criteria are met.
 
-Next stages include per-instance/per-material overrides, undo/redo, persistence,
-explicit metadata, matching embedded/local height images, ambiguity handling,
-Inspector assignment controls, transformed UVs, seam/material-boundary policy,
-and a reproducible concrete reference scene. The original reference GLB/.blend
-and height image have not yet been provided for this implementation, so their
-exported texture contents and Blender parity have **not** been verified.
+The uploaded concrete sphere was baked using its embedded **16-bit grayscale
+PNG**, midlevel `.225`, scale `.050` and two subdivision levels. It grows from
+9,004 vertices / 16,128 triangles to 132,643 vertices / 258,048 triangles.
+Material, image, texture, sampler, node and scene JSON remained unchanged, as did
+the original binary prefix. Coincident source vertices had zero position and
+normal separation after stitching (unstitched pole gaps reached about `.0367`
+mesh units). This is a structural check, not a completed visual review in ForgeSim.
+The original Blender file has not been supplied, so exact Blender parity remains
+unverified.
+
+Additional automated GLB checks exercise native 16-bit height decoding, preserved
+material/image metadata, actual ForgeSim importer reload, ambiguous/missing image
+selection, explicit assignment, conflicting selectors and double-bake protection.
+Mesh tests also cover smooth-seam averaging, retained UV splits and hard normals.
+
+Next stages include per-instance/per-material overrides, undo/redo, scene
+persistence, Inspector assignment controls, transformed UVs, more general
+seam/material-boundary handling, and visual review of the concrete reference.
+There are no runtime height controls or scene-save displacement overrides yet.
 
 Normal/bump maps change shading without changing silhouettes. Parallax occlusion
 changes apparent surface depth in the shader. This prototype changes mesh

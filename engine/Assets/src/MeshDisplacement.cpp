@@ -143,6 +143,33 @@ namespace ForgeSim::Assets
             }
             result.indices = std::move(indices);
         }
+        std::vector<std::uint32_t> seamGroup;
+        std::vector<glm::dvec3> seamSum;
+        std::vector<unsigned> seamCount;
+        if (settings.stitchSmoothSeams)
+        {
+            struct KeyHash
+            {
+                std::size_t operator()(const std::array<float,6>& key) const noexcept
+                {
+                    std::size_t hash=0;
+                    for(float value:key) hash ^= std::hash<float>{}(value)+0x9e3779b9u+(hash<<6)+(hash>>2);
+                    return hash;
+                }
+            };
+            std::unordered_map<std::array<float,6>,std::uint32_t,KeyHash> groups;
+            seamGroup.reserve(result.vertices.size());
+            seamSum.resize(result.vertices.size(),glm::dvec3{0});
+            seamCount.resize(result.vertices.size(),0);
+            for(std::size_t index=0;index<result.vertices.size();++index)
+            {
+                const auto& vertex=result.vertices[index];
+                const std::array<float,6> key{vertex.position[0],vertex.position[1],vertex.position[2],
+                    vertex.normal[0],vertex.normal[1],vertex.normal[2]};
+                const auto [entry,inserted]=groups.emplace(key,static_cast<std::uint32_t>(index));
+                static_cast<void>(inserted);seamGroup.push_back(entry->second);
+            }
+        }
         for (auto& vertex : result.vertices)
         {
             float sample = Sample(height, vertex.textureCoordinates[0], vertex.textureCoordinates[1], settings.wrapU, settings.wrapV);
@@ -152,8 +179,32 @@ namespace ForgeSim::Assets
                 if (!std::isfinite(position[axis])) throw std::invalid_argument("Displacement produced a nonfinite position.");
             vertex.position = Array(position);
         }
+        if (settings.stitchSmoothSeams)
+        {
+            for(std::size_t index=0;index<result.vertices.size();++index)
+            {
+                seamSum[seamGroup[index]] += glm::dvec3{Vector(result.vertices[index].position)};
+                ++seamCount[seamGroup[index]];
+            }
+            for(std::size_t index=0;index<result.vertices.size();++index)
+                result.vertices[index].position=Array(glm::vec3{seamSum[seamGroup[index]]/static_cast<double>(seamCount[seamGroup[index]])});
+        }
         result.availableAttributes.normals = false;
         result.availableAttributes.tangents = false;
+        GenerateMissingNormalsAndTangents(result, false);
+        if (settings.stitchSmoothSeams)
+        {
+            std::fill(seamSum.begin(),seamSum.end(),glm::dvec3{0});
+            for(std::size_t index=0;index<result.indices.size();index+=3)
+            {
+                const auto a=result.indices[index],b=result.indices[index+1],c=result.indices[index+2];
+                const glm::dvec3 pa{Vector(result.vertices[a].position)},pb{Vector(result.vertices[b].position)},pc{Vector(result.vertices[c].position)};
+                const auto normal=glm::cross(pb-pa,pc-pa);
+                for(auto vertex:{a,b,c})seamSum[seamGroup[vertex]]+=normal;
+            }
+            for(std::size_t index=0;index<result.vertices.size();++index)
+                result.vertices[index].normal=Array(Unit(glm::vec3{seamSum[seamGroup[index]]}));
+        }
         GenerateMissingNormalsAndTangents(result, true);
         return result;
     }

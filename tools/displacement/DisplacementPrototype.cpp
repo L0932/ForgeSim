@@ -1,3 +1,4 @@
+#include "GlbDisplacement.hpp"
 #include <ForgeSim/Assets/MeshDisplacement.hpp>
 #include <ForgeSim/Assets/MeshProcessing.hpp>
 #include <nlohmann/json.hpp>
@@ -134,27 +135,46 @@ int main(int argc, char** argv)
     {
         MeshDisplacementSettings settings; settings.subdivisionLevels = 6;
         settings.wrapU = settings.wrapV = TextureWrap::ClampToEdge;
-        fs::path heightPath, output; unsigned channel = 0;
+        fs::path heightPath, output, input; unsigned channel = 0, meshIndex = 0, primitiveIndex = 0;
+        std::string embeddedHeight; bool explicitLevels = false, noStitch = false;
         for (int index = 1; index < argc; ++index)
         {
             const std::string argument = argv[index];
             if (argument == "--help")
             {
-                std::cout << "--output result.glb [--height height.png] [--levels 0..8] [--scale .050] [--midlevel .225] [--invert] [--channel 0..3]\nWithout --height, use synthetic linear height data. Outputs flat/displaced 1-unit planes side by side.\n";
+                std::cout << "--output result.glb [--height height.png] [--levels 0..8] [--scale .050] [--midlevel .225] [--invert] [--channel 0..3]\nWithout --input/--height, use synthetic linear height data. Outputs flat/displaced planes.\n--input model.glb [--embedded-height NAME] [--mesh 0] [--primitive 0] bakes the selected primitive and preserves materials. Default GLB detail is 2. Smooth seams are stitched; --no-stitch-seams disables this.\n";
                 return 0;
             }
+            if (argument == "--no-stitch-seams") { noStitch = true; continue; }
             if (argument == "--invert") { settings.inverted = true; continue; }
             if (++index >= argc) throw std::invalid_argument("Missing argument value.");
             const std::string value = argv[index];
-            if (argument == "--height") heightPath = fs::path{std::u8string(value.begin(), value.end())};
+            if (argument == "--input") input = fs::path{std::u8string(value.begin(), value.end())};
+            else if (argument == "--embedded-height") embeddedHeight = value;
+            else if (argument == "--mesh") meshIndex = Unsigned(value);
+            else if (argument == "--primitive") primitiveIndex = Unsigned(value);
+            else if (argument == "--height") heightPath = fs::path{std::u8string(value.begin(), value.end())};
             else if (argument == "--output") output = fs::path{std::u8string(value.begin(), value.end())};
-            else if (argument == "--levels") settings.subdivisionLevels = Unsigned(value);
+            else if (argument == "--levels") { settings.subdivisionLevels = Unsigned(value); explicitLevels = true; }
             else if (argument == "--scale") settings.scale = Float(value);
             else if (argument == "--midlevel") settings.midlevel = Float(value);
             else if (argument == "--channel") channel = Unsigned(value);
             else throw std::invalid_argument("Unknown argument: " + argument);
         }
         if (output.empty()) throw std::invalid_argument("Specify --output with a new .glb filename.");
+        if (!input.empty())
+        {
+            if (!explicitLevels) settings.subdivisionLevels = 2;
+            settings.wrapU = settings.wrapV = TextureWrap::Repeat;
+            settings.stitchSmoothSeams = !noStitch;
+            const auto report = ForgeSim::DisplacementPrototype::DisplaceGlb(input, output, heightPath, embeddedHeight,
+                meshIndex, primitiveIndex, channel, settings);
+            std::cout << "Height=" << report.heightSource << " embeddedBits=" << report.heightBitDepth <<
+                " sourceVertices=" << report.sourceVertices << " displacedVertices=" << report.vertices <<
+                " triangles=" << report.triangles << " generationMs=" << report.generationMilliseconds << '\n';
+            return 0;
+        }
+        if (!embeddedHeight.empty()) throw std::invalid_argument("--embedded-height requires --input.");
         const auto height = heightPath.empty() ? SyntheticHeight() : LoadHeightPng(heightPath, channel);
         const auto plane = Plane();
         const auto begin = std::chrono::steady_clock::now();

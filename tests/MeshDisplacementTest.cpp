@@ -81,6 +81,27 @@ namespace
         settings.scale=.05f; settings.enabled=false;
         Require(DisplaceMesh(source,{},settings).indices==source.indices,"Disabled displacement must require no height texture");
     }
+    void SeamStitching()
+    {
+        const auto plane=Plane();MeshData split;
+        for(auto index:plane.indices)split.vertices.push_back(plane.vertices[index]);
+        split.indices={0,1,2,3,4,5};split.availableAttributes=plane.availableAttributes;
+        for(unsigned index=0;index<6;++index)split.vertices[index].textureCoordinates={index<3?0.f:1.f,.5f};
+        MeshDisplacementSettings settings;settings.wrapU=TextureWrap::ClampToEdge;
+        const HeightField height{2,1,{0,1}};
+        const auto open=DisplaceMesh(split,height,settings);
+        Require(!Near(open.vertices[1].position[1],open.vertices[4].position[1]),"Unstitched height discontinuity must remain explicit");
+        settings.stitchSmoothSeams=true;
+        const auto closed=DisplaceMesh(split,height,settings);
+        Require(closed.vertices[1].position==closed.vertices[4].position &&
+            closed.vertices[2].position==closed.vertices[3].position,"Smooth seam positions must close even with discontinuous height samples");
+        Require(closed.vertices[1].normal==closed.vertices[4].normal &&
+            closed.vertices[1].textureCoordinates!=closed.vertices[4].textureCoordinates,"Stitch normals while preserving UV splits");
+        Require(Near(closed.vertices[1].position[1],.01375f),"Smooth seam policy must average displacement");
+        for(unsigned index=3;index<6;++index)split.vertices[index].normal={1,0,0};
+        const auto hard=DisplaceMesh(split,height,settings);
+        Require(hard.vertices[1].position!=hard.vertices[4].position,"Different source normals must retain hard-boundary identity");
+    }
     void Validation()
     {
         auto mesh=Plane(); const HeightField height{1,1,{1}}; MeshDisplacementSettings settings;
@@ -114,7 +135,7 @@ namespace
 }
 int main()
 {
-    try { Sampling(); Displacement(); Validation(); ImagePrecision(); }
+    try { Sampling(); Displacement(); SeamStitching(); Validation(); ImagePrecision(); }
     catch(const std::exception& error) { std::cerr<<error.what()<<'\n'; return 1; }
     std::cout<<"Height precision, sampling, displacement, normals, subdivision, budgets and no-op checks passed\n";
 }

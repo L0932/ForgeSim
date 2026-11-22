@@ -29,6 +29,9 @@ namespace ForgeSim::Assets
         float scale = 0.050f;
         float midlevel = 0.225f;
         bool inverted = false;
+        // Average displacement and area normals for exact coincident positions
+        // with matching source normals. Preserve UV splits and hard edges.
+        bool stitchSmoothSeams = false;
         unsigned subdivisionLevels = 0;
         TextureWrap wrapU = TextureWrap::Repeat;
         TextureWrap wrapV = TextureWrap::Repeat;
@@ -37,8 +40,8 @@ namespace ForgeSim::Assets
     };
 
     // Returns independent geometry. Displacement is along the interpolated source
-    // normal in mesh-local units, before node/object transforms. UV seams are not
-    // welded. Disabled/zero scale returns an exact copy without subdivision.
+    // normal in mesh-local units, before node/object transforms. UV indices remain
+    // separate even when stitchSmoothSeams joins their positions and normals. Disabled/zero scale returns an exact copy without subdivision.
     [[nodiscard]] MeshData DisplaceMesh(const MeshData& source, const HeightField& height,
         const MeshDisplacementSettings& settings = {});
 

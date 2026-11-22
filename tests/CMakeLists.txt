@@ -1,3 +1,12 @@
+add_executable(ForgeSimGlbDisplacementPrototypeTests GlbDisplacementPrototypeTest.cpp
+    ${PROJECT_SOURCE_DIR}/tools/displacement/GlbDisplacement.cpp)
+target_include_directories(ForgeSimGlbDisplacementPrototypeTests PRIVATE ${PROJECT_SOURCE_DIR}/tools/displacement)
+target_link_libraries(ForgeSimGlbDisplacementPrototypeTests PRIVATE ForgeSim::Assets nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimGlbDisplacementPrototypeTests PRIVATE cxx_std_20)
+forgesim_set_project_warnings(ForgeSimGlbDisplacementPrototypeTests)
+set_target_properties(ForgeSimGlbDisplacementPrototypeTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Assets.GlbDisplacementPrototype COMMAND ForgeSimGlbDisplacementPrototypeTests)
+
 add_executable(ForgeSimFxaaSettingsTests)
 
 target_sources(
