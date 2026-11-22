@@ -137,6 +137,13 @@ namespace ForgeSim::Sandbox
 			return true;
 		}
 
+        bool ApplyEdit(SandboxScene& scene, const MaterialDisplacementEdit& edit, bool useAfter)
+        {
+            auto* object = scene.FindObject(edit.objectId);
+            if (!object || object->modelPath != edit.modelPath) return false;
+            object->displacement = useAfter ? edit.after : edit.before;
+            return true;
+        }
         bool ApplyEdit(SandboxScene& scene, const NodeTransformOverrideEdit& edit, bool useAfter)
         {
             auto* object = scene.FindObject(edit.objectId);

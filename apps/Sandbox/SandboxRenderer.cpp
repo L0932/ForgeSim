@@ -1,4 +1,5 @@
 #include "BuiltinCube.hpp"
+#include "DisplacedGeometry.hpp"
 #include "LightDebugLayout.hpp"
 #include "LightSubmission.hpp"
 #include "SandboxPaths.hpp"
@@ -1556,8 +1557,9 @@ namespace ForgeSim::Sandbox
             const auto& path = m_ModelBindings.at(object.modelPath);
             const auto cached = m_Models.find(path);
             const auto* extra = cached == m_Models.end() ? nullptr : cached->second.get();
-            const auto& asset = extra ? extra->asset : m_ObjectSceneAsset;
-            const auto& primitives = extra ? extra->primitives : m_GpuPrimitiveResources;
+            const auto* displaced = FindGeometryVariant(object);
+            const auto& asset = displaced ? displaced->asset : extra ? extra->asset : m_ObjectSceneAsset;
+            const auto& primitives = displaced ? displaced->primitives : extra ? extra->primitives : m_GpuPrimitiveResources;
             const auto& materials = extra ? extra->materials : m_GpuMaterialResources;
             for (const Assets::SceneNodeIndex rootNodeIndex : asset.rootNodeIndices)
 			{
@@ -2528,6 +2530,76 @@ namespace ForgeSim::Sandbox
 	}
 
 
+    namespace
+    {
+        bool HasDisplacement(const MaterialDisplacements& settings)
+        {
+            return std::any_of(settings.begin(), settings.end(), [](const auto& entry)
+                { return entry.second.enabled && entry.second.scale != 0; });
+        }
+    }
+
+    std::shared_ptr<SandboxRenderer::GeometryVariant> SandboxRenderer::CreateGeometryVariant(
+        const Assets::SceneAsset& source, const std::filesystem::path& model,
+        const std::filesystem::path& root, const MaterialDisplacements& settings)
+    {
+        auto variant = std::make_shared<GeometryVariant>();
+        variant->source = &source;
+        variant->settings = settings;
+        variant->asset = BuildDisplacedGeometry(source, model, root, settings);
+        for (std::size_t meshIndex = 0; meshIndex < variant->asset.meshes.size(); ++meshIndex)
+            for (const auto& primitive : variant->asset.meshes[meshIndex].primitives)
+                variant->primitives.push_back({Renderer::OpenGL::GpuMesh{primitive.geometry},
+                    CalculateSortCenter(primitive.geometry), meshIndex, primitive.materialIndex});
+        return variant;
+    }
+
+    const SandboxRenderer::GeometryVariant* SandboxRenderer::FindGeometryVariant(const SandboxObject& object) const
+    {
+        if (!HasDisplacement(object.displacement)) return nullptr;
+        const auto* source = InspectModelHierarchy(object.modelPath);
+        for (const auto& variant : m_DisplacementVariants)
+            if (variant->source == source && variant->settings == object.displacement) return variant.get();
+        throw std::logic_error("Displaced geometry was not prepared for this object.");
+    }
+
+    const Assets::SceneAsset* SandboxRenderer::InspectObjectHierarchy(const SandboxObject& object) const
+    {
+        const auto* variant = FindGeometryVariant(object);
+        return variant ? &variant->asset : InspectModelHierarchy(object.modelPath);
+    }
+
+    const ModelNodeQuery* SandboxRenderer::InspectObjectNodes(const SandboxObject& object) const
+    {
+        const auto* asset = InspectObjectHierarchy(object);
+        return asset ? &m_NodeQueries.try_emplace(asset,*asset).first->second : nullptr;
+    }
+
+    void SandboxRenderer::RefreshObjectBounds(std::span<SandboxObject> objects) const
+    {
+        for (auto& object : objects)
+            if (const auto* query = InspectObjectNodes(object)) object.localBounds = query->ModelBounds(object.nodeOverrides);
+    }
+
+    void SandboxRenderer::PrepareDisplacement(const SandboxObject& object, const std::filesystem::path& root,
+        const MaterialDisplacements& settings)
+    {
+        for (const auto& [material, value] : settings)
+        { static_cast<void>(material); ValidateMaterialDisplacement(value); }
+        const auto* source = InspectModelHierarchy(object.modelPath);
+        if (!source) throw std::invalid_argument("The selected model is not loaded.");
+        if (!HasDisplacement(settings)) return;
+        for (const auto& variant : m_DisplacementVariants)
+            if (variant->source == source && variant->settings == settings) return;
+        // Bound retained undo geometry; fail before replacing any visible state.
+        if (m_DisplacementVariants.size() >= 16)
+            throw std::length_error("Displacement preview history is full. Save and reopen the scene before further edits.");
+        const auto path = m_ModelBindings.at(object.modelPath);
+        auto prepared = CreateGeometryVariant(*source,path,root,settings);
+        static_cast<void>(ModelNodeQuery{prepared->asset}.ModelBounds(object.nodeOverrides));
+        m_DisplacementVariants.push_back(std::move(prepared));
+    }
+
     const ModelNodeQuery* SandboxRenderer::InspectModelNodes(const std::string& modelReference) const
     {
         const auto* asset = InspectModelHierarchy(modelReference);
@@ -2569,6 +2641,26 @@ namespace ForgeSim::Sandbox
         // scene replacement clears history and prepares a fresh resource set.
         auto models = reuseLoadedModels ? m_Models : decltype(m_Models){};
         auto bindings = reuseLoadedModels ? m_ModelBindings : decltype(m_ModelBindings){};
+        auto variants = reuseLoadedModels ? m_DisplacementVariants : decltype(m_DisplacementVariants){};
+        const auto prepareHeight = [&](SandboxObject& object, const Assets::SceneAsset& asset,
+            const std::filesystem::path& model)
+        {
+            const Assets::SceneAsset* geometry = &asset;
+            if (HasDisplacement(object.displacement))
+            {
+                const auto found = std::find_if(variants.begin(),variants.end(),[&](const auto& entry)
+                    { return entry->source == &asset && entry->settings == object.displacement; });
+                if (found != variants.end()) geometry = &(*found)->asset;
+                else
+                {
+                    if (variants.size() >= 16) throw std::length_error("Scene exceeds 16 distinct displacement variants.");
+                    auto variant = CreateGeometryVariant(asset,model,root,object.displacement);
+                    geometry = &variant->asset;
+                    variants.push_back(std::move(variant));
+                }
+            }
+            object.localBounds = ModelNodeQuery{*geometry}.ModelBounds(object.nodeOverrides);
+        };
         for (auto& object : objects)
         {
             const std::u8string reference(object.modelPath.begin(), object.modelPath.end());
@@ -2578,7 +2670,7 @@ namespace ForgeSim::Sandbox
             bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
-                object.localBounds = ModelNodeQuery{m_ObjectSceneAsset}.ModelBounds(object.nodeOverrides);
+                prepareHeight(object,m_ObjectSceneAsset,path);
                 continue;
             }
             if (!models.contains(path))
@@ -2597,7 +2689,7 @@ namespace ForgeSim::Sandbox
                     models.emplace(path, std::move(model));
                 }
             }
-            object.localBounds = ModelNodeQuery{models.at(path)->asset}.ModelBounds(object.nodeOverrides);
+            prepareHeight(object,models.at(path)->asset,path);
         }
         LoadSceneResources(std::nullopt, environmentPath, drawProgress, texturePolicy);
         m_RenderSubmissions.clear();
@@ -2605,6 +2697,7 @@ namespace ForgeSim::Sandbox
         m_NodeQueries.clear();
         m_TexturePreviews.Invalidate();
         m_Models.swap(models);
+        m_DisplacementVariants.swap(variants);
         // Release the initial model when a replacement scene no longer uses it.
         // Bounds remain available as the empty-scene fallback.
         const bool usesInitial = std::any_of(m_ModelBindings.begin(), m_ModelBindings.end(),

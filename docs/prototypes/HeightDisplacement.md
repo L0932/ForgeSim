@@ -1,8 +1,58 @@
 # Height displacement prototype (#132)
 
-This is the first technical prototype for [issue #132](https://github.com/L0932/ForgeSim/issues/132).
-It is **not** the complete material override or editor workflow. Default Sandbox
-rendering is unchanged. No source assets or existing scene documents are modified.
+This implements CPU height displacement and the initial Sandbox material controls
+for [issue #132](https://github.com/L0932/ForgeSim/issues/132). Displacement is off
+by default and source models are not modified. This is bounded CPU subdivision,
+not adaptive GPU tessellation or Blender shader-graph import.
+
+## Use the Sandbox controls
+
+1. Import the **original** GLB, with its unused height PNG embedded, or keep a
+   separate height PNG available. Do not use the earlier `_displaced.glb`; that
+   geometry is already baked. Prototype bake metadata is detected and prevents
+   another displacement pass.
+2. Select the object (or an imported node), expand **Materials → Material 1 →
+   Height / Displacement**, then choose the embedded height PNG. For the concrete
+   reference, choose `concrete_slab_wall_02_disp` and R/grayscale.
+3. Enable displacement. Start with **Scale 0.050**, **Midlevel 0.225**, and
+   **Subdivision levels 1**. Click **Apply height settings**; try level 2 for more
+   geometry detail. Invalid images/channels and oversized geometry are rejected
+   before the object settings or visible mesh are replaced.
+4. Orbit the model to inspect silhouette, surface grooves and boundaries. Repeat,
+   Mirror and Clamp controls affect height sampling only. Stitch smooth seams
+   keeps geometry joined; it cannot erase a discontinuity painted into the height,
+   normal or color images. The supplied sphere has no open geometric seam edges
+   after exact-position welding, but its texture boundary still produces a ridge.
+5. Save the scene. Height assignment and controls are saved per object/material;
+   loading regenerates geometry from the original model and height image. Reset
+   removes the override. Ctrl+Z/Ctrl+Y undo and redo applied settings. Duplicating
+   an object copies its settings; editing the duplicate leaves the original alone.
+
+**Browse height PNG...** uses a separate Windows file-dialog history. Images
+already inside the asset root are referenced there. External images are copied to
+`textures/heights` without overwriting an existing file. The scene stores a portable
+relative reference. Keep the original model and referenced PNGs with the project;
+missing external height files participate in asset recovery when loading scenes.
+Embedding through Blender's **Unused images** exports image bytes, not the
+material binding or scale/midlevel; those are assigned in ForgeSim.
+
+Overrides affect all primitives using the selected authored material within the
+selected object. Other instances share the source textures/materials while using
+independent generated geometry. Render and shadow submissions, node queries,
+bounds, focusing and picking use that geometry. Material/image indices assume the
+same source export; if you replace the GLB, recheck assignments. UV0 is required;
+height UV transforms and vector displacement are not implemented.
+
+Scene files now use **version 6**; versions 1–5 load without height overrides when
+the field is absent. Older ForgeSim versions will reject version 6 rather than
+silently lose these settings. Save to a new scene filename for comparison if needed.
+
+The editor retains up to 16 distinct generated configurations for undo/redo.
+Each object is limited to 1,048,576 displaced vertices and 524,288 displaced
+triangles across its selected materials. At the configuration limit, save/reopen
+the scene to release old preview geometry. Excessive detail reports an error;
+it is never silently reduced. File-dialog/native Windows rendering verification
+still needs a Windows build; automated coverage runs headlessly.
 
 ## Build and run
 
@@ -150,10 +200,10 @@ material/image metadata, actual ForgeSim importer reload, ambiguous/missing imag
 selection, explicit assignment, conflicting selectors and double-bake protection.
 Mesh tests also cover smooth-seam averaging, retained UV splits and hard normals.
 
-Next stages include per-instance/per-material overrides, undo/redo, scene
-persistence, Inspector assignment controls, transformed UVs, more general
+Next stages include automatic height suggestions, transformed UVs, more general
 seam/material-boundary handling, and visual review of the concrete reference.
-There are no runtime height controls or scene-save displacement overrides yet.
+The initial Inspector controls, undo/redo and per-object scene persistence are
+implemented. Automatic Blender displacement metadata import remains future work.
 
 Normal/bump maps change shading without changing silhouettes. Parallax occlusion
 changes apparent surface depth in the shader. This prototype changes mesh

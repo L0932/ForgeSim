@@ -1,4 +1,5 @@
 #pragma once
+#include <ForgeSim/Assets/MeshDisplacement.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -71,6 +72,10 @@ namespace ForgeSim::Assets
 	[[nodiscard]] SceneAsset LoadGltfScene(
 		const std::filesystem::path& path,
 		const GltfImportOptions& options = {});
+
+	// Decode native 8/16-bit embedded PNG samples independently of the color texture cache.
+    [[nodiscard]] HeightField LoadGltfHeightPng(const std::filesystem::path& path,
+        std::size_t imageIndex, unsigned channel = 0);
 
 	// Convenience loader for assets containing exactly one
 	// mesh with exactly one primitive.

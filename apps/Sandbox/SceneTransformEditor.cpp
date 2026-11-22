@@ -291,6 +291,19 @@ namespace ForgeSim::Sandbox
         }
     }
 
+    bool SceneTransformEditor::SetDisplacement(SandboxObject& object, const MaterialDisplacements& value)
+    {
+        if (IsActive() || m_PendingEdit || m_PendingObjectEdits || m_PendingNodeEdit) return false;
+        for (const auto& [material, height] : value)
+        { static_cast<void>(material); ValidateMaterialDisplacement(height); }
+        if (object.displacement == value) return false;
+        auto before = object.displacement;
+        auto after = value;
+        m_History.RecordApplied(MaterialDisplacementEdit{object.id,object.modelPath,before,after});
+        object.displacement.swap(after);
+        return true;
+    }
+
     bool SceneTransformEditor::SetNodeOverride(SandboxObject& object, std::size_t nodeIndex,
         const std::optional<Transform>& value)
     {
@@ -314,8 +327,8 @@ namespace ForgeSim::Sandbox
         auto* owner = context.scene.FindObject(target.objectId);
         if (!owner || owner->modelPath != target.modelReference)
         { m_PendingNodeEdit.reset(); return; }
-        if (!context.scene.IsObjectVisible(owner->id) || !context.inspectNodes) return;
-        const auto* query = context.inspectNodes(target.modelReference);
+        if (!context.scene.IsObjectVisible(owner->id) || (!context.inspectNodes && !context.inspectObjectNodes)) return;
+        const auto* query = context.inspectObjectNodes ? context.inspectObjectNodes(*owner) : context.inspectNodes(target.modelReference);
         if (!query || !query->Find(target.nodeIndex)) return;
         try
         {

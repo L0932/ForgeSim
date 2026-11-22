@@ -111,9 +111,38 @@ namespace ForgeSim::Assets
         MeshData result = source;
         GenerateMissingNormalsAndTangents(result, false);
         for (auto& vertex : result.vertices) vertex.normal = Array(Unit(Vector(vertex.normal)));
+        std::vector<std::uint32_t> seamGroup;
+        std::vector<glm::dvec3> seamSum;
+        std::vector<unsigned> seamCount;
+        if (settings.stitchSmoothSeams)
+        {
+            struct KeyHash
+            {
+                std::size_t operator()(const std::array<float,6>& key) const noexcept
+                {
+                    std::size_t hash=0;
+                    for(float value:key) hash ^= std::hash<float>{}(value)+0x9e3779b9u+(hash<<6)+(hash>>2);
+                    return hash;
+                }
+            };
+            std::unordered_map<std::array<float,6>,std::uint32_t,KeyHash> groups;
+            seamGroup.reserve(result.vertices.size());
+
+            for(std::size_t index=0;index<result.vertices.size();++index)
+            {
+                const auto& vertex=result.vertices[index];
+                const std::array<float,6> key{vertex.position[0],vertex.position[1],vertex.position[2],
+                    vertex.normal[0],vertex.normal[1],vertex.normal[2]};
+                const auto [entry,inserted]=groups.emplace(key,static_cast<std::uint32_t>(index));
+                static_cast<void>(inserted);seamGroup.push_back(entry->second);
+            }
+        }
         for (unsigned level = 0; level < settings.subdivisionLevels; ++level)
         {
             std::unordered_map<std::uint64_t, std::uint32_t> edges;
+            // Propagate geometric seam identity through subdivision, independently
+            // of UV splits and floating-point normal interpolation order.
+            std::unordered_map<std::uint64_t, std::uint32_t> smoothEdges;
             std::vector<std::uint32_t> indices;
             indices.reserve(result.indices.size() * 4);
             const auto midpoint = [&](std::uint32_t a, std::uint32_t b)
@@ -131,6 +160,20 @@ namespace ForgeSim::Assets
                     vertex.textureCoordinates[axis] = first.textureCoordinates[axis] * .5f + second.textureCoordinates[axis] * .5f;
                 vertex.normal = Array(Unit(Vector(first.normal) + Vector(second.normal)));
                 const auto index = static_cast<std::uint32_t>(result.vertices.size());
+                if (settings.stitchSmoothSeams)
+                {
+                    const auto ga = seamGroup[a], gb = seamGroup[b];
+                    const auto smoothKey = (static_cast<std::uint64_t>(std::min(ga,gb)) << 32) | std::max(ga,gb);
+                    const auto [entry,inserted] = smoothEdges.emplace(smoothKey,index);
+                    if (!inserted)
+                    {
+                        const auto& canonical = result.vertices[entry->second];
+                        vertex.position = canonical.position;
+                        vertex.normal = canonical.normal;
+                        seamGroup.push_back(seamGroup[entry->second]);
+                    }
+                    else seamGroup.push_back(index);
+                }
                 result.vertices.push_back(vertex);
                 edges.emplace(key, index);
                 return index;
@@ -143,32 +186,10 @@ namespace ForgeSim::Assets
             }
             result.indices = std::move(indices);
         }
-        std::vector<std::uint32_t> seamGroup;
-        std::vector<glm::dvec3> seamSum;
-        std::vector<unsigned> seamCount;
         if (settings.stitchSmoothSeams)
         {
-            struct KeyHash
-            {
-                std::size_t operator()(const std::array<float,6>& key) const noexcept
-                {
-                    std::size_t hash=0;
-                    for(float value:key) hash ^= std::hash<float>{}(value)+0x9e3779b9u+(hash<<6)+(hash>>2);
-                    return hash;
-                }
-            };
-            std::unordered_map<std::array<float,6>,std::uint32_t,KeyHash> groups;
-            seamGroup.reserve(result.vertices.size());
             seamSum.resize(result.vertices.size(),glm::dvec3{0});
             seamCount.resize(result.vertices.size(),0);
-            for(std::size_t index=0;index<result.vertices.size();++index)
-            {
-                const auto& vertex=result.vertices[index];
-                const std::array<float,6> key{vertex.position[0],vertex.position[1],vertex.position[2],
-                    vertex.normal[0],vertex.normal[1],vertex.normal[2]};
-                const auto [entry,inserted]=groups.emplace(key,static_cast<std::uint32_t>(index));
-                static_cast<void>(inserted);seamGroup.push_back(entry->second);
-            }
         }
         for (auto& vertex : result.vertices)
         {

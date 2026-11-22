@@ -69,6 +69,7 @@ namespace ForgeSim::Assets
 	struct SceneAsset
 	{
 		std::string name;
+        bool heightGeometryBaked = false;
 
 		std::vector<SceneNodeIndex> rootNodeIndices;
 		std::vector<SceneNodeData> nodes;

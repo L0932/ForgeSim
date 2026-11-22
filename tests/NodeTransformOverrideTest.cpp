@@ -99,7 +99,7 @@ namespace
         Require(editor.Undo(scene) && scene.FindObject(id)->nodeOverrides.contains(1),"Reset is undoable");
         const auto serialized=SerializeSceneDocument(scene.ToDocument());
         const auto restored=DeserializeSceneDocument(serialized);
-        Require(restored.version==5 && restored.objects.front().nodeOverrides.size()==1,"Scene schema persists node overrides");
+        Require(restored.version==CurrentSceneDocumentVersion && restored.objects.front().nodeOverrides.size()==1,"Scene schema persists node overrides");
         SandboxScene loaded(restored);Require(Near(loaded.Objects().front().nodeOverrides.at(1).scale,{-1,2,3}),"Round trip preserves mirrored scale");
         Require(SerializeSceneDocument(loaded.ToDocument())==serialized,"Canonical serialization stabilizes dirty tracking");
         auto old=nlohmann::json::parse(serialized);old["version"]=4;old["objects"][0].erase("nodeOverrides");

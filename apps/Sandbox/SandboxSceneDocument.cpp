@@ -38,7 +38,8 @@ namespace ForgeSim::Sandbox
                     .transform = object.transform,
                     .name = object.name,
                     .modelPath = object.modelPath,
-                    .nodeOverrides = object.nodeOverrides
+                    .nodeOverrides = object.nodeOverrides,
+                    .displacement = object.displacement
                 });
         }
 
@@ -90,7 +91,8 @@ namespace ForgeSim::Sandbox
                     .name = object.name,
                     .transform = object.transform,
                     .modelPath = object.modelPath,
-                    .nodeOverrides = object.nodeOverrides
+                    .nodeOverrides = object.nodeOverrides,
+                    .displacement = object.displacement
                 });
         }
 

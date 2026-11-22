@@ -16,6 +16,7 @@
 #include "SceneCameraState.hpp"
 #include "SceneEnvironment.hpp"
 #include "EnvironmentImageImport.hpp"
+#include "ImportHeightImage.hpp"
 #include "SceneDocumentIO.hpp"
 #include "SceneFilePanel.hpp"
 #include "SceneHierarchyPanel.hpp"
@@ -435,6 +436,7 @@ namespace ForgeSim::Sandbox
         bool recoveringAssets = false;
         std::string assetRecoveryMessage;
         std::string missingModelReference;
+        bool missingHeightImage = false;
 		std::optional<std::filesystem::path> pendingProjectRoot;
 
 		// Committing a prepared session must not fail after the model changes.
@@ -454,8 +456,7 @@ namespace ForgeSim::Sandbox
         std::vector<SpotLight> visibleSpotLights;
         const auto refreshNodeBounds=[&]
         {
-            RefreshModelNodeBounds(scene.Objects(),[this](const std::string& reference)
-                { return m_Renderer.InspectModelNodes(reference); });
+            m_Renderer.RefreshObjectBounds(scene.Objects());
         };
 		bool viewportNavigationActive = false;
 
@@ -713,7 +714,7 @@ namespace ForgeSim::Sandbox
                 if (const auto& node = selection.SelectedNode())
                 {
                     const auto* owner = scene.FindObject(node->objectId);
-                    const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
+                    const auto* query = owner ? m_Renderer.InspectObjectNodes(*owner) : nullptr;
                     return owner && query ? query->WorldBounds(node->nodeIndex,owner->transform.ModelMatrix(),owner->nodeOverrides) : std::nullopt;
                 }
                 return SelectionFocusBounds(scene.Objects(),
@@ -953,7 +954,8 @@ namespace ForgeSim::Sandbox
 
             if (const auto& node = selection.SelectedNode())
             {
-                const auto* query = m_Renderer.InspectModelNodes(node->modelReference);
+                const auto* owner = scene.FindObject(node->objectId);
+                const auto* query = owner ? m_Renderer.InspectObjectNodes(*owner) : nullptr;
                 if (!query || !query->Find(node->nodeIndex)) selection.Clear();
             }
 
@@ -997,7 +999,8 @@ namespace ForgeSim::Sandbox
 					.space = editorUI.space,
 					.showLights = scene.RenderingSettings().viewport.showSceneLights,
 					.navigationActive = changePending|| rightMouseDown,
-                    .inspectNodes = [this](const std::string& reference) { return m_Renderer.InspectModelNodes(reference); }
+                    .inspectNodes = [this](const std::string& reference) { return m_Renderer.InspectModelNodes(reference); },
+                    .inspectObjectNodes = [this](const SandboxObject& object) { return m_Renderer.InspectObjectNodes(object); }
 				});
 
             bool sceneEntitiesChanged = false;
@@ -1093,8 +1096,8 @@ namespace ForgeSim::Sandbox
 				pickingSuppressed, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyShift, ImGui::GetIO().KeyAlt,
                 [this](const Renderer::Ray& ray, const SandboxObject& object) -> std::optional<ModelNodeHit>
                 {
-                    const auto* asset = m_Renderer.InspectModelHierarchy(object.modelPath);
-                    const auto* query = m_Renderer.InspectModelNodes(object.modelPath);
+                    const auto* asset = m_Renderer.InspectObjectHierarchy(object);
+                    const auto* query = m_Renderer.InspectObjectNodes(object);
                     return asset && query ? query->Pick(*asset, ray, object.transform.ModelMatrix(),object.nodeOverrides) : std::nullopt;
                 });
 
@@ -1361,8 +1364,29 @@ namespace ForgeSim::Sandbox
                         const auto* owner = ownerId ? scene.FindObject(*ownerId) : nullptr;
                         return owner ? m_Renderer.InspectModelMaterials(owner->modelPath) : ModelMaterialInspection{};
                     }(),
-                    .nodeQuery = selection.SelectedNode()
-                        ? m_Renderer.InspectModelNodes(selection.SelectedNode()->modelReference) : nullptr
+                    .nodeQuery = selection.SelectedNode() && scene.FindObject(selection.SelectedNode()->objectId)
+                        ? m_Renderer.InspectObjectNodes(*scene.FindObject(selection.SelectedNode()->objectId)) : nullptr,
+                    .applyDisplacement = [&](SandboxObject& object, const MaterialDisplacements& values)
+                    {
+                        m_Renderer.PrepareDisplacement(object,m_EditorSession->ProjectRoot(),values);
+                        static_cast<void>(transformEditor.SetDisplacement(object,values));
+                        refreshNodeBounds();
+                        static_cast<void>(timer.Restart());
+                    },
+                    .browseHeightImage = [&]() -> std::optional<std::string>
+                    {
+                        const auto selected = Platform::ShowFileDialog(m_Window,Platform::FileDialogMode::Open,
+                            Platform::FileDialogSpecification{
+                                .defaultDirectory = m_EditorSession->ProjectRoot(),
+                                .suggestedFileName = {}, .title = L"Choose height PNG", .filterName = L"Height PNG",
+                                .filterPattern = L"*.png", .defaultExtension = L"png", .purpose = Platform::FileDialogPurpose::HeightImage});
+                        static_cast<void>(timer.Restart());
+                        if (!selected) return std::nullopt;
+                        static_cast<void>(Assets::LoadHeightPng(*selected));
+                        std::optional<std::string> imported;
+                        ImportHeightImage(*selected,m_EditorSession->ProjectRoot(),[&](const std::string& path) { imported = path; });
+                        return imported;
+                    }
 				});
 
 			bool openAfterFrame = false;
@@ -1568,10 +1592,10 @@ namespace ForgeSim::Sandbox
                             Platform::FileDialogSpecification{
                                 .defaultDirectory = pendingOpenPath.parent_path(),
                                 .suggestedFileName = {},
-                                .title = L"Locate missing model",
-                                .filterName = L"glTF model",
-                                .filterPattern = L"*.glb;*.gltf",
-                                .purpose = Platform::FileDialogPurpose::ModelRecovery
+                                .title = missingHeightImage ? L"Locate missing height PNG" : L"Locate missing model",
+                                .filterName = missingHeightImage ? L"Height PNG" : L"glTF model",
+                                .filterPattern = missingHeightImage ? L"*.png" : L"*.glb;*.gltf",
+                                .purpose = missingHeightImage ? Platform::FileDialogPurpose::HeightImage : Platform::FileDialogPurpose::ModelRecovery
                             });
                         static_cast<void>(timer.Restart());
                         if (!model) break;
@@ -1865,6 +1889,7 @@ namespace ForgeSim::Sandbox
                         if (asset.field != "rendering.environment.asset")
                         {
                             missingModelReference = asset.reference;
+                            missingHeightImage = asset.field.ends_with(".heightAsset");
                             break;
                         }
                     sceneFileMessage = "Scene assets are missing. Locate their folder or cancel.";

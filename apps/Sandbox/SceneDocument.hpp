@@ -1,4 +1,5 @@
 #pragma once
+#include "MaterialDisplacement.hpp"
 
 #include "SceneCameraData.hpp"
 #include "SceneLight.hpp"
@@ -13,7 +14,7 @@
 
 namespace ForgeSim::Sandbox
 {
-    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 5;
+    inline constexpr std::uint32_t CurrentSceneDocumentVersion = 6;
 
     struct SceneObjectData
     {
@@ -27,6 +28,7 @@ namespace ForgeSim::Sandbox
         // Example: assets/models/BoxTextured.glb
         std::string modelPath;
         NodeTransformOverrides nodeOverrides{};
+        MaterialDisplacements displacement{};
     };
 
     struct SceneDocument

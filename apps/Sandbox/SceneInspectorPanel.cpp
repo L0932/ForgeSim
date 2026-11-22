@@ -44,6 +44,9 @@ namespace ForgeSim::Sandbox
 
     void SceneInspectorPanel::Reset() noexcept
     {
+        m_HeightDrafts.clear();
+        m_HeightOwner = 0;
+        m_HeightModel.clear();
         m_LightValidationError.reset();
         m_NodeEditError.clear();
         m_ObjectEdit.reset();
@@ -222,7 +225,7 @@ namespace ForgeSim::Sandbox
             }
         }
         if (hasDefault) ImGui::TextWrapped("Some primitives use the default glTF material.");
-        DrawMaterials(materials);
+        DrawMaterials(materials, context);
     }
 
     void SceneInspectorPanel::DrawObject(
@@ -315,7 +318,7 @@ namespace ForgeSim::Sandbox
                 apply(before, after, GizmoOperation::Scale);
         }
         if (!ImGui::IsAnyItemActive()) FinishObjectEdit(context.transformEditor);
-        DrawMaterials(context.materials);
+        DrawMaterials(context.materials, context);
     }
 
     void SceneInspectorPanel::DrawTextureViewer(const ModelMaterialInspection& inspection)
@@ -416,10 +419,99 @@ namespace ForgeSim::Sandbox
         if (!open) m_TextureViewer.reset();
     }
 
-    void SceneInspectorPanel::DrawMaterials(const ModelMaterialInspection& inspection)
+    void SceneInspectorPanel::DrawDisplacement(std::size_t material, const SceneInspectorPanelContext& context)
+    {
+        const auto ownerId = context.selection.SelectedNode() ? std::optional{context.selection.SelectedNode()->objectId}
+            : context.selection.SelectedObjectId();
+        auto* object = ownerId ? context.scene.FindObject(*ownerId) : nullptr;
+        if (!object || !context.applyDisplacement) return;
+        if (m_HeightOwner != object->id || m_HeightModel != object->modelPath)
+        {
+            m_HeightDrafts.clear(); m_HeightOwner = object->id; m_HeightModel = object->modelPath;
+        }
+        const auto found = object->displacement.find(material);
+        const std::optional<MaterialDisplacement> applied = found == object->displacement.end()
+            ? std::nullopt : std::optional{found->second};
+        auto [entry, inserted] = m_HeightDrafts.try_emplace(material);
+        auto& draft = entry->second;
+        if (inserted || draft.applied != applied)
+        { draft.value = applied.value_or(MaterialDisplacement{}); draft.applied = applied; draft.error.clear(); }
+        if (!ImGui::TreeNodeEx("Height / Displacement")) return;
+        ImGui::TextWrapped("Applies to this object's selected material. Use the original, undisplaced model.");
+        ImGui::BeginDisabled(context.editingDisabled);
+        ImGui::Checkbox("Enable displacement", &draft.value.enabled);
+        const auto& images = context.materials.asset->textureResources.imageSources;
+        std::string selected = draft.value.heightAsset.empty() ? "Choose embedded PNG" : draft.value.heightAsset;
+        if (draft.value.imageIndex)
+        {
+            const auto image = *draft.value.imageIndex;
+            selected = image < images.size() ? std::to_string(image) + ": " + images[image].name : "Missing image";
+        }
+        if (ImGui::BeginCombo("Height image",selected.c_str()))
+        {
+            for (std::size_t image = 0; image < images.size(); ++image)
+            {
+                if (!images[image].embeddedPng) continue;
+                const auto label = std::to_string(image) + ": " + images[image].name;
+                if (ImGui::Selectable(label.c_str(),draft.value.imageIndex == image))
+                { draft.value.imageIndex = image; draft.value.heightAsset.clear(); draft.error.clear(); }
+            }
+            ImGui::EndCombo();
+        }
+        if (context.browseHeightImage && ImGui::Button("Browse height PNG..."))
+        {
+            try
+            {
+                if (auto path = context.browseHeightImage())
+                { draft.value.heightAsset = *path; draft.value.imageIndex.reset(); draft.error.clear(); }
+            }
+            catch (const std::exception& error) { draft.error = error.what(); }
+        }
+        int channel = static_cast<int>(draft.value.channel);
+        if (ImGui::Combo("Height channel", &channel,"R / grayscale\0G\0B\0A\0")) draft.value.channel = static_cast<unsigned>(channel);
+        ImGui::InputFloat("Scale (mesh units)",&draft.value.scale,.001f,.01f,"%.5f");
+        ImGui::SliderFloat("Midlevel",&draft.value.midlevel,0,1,"%.4f");
+        int levels = static_cast<int>(draft.value.subdivisions);
+        if (ImGui::SliderInt("Subdivision levels",&levels,0,8)) draft.value.subdivisions = static_cast<unsigned>(levels);
+        ImGui::Checkbox("Invert height",&draft.value.inverted);
+        ImGui::Checkbox("Stitch smooth seams",&draft.value.stitchSeams);
+        const auto wrap = [](const char* label, HeightWrap& value)
+        {
+            int index = static_cast<int>(value);
+            if (ImGui::Combo(label,&index,"Repeat\0Mirror\0Clamp\0")) value = static_cast<HeightWrap>(index);
+        };
+        wrap("Height wrap U",draft.value.wrapU); wrap("Height wrap V",draft.value.wrapV);
+        ImGui::TextWrapped("Height is linear data. Subdivision multiplies triangle count by four per level; excessive requests are rejected.");
+        if (ImGui::Button("Apply height settings"))
+        {
+            try
+            {
+                auto values = object->displacement; values.insert_or_assign(material,draft.value);
+                context.applyDisplacement(*object,values);
+                draft.applied = draft.value; draft.error.clear();
+            }
+            catch (const std::exception& error) { draft.error = error.what(); }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset height"))
+        {
+            try
+            {
+                auto values = object->displacement; values.erase(material);
+                context.applyDisplacement(*object,values);
+                draft = HeightDraft{};
+            }
+            catch (const std::exception& error) { draft.error = error.what(); }
+        }
+        ImGui::EndDisabled();
+        if (!draft.error.empty()) ImGui::TextWrapped("Height unchanged: %s",draft.error.c_str());
+        ImGui::TreePop();
+    }
+
+    void SceneInspectorPanel::DrawMaterials(const ModelMaterialInspection& inspection, const SceneInspectorPanelContext& context)
     {
         if (!EditorSectionHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen)) return;
-        ImGui::TextDisabled("Read-only asset materials");
+        ImGui::TextDisabled("Asset materials with per-object height overrides");
         ImGui::TextWrapped("Texture previews show source RGB or channel values with alpha ignored. "
             "Material factors, lighting, exposure, and tone mapping are not applied.");
         if (!inspection.asset)
@@ -445,6 +537,7 @@ namespace ForgeSim::Sandbox
             if (!ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             { ImGui::PopID(); continue; }
             const auto& material = asset.materials[index];
+            DrawDisplacement(index, context);
             const auto& pbr = material.metallicRoughness;
             ImGui::Text("Base RGBA: %.3f, %.3f, %.3f, %.3f", pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
             ImGui::Text("Metallic: %.3f   Roughness: %.3f", pbr.metallicFactor, pbr.roughnessFactor);

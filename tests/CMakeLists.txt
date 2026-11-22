@@ -1,3 +1,27 @@
+add_executable(ForgeSimMaterialDisplacementTests MaterialDisplacementTest.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneTransformEditor.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/LightGizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneEditHistory.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxScene.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SandboxSceneDocument.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneSerializer.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentIO.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneDocumentValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneCameraValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneLightValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneRenderingValidation.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/SceneBounds.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/Transform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/GizmoTransform.cpp
+    ${PROJECT_SOURCE_DIR}/apps/Sandbox/ViewportSelectionController.cpp)
+target_include_directories(ForgeSimMaterialDisplacementTests PRIVATE "${PROJECT_SOURCE_DIR}/apps/Sandbox")
+target_link_libraries(ForgeSimMaterialDisplacementTests PRIVATE ForgeSim::Assets ForgeSim::PlatformGLFW ForgeSim::Renderer nlohmann_json::nlohmann_json)
+target_compile_features(ForgeSimMaterialDisplacementTests PRIVATE cxx_std_20)
+target_compile_definitions(ForgeSimMaterialDisplacementTests PRIVATE GLM_ENABLE_EXPERIMENTAL)
+forgesim_set_project_warnings(ForgeSimMaterialDisplacementTests)
+set_target_properties(ForgeSimMaterialDisplacementTests PROPERTIES FOLDER "ForgeSim/Tests")
+add_test(NAME ForgeSim.Sandbox.MaterialDisplacement COMMAND ForgeSimMaterialDisplacementTests)
+
 add_executable(ForgeSimGlbDisplacementPrototypeTests GlbDisplacementPrototypeTest.cpp
     ${PROJECT_SOURCE_DIR}/tools/displacement/GlbDisplacement.cpp)
 target_include_directories(ForgeSimGlbDisplacementPrototypeTests PRIVATE ${PROJECT_SOURCE_DIR}/tools/displacement)

@@ -120,7 +120,16 @@ namespace ForgeSim::Sandbox
             Json overrides = Json::array();
             for (const auto& [node, transform] : object.nodeOverrides)
                 overrides.push_back({{"nodeIndex", node}, {"transform", WriteTransform(transform)}});
+            Json displacement = Json::array();
+            for (const auto& [material, value] : object.displacement)
+                displacement.push_back({{"materialIndex",material},{"enabled",value.enabled},
+                    {"imageIndex",value.imageIndex ? Json(*value.imageIndex) : Json(nullptr)},
+                    {"heightAsset",value.heightAsset},{"channel",value.channel},{"scale",value.scale},
+                    {"midlevel",value.midlevel},{"subdivisions",value.subdivisions},{"inverted",value.inverted},
+                    {"stitchSeams",value.stitchSeams},{"wrapU",static_cast<int>(value.wrapU)},
+                    {"wrapV",static_cast<int>(value.wrapV)}});
             return Json{
+                { "displacement", displacement },
                 { "nodeOverrides", overrides },
                 { "id", object.id },
                 { "name", object.name },
@@ -522,6 +531,36 @@ namespace ForgeSim::Sandbox
                     ReadMember(value, "modelPath", property),
                     property + ".modelPath")
             };
+            if (value.contains("displacement"))
+            {
+                const auto& values = ReadArray(value.at("displacement"), property + ".displacement");
+                for (std::size_t i = 0; i < values.size(); ++i)
+                {
+                    const auto field = property + ".displacement[" + std::to_string(i) + "]";
+                    const auto& entry = values[i];
+                    const auto member = [&](const char* name) -> const Json& { return ReadMember(entry,name,field); };
+                    const auto number = [&](const char* name, std::uint64_t limit)
+                    {
+                        const auto numberValue = ReadUnsigned(member(name),field + "." + name);
+                        if (numberValue > limit) ReadError(field + "." + name,"Value exceeds supported limit.");
+                        return numberValue;
+                    };
+                    MaterialDisplacement height;
+                    height.enabled = ReadBool(member("enabled"),field + ".enabled");
+                    if (!member("imageIndex").is_null()) height.imageIndex = static_cast<std::size_t>(number("imageIndex",std::numeric_limits<std::size_t>::max()));
+                    height.heightAsset = ReadString(member("heightAsset"),field + ".heightAsset");
+                    height.channel = static_cast<unsigned>(number("channel",3));
+                    height.scale = ReadFloat(member("scale"),field + ".scale");
+                    height.midlevel = ReadFloat(member("midlevel"),field + ".midlevel");
+                    height.subdivisions = static_cast<unsigned>(number("subdivisions",8));
+                    height.inverted = ReadBool(member("inverted"),field + ".inverted");
+                    height.stitchSeams = ReadBool(member("stitchSeams"),field + ".stitchSeams");
+                    height.wrapU = static_cast<HeightWrap>(number("wrapU",2));
+                    height.wrapV = static_cast<HeightWrap>(number("wrapV",2));
+                    if (!result.displacement.emplace(static_cast<std::size_t>(number("materialIndex",std::numeric_limits<std::size_t>::max())),height).second)
+                        ReadError(field,"Duplicate displacement material.");
+                }
+            }
             if (value.contains("nodeOverrides"))
             {
                 const auto overridesProperty = property + ".nodeOverrides";

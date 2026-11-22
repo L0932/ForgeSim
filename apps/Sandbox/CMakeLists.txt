@@ -119,6 +119,9 @@ target_sources(
         SceneFilePanel.cpp
 		SceneHierarchyPanel.hpp
 		SceneHierarchyPanel.cpp
+        DisplacedGeometry.hpp
+        MaterialDisplacement.hpp
+        ImportHeightImage.hpp
         ModelMaterialInspection.hpp
         TexturePreview.hpp
         TexturePreviewCache.hpp

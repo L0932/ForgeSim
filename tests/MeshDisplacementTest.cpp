@@ -1,6 +1,7 @@
 #include <ForgeSim/Assets/MeshDisplacement.hpp>
 #include <cmath>
 #include <algorithm>
+#include <map>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -98,6 +99,22 @@ namespace
         Require(closed.vertices[1].normal==closed.vertices[4].normal &&
             closed.vertices[1].textureCoordinates!=closed.vertices[4].textureCoordinates,"Stitch normals while preserving UV splits");
         Require(Near(closed.vertices[1].position[1],.01375f),"Smooth seam policy must average displacement");
+        settings.subdivisionLevels = 3;
+        const auto refined = DisplaceMesh(split,height,settings);
+        std::map<std::array<std::array<float,3>,2>, unsigned> geometricEdges;
+        for (std::size_t i = 0; i < refined.indices.size(); i += 3)
+            for (unsigned edge = 0; edge < 3; ++edge)
+            {
+                std::array<std::array<float,3>,2> endpoints{
+                    refined.vertices[refined.indices[i+edge]].position,
+                    refined.vertices[refined.indices[i+(edge+1)%3]].position};
+                std::sort(endpoints.begin(),endpoints.end());
+                ++geometricEdges[endpoints];
+            }
+        unsigned boundary = 0;
+        for (const auto& [edge, uses] : geometricEdges) { static_cast<void>(edge); boundary += uses == 1; }
+        Require(boundary == 4 * (1u << settings.subdivisionLevels),"Refined UV split must not add internal open edges");
+        settings.subdivisionLevels = 0;
         for(unsigned index=3;index<6;++index)split.vertices[index].normal={1,0,0};
         const auto hard=DisplaceMesh(split,height,settings);
         Require(hard.vertices[1].position!=hard.vertices[4].position,"Different source normals must retain hard-boundary identity");

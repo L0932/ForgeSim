@@ -209,6 +209,12 @@ namespace ForgeSim::Sandbox
                 if (const auto error = ValidateTransform(transform, field)) return error;
                 if (!ValidNodeOverride(transform)) return Error{field, "Node adjustment matrix must be finite."};
             }
+            for (const auto& [material, displacement] : object.displacement)
+            {
+                try { ValidateMaterialDisplacement(displacement); }
+                catch (const std::exception& error)
+                { return Error{property + ".displacement[" + std::to_string(material) + "]", error.what()}; }
+            }
             if (!IsValidSceneAssetPath(object.modelPath))
             {
                 return Error{

@@ -290,13 +290,13 @@ namespace ForgeSim::Sandbox
         ImGui::SetNextWindowSize(ImVec2(660.0f, 440.0f), ImGuiCond_FirstUseEver);
         if (ImGui::BeginPopupModal(recoveryPopup, nullptr))
         {
-            ImGui::TextWrapped("Locate the missing model file, or choose the folder containing the scene's assets. All references will be checked before opening.");
+            ImGui::TextWrapped("Locate the missing asset file, or choose the folder containing the scene's assets. All references will be checked before opening.");
             ImGui::BeginChild("RecoveryDetails", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() * 2.0f));
             const std::string details{context.recoveryMessage};
             ImGui::TextWrapped("%s", details.c_str());
             ImGui::EndChild();
             ImGui::BeginDisabled(!context.canLocateModel);
-            if (ImGui::Button("Locate model..."))
+            if (ImGui::Button("Locate asset..."))
                 request.action = SceneFileAction::LocateMissingModel;
             ImGui::EndDisabled();
             ImGui::SameLine();
