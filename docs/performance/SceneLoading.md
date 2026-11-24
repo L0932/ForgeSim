@@ -1,8 +1,9 @@
 # Scene loading measurements (#135)
 
-The diagnostics extend `loading.diagnostics on`. Model reuse shares
-unchanged, self-contained GLB model resources across scene replacements. It does
-not change asset quality or the persistent decoded-image cache format/policy.
+Scene-loading diagnostics identify CPU import, image/cache work, GPU resource
+preparation and environment preparation costs. Optimizations reuse unchanged GLB
+resources, schedule image work without batch barriers, accelerate PNG inflate and
+use a versioned CRC32 pixel cache. Asset quality and source models are preserved.
 
 ## Capture a baseline
 
@@ -240,56 +241,114 @@ conversion candidate did not show a repeatable improvement and was not included.
 This single-image result does not establish end-to-end Windows scene improvement.
 Repeat the empty-cache Release scene measurement, followed by cached restart.
 
-## Release reference-scene observations
+## Final reference-scene measurements
 
-Single user-captured Release runs after model reuse, before the worker-queue change:
+The reference scene is `model-imports.scene.json`, opened on Windows from an
+x64-Release build with diagnostics, decoded-image caching and parallel decoding
+enabled. Logs report a 4 GiB cache budget, worker limit four, texture fallbacks
+enabled and 18 distinct model resources (including the built-in cube). The scene
+contains one repeated model binding. All final runs used the v2 pixel cache.
 
-| Scenario | Scene open |
-| --- | ---: |
-| Empty ForgeSim image cache | 11.877 s |
-| Process restart, populated image cache | 3.602 s |
-| Same-session reopen | 0.0469 s |
+CPU, GPU, RAM, storage device, driver version, exact benchmark commit and whether
+the debugger was attached have not been supplied. Source asset sizes and process
+peak RAM/VRAM remain unrecorded. OS file caches were not explicitly cleared.
+These omissions limit reproducibility; results are observations on this reference
+scene, not a general hardware performance guarantee.
 
-The restart had 59 cache hits and no misses. The reopen reused 17 model resources
-and reloaded the external-dependency barrels asset. Hardware and controlled repeat
-statistics remain to be recorded. These are distinct from the earlier Debug
-measurements; do not treat the configuration change as a code optimization.
+Each repeat set starts with ForgeSim closed and the active v2 cache moved aside.
+The first scene open populates the cache. The process is then restarted with that
+cache retained and the scene reopened. Finally, the same scene is reopened within
+that process. Repeated portions of copied logs are counted only once.
 
-## Initial reference-scene observations
+| Scenario | Set 1 | Set 2 | Set 3 | Median | Min–max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Cache population (s) | 7.232594 | 7.355448 | 11.390386 | **7.355448** | 7.232594–11.390386 |
+| Restart with cache (s) | 2.728366 | 2.613025 | 2.891287 | **2.728366** | 2.613025–2.891287 |
+| Same-session reopen (ms) | 46.5707 | 43.0634 | 36.9917 | **43.0634** | 36.9917–46.5707 |
 
-These are single user-captured runs before model reuse, not medians or a controlled
-Release benchmark. Hardware, build configuration and OS-cache state have not yet
-been supplied. The scene loaded 18 distinct model resources and reused one object
-binding within that load. Decoded CPU image payloads total about 2.40 GiB; the
-persistent image cache occupied about 2.27 GiB. These are different measurements,
-not total process RAM or VRAM.
+Cache-population sets 1/2 reported 1 hit and 58 misses; set 3 reported 2 hits and
+57 misses. Hits can occur while a cache-population run is in progress; the logs do
+not isolate the cause of this small count variation. Restart sets each reported
+59 hits and no misses. Reopens reused 17 model resources and the environment;
+only the barrels model took the full reload path, consistent with the conservative
+external-dependency fallback. The logs do not report its precise rejection reason.
 
-| Host measurement | Cache population | Restart, cache warm | Same-session reopen |
+The third cache-population run is retained. Its worker-summed write I/O increased
+to 6.813 seconds from 2.152/2.454 seconds, while mutex waiting increased to 8.513
+seconds from 0.790/0.828 seconds. Source decoding remained comparable at
+8.609 seconds versus 9.054/9.004 seconds. This localizes the slowdown to the cache
+write/serialization path but does not establish its underlying storage/OS cause.
+Do not subtract these overlapping worker sums from scene-open wall time.
+
+Median child intervals, in milliseconds:
+
+| Interval | Cache population | Restart with cache | Same-session reopen |
 | --- | ---: | ---: | ---: |
-| Scene open | 34.102 s | 5.766 s | 6.660 s |
-| Image load/decode/cache phase | 30.370 s | 2.748 s | 2.338 s |
-| Mesh processing | 0.888 s | 0.936 s | 0.722 s |
-| Texture/material preparation | 1.632 s | 0.916 s | 2.588 s |
-| Persistent image hits / misses | 2 / 57 | 59 / 0 | 59 / 0 |
+| All model preparation | 7167.384 | 2555.995 | 30.162 |
+| Image phase wall time, summed across sequential models | 5797 | 1258 | 1 |
+| Environment preparation | 180.580 | 159.798 | reused |
+| Resource commit/release | 0.0053 | 0.0057 | 0.0161 |
 
-These results motivate avoiding redundant resource preparation on reopen. They
-do not measure the new optimization. Repeat the three scenarios after applying
-model reuse, and inspect material appearance, object transforms, imported-node
-overrides, shadows and picking. Also re-export a model, change texture policy,
-and test a GLB with an external image to confirm full reload where required.
+Independent medians need not sum to the median parent interval. Model preparation
+contains image phases; do not add those rows together.
 
-## Results to fill from the reference scene
+## Earlier observations and comparison limits
 
-| Metric (median; retain min/max) | Cache empty | Restart, cache warm | Same-session reopen |
-| --- | --- | --- | --- |
-| Scene open host time (ms) | pending | pending | pending |
-| All model preparation (ms) | pending | pending | pending |
-| Environment preparation (ms or reused) | pending | pending | pending |
-| Resource commit/release (ms) | pending | pending | pending |
-| Persistent image hits/misses | pending | pending | pending |
-| Process peak RAM / cache disk bytes | pending | pending | pending |
+Before the worker queue, PNG acceleration and v2 checksum changes, single Release
+runs measured 11.876860 seconds for cache population and 3.602049 seconds for a
+cached restart. Model reuse was already present in that Release build. Relative
+to those individual observations, final medians are about 38% and 24% lower.
+This is a descriptive comparison of a single baseline to three optimized runs,
+not a controlled before/after median benchmark. Earlier source exports also
+changed during development; a rigorous follow-up must fix the exact asset set.
+No Release before/after speedup is claimed for same-session reuse because a
+matching Release baseline without reuse was not captured.
 
-The earlier approximately 28.7-second report is context, not a reproducible baseline
-for this build. No speedup from the model-reuse patch is claimed yet. Use measured dominant stages to choose
-the next change, then repeat all three scenarios and check rendering, transforms,
-picking and imported-node overrides on the same scene.
+Earlier development captures before model reuse measured 34.102 seconds for
+cache population, 5.766 seconds for cached restart and 6.660 seconds for reopen.
+Do not compare those development-build measurements to final Release medians as
+an optimization ratio. The approximately 28.7-second report in the issue is also
+context, not a controlled baseline.
+
+## Memory/storage and validation status
+
+Logged decoded-image CPU payloads total approximately 2.40 GiB, while the active
+persistent image cache occupies approximately 2.27 GiB. Those measurements exclude
+container capacity, source documents, encoded images, temporary decoder buffers,
+GPU allocations and peak process memory. Retaining v1 alongside v2 consumes extra
+disk space outside the v2 directory's budget. Moving old cache folders aside for
+benchmarking also retains their disk usage until those backups are removed.
+
+Same-session model reuse retains CPU and GPU resources only while required by the
+active scene or existing import/undo history. Scene replacement can temporarily
+hold old and changed resources together to preserve rollback. Image concurrency
+is capped at four, with out-of-order results retained until source-order consumption.
+These choices trade memory for lower repeated preparation cost; peak memory must
+still be measured on the Windows reference scene.
+
+Verified locally:
+
+- Image, PNG format/native-height, glTF fallback/unlit and cache regression tests.
+- CRC32 known vectors, portable/accelerated agreement and corrupt/stale-cache
+  recovery, including oversized entries, busy leases, eviction and failed writes.
+- Image queue source ordering, worker bounds and error propagation.
+- Model-reuse metadata checks, external dependency bypass and invalid files.
+- Exact equality of 67,108,864 RGBA8 bytes for the cannon normal-map comparison.
+- Relevant renderer syntax checks and incremental patch applicability.
+
+Verified from user logs: persistent image hits, 17 same-session model reuses,
+timestamp-triggered rifle reload and reuse on its next unchanged reopen. The
+initial Blender re-export alone did not trigger a reload in the supplied logs;
+source destination/timestamp behavior was not independently established.
+
+Before marking all #135 acceptance criteria complete:
+
+- Record hardware, build revision, source sizes, peak memory and cache storage.
+- Run the complete Windows build/CTest suite on the final branch and retain results.
+- Check rendering, shadows, transforms, picking and saved imported-node overrides.
+- Verify texture-policy changes and edited external dependencies force full reloads.
+- Preserve the reported timestamp/size invalidation limitation; do not claim content
+  hashing. Environment reuse also remains path-based as documented above.
+
+The current medians can guide targets for this asset set; universal timing budgets
+should wait for complete benchmark metadata and controlled baseline repeats.

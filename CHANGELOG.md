@@ -9,43 +9,26 @@ contains the detailed implementation record.
 
 ### Fixed
 
-- Reduce decoded-image cache checksum cost with CRC32 and compute write checksums
-  outside the cache mutex. Version the cache as v2, retain source-key validation
-  and rebuild stale/corrupt entries without changing decoded pixels (#135).
-
-- Keep up to four image-decode workers occupied across uneven image sets instead
-  of waiting at batch boundaries. Preserve source image indices, ordered errors,
-  serial decoding and graphics-context ownership (#135).
-
-- Reuse unchanged self-contained GLB model resources across scene replacements,
-  avoiding repeat image reads, mesh processing and GPU uploads. Validate source
-  size/time and texture policy; externally referenced assets retain full reloads.
-  Rebuild per-scene displacement and retain saved node overrides (#135).
-
+- Reduce repeated scene-loading work by reusing unchanged self-contained GLB CPU
+  and GPU resources, validating source size/time and texture import policy.
+  Rebuild per-scene displacement and preserve saved node overrides (#135).
+- Keep up to four image-decode workers busy across uneven image sets, preserving
+  source image indices, ordered errors and graphics-context ownership (#135).
+- Accelerate decoded-pixel cache integrity checks with CRC32, compute write
+  checksums outside the mutex, and safely rebuild stale/corrupt v2 entries (#135).
 - Keep the HDR image picker folder history separate from Open Scene.
 - Remove shadowed bounds variables in orbit controls, resolving MSVC warning C4456.
 
 ### Added
 
-- Separate decoded-image cache checksum, file I/O, allocation, mutex wait and
-  publication/eviction diagnostics to guide the next loading optimization (#135).
-
 - Accelerate PNG decompression with pinned, statically linked libdeflate while
-  retaining stb pixel conversion and native 16-bit height decoding. Keep an
-  optional stb-only build and include the dependency notice in packages (#135).
-
-- Split image-loading diagnostics into cache setup, encoded-key hashing, cache
-  read/validation, source decode and cache write/publication worker timings (#135).
-
-- Add a per-entry Console context menu to copy individual messages or commands.
-
-- Add a Console Copy log button for copying retained messages and commands to
-  the clipboard, including entries hidden by severity or text filters.
-
-- Expand optional scene-loading diagnostics with per-model resource timings,
-  mesh/texture upload preparation, environment stages, reuse counts and CPU
-  payload sizes. Add a repeatable three-scenario loading benchmark guide (#135).
-
+  retaining stb pixel conversion, native 16-bit height decoding and an optional
+  stb-only build. Include the dependency notice in runtime packages (#135).
+- Add optional scene-loading diagnostics for per-model resources, image decode,
+  cache checksums/I/O/lock waits, environment stages and CPU payload sizes, with
+  a three-scenario benchmark guide and measured results (#135).
+- Add Console Copy log and per-entry Copy line actions for copying retained
+  messages and commands, including log entries hidden by display filters.
 - CPU height displacement with linear 8/16-bit PNG sampling, bounded triangle
   subdivision, rebuilt normals/tangents, and optional smooth-seam stitching.
 - Per-object material height controls with embedded/external PNG selection,
