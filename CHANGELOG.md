@@ -9,11 +9,26 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Reduce repeated scene-loading work by reusing unchanged self-contained GLB CPU
+  and GPU resources, validating source size/time and texture import policy.
+  Rebuild per-scene displacement and preserve saved node overrides (#135).
+- Keep up to four image-decode workers busy across uneven image sets, preserving
+  source image indices, ordered errors and graphics-context ownership (#135).
+- Accelerate decoded-pixel cache integrity checks with CRC32, compute write
+  checksums outside the mutex, and safely rebuild stale/corrupt v2 entries (#135).
 - Keep the HDR image picker folder history separate from Open Scene.
 - Remove shadowed bounds variables in orbit controls, resolving MSVC warning C4456.
 
 ### Added
 
+- Accelerate PNG decompression with pinned, statically linked libdeflate while
+  retaining stb pixel conversion, native 16-bit height decoding and an optional
+  stb-only build. Include the dependency notice in runtime packages (#135).
+- Add optional scene-loading diagnostics for per-model resources, image decode,
+  cache checksums/I/O/lock waits, environment stages and CPU payload sizes, with
+  a three-scenario benchmark guide and measured results (#135).
+- Add Console Copy log and per-entry Copy line actions for copying retained
+  messages and commands, including log entries hidden by display filters.
 - CPU height displacement with linear 8/16-bit PNG sampling, bounded triangle
   subdivision, rebuilt normals/tangents, and optional smooth-seam stitching.
 - Per-object material height controls with embedded/external PNG selection,

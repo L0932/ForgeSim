@@ -46,6 +46,15 @@ namespace ForgeSim::Sandbox
 {
 	namespace
 	{
+        using LoadClock = std::chrono::steady_clock;
+
+        void LogLoadTiming(bool enabled, std::string_view stage, LoadClock::time_point start)
+        {
+            if (!enabled) return;
+            const auto ms = std::chrono::duration<double, std::milli>(LoadClock::now() - start).count();
+            Core::LogInfo("Load timing: " + std::string(stage) + " = " + std::to_string(ms) + " ms (host wall time)");
+        }
+
 		void UploadTextureTransform(
 			const Renderer::OpenGL::ShaderProgram& program,
 			const Assets::TextureTransformRows& rows,
@@ -132,6 +141,25 @@ namespace ForgeSim::Sandbox
 						message += ")";
 					}
 					Core::LogInfo(message);
+                    if (progress.imageTimings)
+                    {
+                        const auto& timing = *progress.imageTimings;
+                        Core::LogInfo("Image work breakdown: cache_setup=" + std::to_string(timing.cacheSetupMs) +
+                            " ms; encoded_key=" + std::to_string(timing.cacheKeyMs) +
+                            " ms; cache_read_validate=" + std::to_string(timing.cacheReadMs) +
+                            " ms; source_load_decode=" + std::to_string(timing.decodeMs) +
+                            " ms; cache_write_publish=" + std::to_string(timing.cacheWriteMs) +
+                            " ms; decoded_images=" + std::to_string(timing.decodedImages) +
+                            "; worker_limit=" + std::to_string(timing.workerLimit) +
+                            " (operation times are worker sums; overlap and lock waits included)");
+                        Core::LogInfo("Image cache detail: mutex_wait=" + std::to_string(timing.cacheLockWaitMs) +
+                            " ms; read_io_allocate=" + std::to_string(timing.cacheReadIoMs) +
+                            " ms; read_checksum=" + std::to_string(timing.cacheReadChecksumMs) +
+                            " ms; write_checksum=" + std::to_string(timing.cacheWriteChecksumMs) +
+                            " ms; write_io=" + std::to_string(timing.cacheWriteIoMs) +
+                            " ms; publish_evict=" + std::to_string(timing.cachePublishMs) +
+                            " ms (worker sums; child intervals of cache work)");
+                    }
 				},
 				.parallelImageDecode = parallelImageDecode,
 				.imageCacheDirectory = std::move(imageCacheDirectory),
@@ -1202,6 +1230,7 @@ namespace ForgeSim::Sandbox
 			}
 		};
 
+		const auto meshUploadStart = LoadClock::now();
 		primitives.reserve(primitiveCount);
 
 		for (Assets::SceneMeshIndex meshIndex = 0;
@@ -1235,6 +1264,8 @@ namespace ForgeSim::Sandbox
 				"Cannot render a scene without mesh primitives.");
 		}
 
+        LogLoadTiming(m_LoadingDiagnostics, "model mesh buffers and sort centers", meshUploadStart);
+        const auto materialUploadStart = LoadClock::now();
 		const Assets::TextureResources& textureResources =
 			sceneAsset.textureResources;
 
@@ -1511,6 +1542,10 @@ namespace ForgeSim::Sandbox
 				gpuMaterial);
 			reportCompletedItem();
 		}
+        LogLoadTiming(m_LoadingDiagnostics, "model textures, mipmaps, samplers and materials", materialUploadStart);
+        if (m_LoadingDiagnostics)
+            Core::LogInfo("GPU resource counts: primitives=" + std::to_string(primitives.size()) +
+                " textures=" + std::to_string(textures.size()) + " materials=" + std::to_string(materials.size()));
 	}
 
 	void SandboxRenderer::Render(
@@ -2636,12 +2671,18 @@ namespace ForgeSim::Sandbox
         const std::function<void(const Assets::GltfLoadProgress&)>& drawProgress,
         std::optional<Assets::GltfTexturePolicy> texturePolicy, bool reuseLoadedModels)
     {
+        const auto resourcesStart = LoadClock::now();
+        std::size_t loadedModels = 0;
+        std::size_t reusedModels = 0;
+        std::size_t reusedObjects = 0;
         // Stage all resources. Failed imports leave the active bindings and GPU resources intact.
         // Preserve resources referenced by deletion history during imports. A
-        // scene replacement clears history and prepares a fresh resource set.
+        // scene replacement clears history and keeps only resources used by the
+        // incoming scene, borrowing unchanged self-contained GLBs from the old set.
         auto models = reuseLoadedModels ? m_Models : decltype(m_Models){};
         auto bindings = reuseLoadedModels ? m_ModelBindings : decltype(m_ModelBindings){};
         auto variants = reuseLoadedModels ? m_DisplacementVariants : decltype(m_DisplacementVariants){};
+        const auto effectivePolicy = texturePolicy.value_or(m_TexturePolicy);
         const auto prepareHeight = [&](SandboxObject& object, const Assets::SceneAsset& asset,
             const std::filesystem::path& model)
         {
@@ -2670,28 +2711,67 @@ namespace ForgeSim::Sandbox
             bindings.insert_or_assign(object.modelPath, path);
             if (reuseLoadedModels && path == m_ObjectModelPath)
             {
+                ++reusedObjects;
                 prepareHeight(object,m_ObjectSceneAsset,path);
                 continue;
             }
             if (!models.contains(path))
             {
-                if (const auto existing = m_Models.find(path); reuseLoadedModels && existing != m_Models.end())
+                const auto existing = m_Models.find(path);
+                // Imports preserve undo resources as before. Replacement scenes can
+                // borrow immutable model resources after validating source metadata
+                // and texture policy; displacement variants are rebuilt separately.
+                const auto stamp = builtinCube ? std::nullopt : ReadModelReuseStamp(path);
+                const bool canReuse = existing != m_Models.end() &&
+                    existing->second->importPolicy == effectivePolicy &&
+                    (builtinCube || (stamp && existing->second->reuseStamp == stamp));
+                if (canReuse)
+                {
                     models.emplace(path, existing->second);
+                    ++reusedModels;
+                    ++reusedObjects;
+                    if (m_LoadingDiagnostics) Core::LogInfo("Model resources reused: " + path.string());
+                }
                 else
                 {
+                    const auto modelStart = LoadClock::now();
+                    if (m_LoadingDiagnostics) Core::LogInfo("Loading model resources: " + path.string());
                     auto model = std::make_shared<ModelResources>();
-                    model->asset = builtinCube ? CreateBuiltinCubeAsset() : LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
+                    model->asset = builtinCube ? CreateBuiltinCubeAsset() : LoadSceneWithTexturePolicy(path, effectivePolicy,
                         m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages,
                         m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
+                    model->importPolicy = effectivePolicy;
+                    const auto afterImport = builtinCube ? std::nullopt : ReadModelReuseStamp(path);
+                    if (stamp && afterImport == stamp) model->reuseStamp = stamp;
+                    const auto boundsStart = LoadClock::now();
                     model->bounds = CalculateSceneBounds(model->asset);
+                    LogLoadTiming(m_LoadingDiagnostics, "model bounds", boundsStart);
                     UploadObjectModelResources(model->asset, model->primitives, model->textures,
                         model->samplers, model->materials, drawProgress);
+                    if (m_LoadingDiagnostics)
+                    {
+                        std::uint64_t meshBytes = 0;
+                        std::uint64_t imageBytes = 0;
+                        for (const auto& mesh : model->asset.meshes)
+                            for (const auto& primitive : mesh.primitives)
+                                meshBytes += primitive.geometry.vertices.size() * sizeof(Assets::MeshVertex) +
+                                    primitive.geometry.indices.size() * sizeof(std::uint32_t);
+                        for (const auto& image : model->asset.textureResources.images)
+                            imageBytes += image.pixels.size();
+                        Core::LogInfo("Model CPU payload bytes: mesh=" + std::to_string(meshBytes) +
+                            " decoded_images=" + std::to_string(imageBytes) + " (excludes capacity and metadata)");
+                    }
                     models.emplace(path, std::move(model));
+                    ++loadedModels;
+                    LogLoadTiming(m_LoadingDiagnostics, "model total: " + path.string(), modelStart);
                 }
             }
+            else ++reusedObjects;
             prepareHeight(object,models.at(path)->asset,path);
         }
+        LogLoadTiming(m_LoadingDiagnostics, "all models including height and bounds", resourcesStart);
         LoadSceneResources(std::nullopt, environmentPath, drawProgress, texturePolicy);
+        const auto commitStart = LoadClock::now();
         m_RenderSubmissions.clear();
         m_ModelBindings.swap(bindings);
         m_NodeQueries.clear();
@@ -2711,6 +2791,13 @@ namespace ForgeSim::Sandbox
             m_ObjectSceneAsset = {};
             m_ObjectModelPath.clear();
         }
+        LogLoadTiming(m_LoadingDiagnostics, "resource commit and release", commitStart);
+        LogLoadTiming(m_LoadingDiagnostics, "scene resources total", resourcesStart);
+        if (m_LoadingDiagnostics)
+            Core::LogInfo("Scene resource reuse: loaded_models=" + std::to_string(loadedModels) +
+                " reused_models=" + std::to_string(reusedModels) +
+                " reused_object_bindings=" + std::to_string(reusedObjects) +
+                " preserve_history_resources=" + (reuseLoadedModels ? "yes" : "no"));
     }
 
     void SandboxRenderer::LoadSceneResources(
@@ -2725,6 +2812,7 @@ namespace ForgeSim::Sandbox
 
         if (replacementPath == m_EnvironmentPath)
         {
+            if (m_LoadingDiagnostics) Core::LogInfo("Environment resources reused (unchanged path).");
             if (modelPath) LoadObjectModel(*modelPath, drawProgress, texturePolicy);
             return;
         }
@@ -2734,10 +2822,20 @@ namespace ForgeSim::Sandbox
         if (drawProgress)
             drawProgress({"Preparing environment lighting", Assets::GltfProgressPhase::Started,
                 0, std::nullopt, std::chrono::milliseconds{0}});
+        const auto environmentStart = LoadClock::now();
+        auto stageStart = environmentStart;
         auto texture = LoadEnvironmentTexture(replacementPath);
+        LogLoadTiming(m_LoadingDiagnostics, "environment decode and source upload", stageStart);
+        stageStart = LoadClock::now();
         auto cubemap = m_EnvironmentMapProcessor.ConvertEquirectangularToCubemap(texture, 512);
+        LogLoadTiming(m_LoadingDiagnostics, "environment cubemap conversion", stageStart);
+        stageStart = LoadClock::now();
         auto diffuse = m_EnvironmentMapProcessor.CreateDiffuseIrradianceMap(cubemap, 32);
+        LogLoadTiming(m_LoadingDiagnostics, "environment diffuse irradiance", stageStart);
+        stageStart = LoadClock::now();
         auto specular = m_EnvironmentMapProcessor.CreatePrefilteredSpecularMap(cubemap, 128, 5);
+        LogLoadTiming(m_LoadingDiagnostics, "environment specular prefilter", stageStart);
+        LogLoadTiming(m_LoadingDiagnostics, "environment preparation total", environmentStart);
 
         // LoadObjectModel itself commits only after successful import/upload.
         if (modelPath) LoadObjectModel(*modelPath, drawProgress, texturePolicy);

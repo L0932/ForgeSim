@@ -46,6 +46,31 @@ namespace ForgeSim::Sandbox
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 1.0f));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 4.0f));
                 if (ImGui::Button("Clear")) Clear();
+                const auto& toolbarStyle = ImGui::GetStyle();
+                const float copyWidth = ImGui::CalcTextSize("Copy log").x + toolbarStyle.FramePadding.x * 2.0f;
+                const float toolbarUsed = ImGui::GetItemRectMax().x - ImGui::GetCursorScreenPos().x;
+                if (ImGui::GetContentRegionAvail().x - toolbarUsed >= copyWidth + toolbarStyle.ItemSpacing.x)
+                    ImGui::SameLine();
+                if (ImGui::Button("Copy log"))
+                {
+                    std::string text;
+                    for (const auto& row : m_Entries)
+                    {
+                        if (!row.command)
+                        {
+                            const char* level = row.log.level == Core::LogLevel::Warning ? "Warning" :
+                                row.log.level == Core::LogLevel::Error ? "Error" : "Info";
+                            text += "[";
+                            text += level;
+                            text += "] ";
+                        }
+                        text += row.log.message;
+                        text += '\n';
+                    }
+                    ImGui::SetClipboardText(text.c_str());
+                }
+                ImGui::SetItemTooltip("Copy all retained messages and commands, ignoring filters. History is limited to %zu rows.",
+                    Core::LogHistoryCapacity);
                 const auto option = [](const char* label, bool& value)
                 {
                     const auto& style = ImGui::GetStyle();
@@ -98,6 +123,7 @@ namespace ForgeSim::Sandbox
                             level = "Error";
                             color = light ? ImVec4(.70f,.08f,.08f,1) : ImVec4(1,.40f,.37f,1);
                         }
+                        ImGui::PushID(&row);
                         ImGui::PushStyleColor(ImGuiCol_Text, color);
                         if (row.command)
                             ImGui::TextWrapped("%s", entry.message.c_str());
@@ -105,10 +131,21 @@ namespace ForgeSim::Sandbox
                             ImGui::TextWrapped("[%s] %s", level, entry.message.c_str());
                         ImGui::PopStyleColor();
                         if (row.command)
-                            ImGui::SetItemTooltip("Submitted command");
+                            ImGui::SetItemTooltip("Submitted command. Right-click to copy.");
                         else
-                            ImGui::SetItemTooltip("%s:%u", entry.sourceFile.c_str(),
+                            ImGui::SetItemTooltip("%s:%u\nRight-click to copy.", entry.sourceFile.c_str(),
                                 static_cast<unsigned int>(entry.sourceLine));
+                        if (ImGui::BeginPopupContextItem("##ConsoleRow", ImGuiPopupFlags_MouseButtonRight))
+                        {
+                            if (ImGui::MenuItem("Copy line"))
+                            {
+                                const std::string text = row.command ? entry.message :
+                                    "[" + std::string(level) + "] " + entry.message;
+                                ImGui::SetClipboardText(text.c_str());
+                            }
+                            ImGui::EndPopup();
+                        }
+                        ImGui::PopID();
                     }
                     if (!visible) ImGui::TextDisabled("No matching messages.");
                     if (m_ScrollToBottom || (m_AutoScroll && !incoming.empty() && atBottom))

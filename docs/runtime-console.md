@@ -4,6 +4,16 @@ The docked Console accepts commands while ForgeSim is running. Click the input
 at the bottom of the panel, type a command, and press Enter. Results appear in
 the log history; existing severity and text filters still apply.
 
+Right-click an individual message or submitted command and select **Copy line**
+to copy that entry. Wrapped text is copied in full, with its severity prefix for
+log messages. Multi-line messages are copied as one complete entry.
+
+Click **Copy log** in the toolbar to copy all retained messages and submitted
+commands to the system clipboard. Severity and text filters do not limit the
+copied text, and long messages are copied without visual line wrapping. Clear
+removes the retained display history. History is bounded to 1,024 rows, so copy
+promptly after reproducing a problem; this is not a persistent log file.
+
 | Command | Purpose |
 | --- | --- |
 | `help` | List registered commands and usage. |

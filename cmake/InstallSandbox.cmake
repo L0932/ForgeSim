@@ -204,3 +204,7 @@ install(FILES "${PROJECT_SOURCE_DIR}/apps/Sandbox/ForgeSim.project.json"
 install(FILES "${PROJECT_SOURCE_DIR}/docs/ProjectAssetRoots.md"
     DESTINATION . COMPONENT SandboxRuntime
     CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
+if(FORGESIM_ACCELERATE_PNG)
+    forgesim_install_notice(libdeflate "${libdeflate_SOURCE_DIR}/COPYING")
+endif()

@@ -22,6 +22,8 @@ namespace ForgeSim::Assets
 
 	enum class GltfProgressPhase { Started, Advanced, Completed };
 
+	inline constexpr char DecodedImageCacheDirectoryName[] = "decoded-images-v2";
+
 	inline constexpr std::uint64_t ImageCacheMiB = 1024ull * 1024;
 	inline constexpr std::uint64_t DefaultImageCacheBudgetMiB = 4096;
 
@@ -37,6 +39,25 @@ namespace ForgeSim::Assets
 		bool available = false;
 	};
 
+    // Per-operation worker sums can overlap when decoding is parallel.
+    // Cache setup is a separate serial interval. Neither is a GPU/CPU usage counter.
+    struct GltfImageLoadTimings
+    {
+        double cacheSetupMs = 0;
+        double cacheKeyMs = 0;
+        double cacheReadMs = 0;
+        double decodeMs = 0;
+        double cacheWriteMs = 0;
+        double cacheLockWaitMs = 0;
+        double cacheReadIoMs = 0;
+        double cacheReadChecksumMs = 0;
+        double cacheWriteChecksumMs = 0;
+        double cacheWriteIoMs = 0;
+        double cachePublishMs = 0;
+        std::size_t decodedImages = 0;
+        std::size_t workerLimit = 1;
+    };
+
 	struct GltfLoadProgress
 	{
 		std::string_view stage;
@@ -45,6 +66,7 @@ namespace ForgeSim::Assets
 		std::optional<std::size_t> total;
 		std::chrono::milliseconds elapsed;
 		std::optional<GltfImageCacheStats> imageCache = std::nullopt;
+        std::optional<GltfImageLoadTimings> imageTimings = std::nullopt;
 	};
 
 	struct GltfImportOptions

@@ -29,6 +29,8 @@
 #include <ForgeSim/Assets/MeshProcessing.hpp>
 
 #include "DecodedImageCacheBudget.hpp"
+#include "ImageDecodeQueue.hpp"
+#include "ImageCacheChecksum.hpp"
 
 namespace ForgeSim::Assets
 {
@@ -144,6 +146,27 @@ namespace ForgeSim::Assets
 				std::string(CgltfResultDescription(result)));
 		}
 
+        // Worker-local timers: aggregation happens only after every future joins.
+        // Durations include waits in the measured operation, not CPU utilization.
+        class ImageOperationTimer
+        {
+        public:
+            ImageOperationTimer(double& milliseconds, bool enabled)
+                : m_Result(milliseconds), m_Enabled(enabled)
+            {
+                if (enabled) m_Start = std::chrono::steady_clock::now();
+            }
+            ~ImageOperationTimer()
+            {
+                if (m_Enabled) m_Result += std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - m_Start).count();
+            }
+        private:
+            double& m_Result;
+            bool m_Enabled;
+            std::chrono::steady_clock::time_point m_Start{};
+        };
+
 		class LoadStage
 		{
 		public:
@@ -171,10 +194,11 @@ namespace ForgeSim::Assets
 				}
 			}
 
-			void Finish(std::optional<GltfImageCacheStats> cacheStats = std::nullopt) const
+			void Finish(std::optional<GltfImageCacheStats> cacheStats = std::nullopt,
+                std::optional<GltfImageLoadTimings> imageTimings = std::nullopt) const
 			{
 				if (Enabled())
-					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheStats);
+					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheStats, imageTimings);
 			}
 
 		private:
@@ -183,10 +207,11 @@ namespace ForgeSim::Assets
 			bool Enabled() const { return m_Options && m_Options->onProgress; }
 
 			void Report(GltfProgressPhase phase, std::size_t completed, Clock::time_point now,
-				std::optional<GltfImageCacheStats> cacheStats = std::nullopt) const
+				std::optional<GltfImageCacheStats> cacheStats = std::nullopt,
+                std::optional<GltfImageLoadTimings> imageTimings = std::nullopt) const
 			{
 				m_Options->onProgress({m_Name, phase, completed, m_Total,
-					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheStats});
+					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheStats, imageTimings});
 			}
 
 			const GltfImportOptions* m_Options;
@@ -1321,35 +1346,39 @@ namespace ForgeSim::Assets
 
 		using ImageCacheHeader = std::array<std::uint64_t, 4>;
 
-		std::optional<ImageData> ReadCachedImage(const std::filesystem::path& path)
-		{
-			std::ifstream input(path, std::ios::binary | std::ios::ate);
-			if (!input)
-				return std::nullopt;
-			const auto fileSize = input.tellg();
-			input.seekg(0);
-			ImageCacheHeader header{};
-			if (!input.read(reinterpret_cast<char*>(header.data()), sizeof(header)))
-				return std::nullopt;
-			const auto [width, height, channels, checksum] = header;
-			if (width == 0 || height == 0 || channels != 4 ||
-				width > MaxCachedImageBytes || height > MaxCachedImageBytes)
-				return std::nullopt;
-			const auto size = width * height * channels;
-			if (size > MaxCachedImageBytes ||
-				fileSize != static_cast<std::streamoff>(sizeof(header) + size))
-				return std::nullopt;
-
-			ImageData image;
-			image.width = static_cast<std::uint32_t>(width);
-			image.height = static_cast<std::uint32_t>(height);
-			image.channelCount = static_cast<std::uint32_t>(channels);
-			image.pixels.resize(static_cast<std::size_t>(size));
-			if (!input.read(reinterpret_cast<char*>(image.pixels.data()),
-					static_cast<std::streamsize>(size)) || (HashImageBytes(image.pixels) ^ (width << 32) ^ height) != checksum)
-				return std::nullopt;
-			return image;
-		}
+        std::optional<ImageData> ReadCachedImage(const std::filesystem::path& path,
+            GltfImageLoadTimings* timing)
+        {
+            double ignored = 0;
+            ImageCacheHeader header{};
+            ImageData image;
+            {
+                const ImageOperationTimer timer{timing ? timing->cacheReadIoMs : ignored, timing != nullptr};
+                std::ifstream input(path, std::ios::binary | std::ios::ate);
+                if (!input) return std::nullopt;
+                const auto fileSize = input.tellg();
+                input.seekg(0);
+                if (!input.read(reinterpret_cast<char*>(header.data()), sizeof(header))) return std::nullopt;
+                const auto [width, height, channels, checksum] = header;
+                static_cast<void>(checksum);
+                if (width == 0 || height == 0 || channels != 4 ||
+                    width > MaxCachedImageBytes || height > MaxCachedImageBytes) return std::nullopt;
+                const auto size = width * height * channels;
+                if (size > MaxCachedImageBytes ||
+                    fileSize != static_cast<std::streamoff>(sizeof(header) + size)) return std::nullopt;
+                image.width = static_cast<std::uint32_t>(width);
+                image.height = static_cast<std::uint32_t>(height);
+                image.channelCount = static_cast<std::uint32_t>(channels);
+                image.pixels.resize(static_cast<std::size_t>(size));
+                if (!input.read(reinterpret_cast<char*>(image.pixels.data()), static_cast<std::streamsize>(size)))
+                    return std::nullopt;
+            }
+            {
+                const ImageOperationTimer timer{timing ? timing->cacheReadChecksumMs : ignored, timing != nullptr};
+                if (Detail::ImageCacheChecksum(image.pixels, image.width, image.height) != header[3]) return std::nullopt;
+            }
+            return image;
+        }
 
 		class DecodedImageCache
 		{
@@ -1360,7 +1389,7 @@ namespace ForgeSim::Assets
 				m_Stats.budgetBytes = limit;
 				try
 				{
-					m_Directory = root / "decoded-images-v1";
+					m_Directory = root / DecodedImageCacheDirectoryName;
 					std::filesystem::create_directories(m_Directory);
 					m_Lease.emplace(m_Directory / ".budget.lock");
 					if (m_Lease->Acquired() && m_Budget.Scan(m_Directory))
@@ -1383,10 +1412,15 @@ namespace ForgeSim::Assets
 					"-" + std::to_string(encoded.size()));
 			}
 
-			std::optional<ImageData> Read(const std::filesystem::path& path)
+			std::optional<ImageData> Read(const std::filesystem::path& path, GltfImageLoadTimings* timing)
 			{
+                double ignored = 0;
 				{
-					const std::scoped_lock lock{m_Mutex};
+					std::unique_lock lock{m_Mutex, std::defer_lock};
+                    {
+                        const ImageOperationTimer timer{timing ? timing->cacheLockWaitMs : ignored, timing != nullptr};
+                        lock.lock();
+                    }
 					if (!m_Budget.Contains(path))
 					{
 						++m_Stats.misses;
@@ -1399,12 +1433,16 @@ namespace ForgeSim::Assets
 				std::optional<ImageData> image;
 				try
 				{
-					image = ReadCachedImage(path);
+					image = ReadCachedImage(path, timing);
 				}
 				catch (const std::exception&)
 				{
 				}
-				const std::scoped_lock lock{m_Mutex};
+				std::unique_lock lock{m_Mutex, std::defer_lock};
+                    {
+                        const ImageOperationTimer timer{timing ? timing->cacheLockWaitMs : ignored, timing != nullptr};
+                        lock.lock();
+                    }
 				if (image)
 				{
 					m_Budget.Touch(path);
@@ -1415,11 +1453,25 @@ namespace ForgeSim::Assets
 				return image;
 			}
 
-			void Store(const std::filesystem::path& path, const ImageData& image)
+			void Store(const std::filesystem::path& path, const ImageData& image, GltfImageLoadTimings* timing)
 			{
+                double ignored = 0;
 				const auto bytes = sizeof(ImageCacheHeader) + image.pixels.size();
-				const std::scoped_lock lock{m_Mutex};
-				if (image.pixels.size() > MaxCachedImageBytes || bytes > m_Stats.budgetBytes)
+                const bool oversized = image.pixels.size() > MaxCachedImageBytes || bytes > m_Stats.budgetBytes;
+                std::uint64_t checksum = 0;
+                if (!oversized)
+                {
+                    // Pixels are worker-owned and immutable. Hash before taking the
+                    // cache mutex; serialize only staging, budget and publication.
+                    const ImageOperationTimer timer{timing ? timing->cacheWriteChecksumMs : ignored, timing != nullptr};
+                    checksum = Detail::ImageCacheChecksum(image.pixels, image.width, image.height);
+                }
+				std::unique_lock lock{m_Mutex, std::defer_lock};
+                    {
+                        const ImageOperationTimer timer{timing ? timing->cacheLockWaitMs : ignored, timing != nullptr};
+                        lock.lock();
+                    }
+				if (oversized)
 				{
 					++m_Stats.skippedWrites;
 					return;
@@ -1442,20 +1494,25 @@ namespace ForgeSim::Assets
 						return;
 					}
 					ownsTemporary = true;
-					const ImageCacheHeader header{
-						image.width, image.height, image.channelCount,
-						HashImageBytes(image.pixels) ^ (std::uint64_t{image.width} << 32) ^ image.height
-					};
-					std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-					if (output)
-					{
-						output.write(reinterpret_cast<const char*>(header.data()), sizeof(header));
-						output.write(reinterpret_cast<const char*>(image.pixels.data()),
-							static_cast<std::streamsize>(image.pixels.size()));
-						output.close();
-						committed = output && m_Budget.MakeRoom(path, bytes) &&
-							m_Budget.Commit(temporary, path, bytes);
-					}
+                    const ImageCacheHeader header{image.width, image.height, image.channelCount, checksum};
+                    bool written = false;
+                    {
+                        const ImageOperationTimer timer{timing ? timing->cacheWriteIoMs : ignored, timing != nullptr};
+                        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+                        if (output)
+                        {
+                            output.write(reinterpret_cast<const char*>(header.data()), sizeof(header));
+                            output.write(reinterpret_cast<const char*>(image.pixels.data()),
+                                static_cast<std::streamsize>(image.pixels.size()));
+                            output.close();
+                            written = static_cast<bool>(output);
+                        }
+                    }
+                    if (written)
+                    {
+                        const ImageOperationTimer timer{timing ? timing->cachePublishMs : ignored, timing != nullptr};
+                        committed = m_Budget.MakeRoom(path, bytes) && m_Budget.Commit(temporary, path, bytes);
+                    }
 				}
 				catch (const std::exception&)
 				{
@@ -1464,9 +1521,9 @@ namespace ForgeSim::Assets
 				if (!committed)
 				{
 					++m_Stats.skippedWrites;
-					std::error_code ignored;
+					std::error_code cleanupError;
 					if (ownsTemporary)
-						std::filesystem::remove(temporary, ignored);
+						std::filesystem::remove(temporary, cleanupError);
 				}
 			}
 
@@ -1593,37 +1650,54 @@ namespace ForgeSim::Assets
         }
 
 		LoadStage images{&options, "Load and decode images", data->images_count};
+        const bool measureImages = static_cast<bool>(options.onProgress);
+        GltfImageLoadTimings imageTimings;
+        std::vector<GltfImageLoadTimings> perImage(data->images_count);
 		std::optional<DecodedImageCache> cache;
-		if (!options.imageCacheDirectory.empty() && data->file_type == cgltf_file_type_glb)
-			cache.emplace(options.imageCacheDirectory, options.imageCacheBudgetBytes);
-		const auto decodeImage = [&](cgltf_size index)
-		{
-			const auto& source = data->images[index];
-			const auto* view = source.buffer_view;
-			if (!cache || !cache->Available() || source.uri || !view || !view->buffer ||
-				view->buffer != data->buffers || view->buffer->uri || view->size == 0)
-				return LoadGltfImage(source, path, index);
-			const auto* encoded = cgltf_buffer_view_data(view);
-			if (!encoded)
-				return LoadGltfImage(source, path, index);
+        {
+            const ImageOperationTimer timer{imageTimings.cacheSetupMs, measureImages};
+            if (!options.imageCacheDirectory.empty() && data->file_type == cgltf_file_type_glb)
+                cache.emplace(options.imageCacheDirectory, options.imageCacheBudgetBytes);
+        }
+        const auto decodeImage = [&](cgltf_size index)
+        {
+            auto& timing = perImage[index];
+            const auto& source = data->images[index];
+            const auto decode = [&]
+            {
+                const ImageOperationTimer timer{timing.decodeMs, measureImages};
+                ++timing.decodedImages;
+                return LoadGltfImage(source, path, index);
+            };
+            const auto* view = source.buffer_view;
+            if (!cache || !cache->Available() || source.uri || !view || !view->buffer ||
+                view->buffer != data->buffers || view->buffer->uri || view->size == 0)
+                return decode();
+            const auto* encoded = cgltf_buffer_view_data(view);
+            if (!encoded) return decode();
 
-			std::filesystem::path entry;
-			try
-			{
-				entry = cache->PathFor({encoded, view->size});
-				if (auto cached = cache->Read(entry))
-					return std::move(*cached);
-			}
-			catch (const std::exception&)
-			{
-				// Cache I/O must not prevent a normal import.
-			}
-
-			auto image = LoadGltfImage(source, path, index);
-			if (!entry.empty())
-				cache->Store(entry, image);
-			return image;
-		};
+            std::filesystem::path entry;
+            try
+            {
+                {
+                    const ImageOperationTimer timer{timing.cacheKeyMs, measureImages};
+                    entry = cache->PathFor({encoded, view->size});
+                }
+                const ImageOperationTimer timer{timing.cacheReadMs, measureImages};
+                if (auto cached = cache->Read(entry, measureImages ? &timing : nullptr)) return std::move(*cached);
+            }
+            catch (const std::exception&)
+            {
+                // Cache I/O must not prevent a normal import.
+            }
+            auto image = decode();
+            if (!entry.empty())
+            {
+                const ImageOperationTimer timer{timing.cacheWriteMs, measureImages};
+                cache->Store(entry, image, measureImages ? &timing : nullptr);
+            }
+            return image;
+        };
 		const auto appendImage = [&](ImageData image)
 		{
 			sceneAsset.textureResources.images.push_back(std::move(image));
@@ -1631,28 +1705,25 @@ namespace ForgeSim::Assets
 		};
 		const cgltf_size batchSize = options.parallelImageDecode
 			? std::clamp(std::thread::hardware_concurrency(), 1u, 4u) : 1u;
-		for (cgltf_size first = 0; first < data->images_count;)
-		{
-			const cgltf_size count = std::min(batchSize, data->images_count - first);
-			if (count == 1)
-			{
-				appendImage(decodeImage(first));
-			}
-			else
-			{
-				// Join in source order to preserve image indices and error order.
-				// Futures also join on unwind before the glTF document is freed.
-				std::array<std::future<ImageData>, 4> jobs;
-				for (cgltf_size offset = 0; offset < count; ++offset)
-					jobs[offset] = std::async(std::launch::async, decodeImage, first + offset);
-				for (cgltf_size offset = 0; offset < count; ++offset)
-					appendImage(jobs[offset].get());
-			}
-			first += count;
-		}
+        Detail::ProcessImagesInOrder(data->images_count, batchSize, decodeImage, appendImage);
 		const auto cacheStats = cache ? std::optional{cache->Finish()} : std::nullopt;
 		cache.reset();
-		images.Finish(cacheStats);
+        imageTimings.workerLimit = batchSize;
+        for (const auto& timing : perImage)
+        {
+            imageTimings.cacheKeyMs += timing.cacheKeyMs;
+            imageTimings.cacheReadMs += timing.cacheReadMs;
+            imageTimings.decodeMs += timing.decodeMs;
+            imageTimings.cacheWriteMs += timing.cacheWriteMs;
+            imageTimings.cacheLockWaitMs += timing.cacheLockWaitMs;
+            imageTimings.cacheReadIoMs += timing.cacheReadIoMs;
+            imageTimings.cacheReadChecksumMs += timing.cacheReadChecksumMs;
+            imageTimings.cacheWriteChecksumMs += timing.cacheWriteChecksumMs;
+            imageTimings.cacheWriteIoMs += timing.cacheWriteIoMs;
+            imageTimings.cachePublishMs += timing.cachePublishMs;
+            imageTimings.decodedImages += timing.decodedImages;
+        }
+        images.Finish(cacheStats, measureImages ? std::optional{imageTimings} : std::nullopt);
 
 		sceneAsset.textureResources.samplers.reserve(
 			data->samplers_count);

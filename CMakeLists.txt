@@ -290,6 +290,23 @@ target_include_directories(
 		${stb_SOURCE_DIR}
 )
 
+# PNG inflate acceleration; retain the stb-only build for comparisons/fallback.
+option(FORGESIM_ACCELERATE_PNG "Use libdeflate for PNG decompression" ON)
+if(FORGESIM_ACCELERATE_PNG)
+    set(LIBDEFLATE_BUILD_STATIC_LIB ON CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_BUILD_GZIP OFF CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_COMPRESSION_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_GZIP_SUPPORT ON CACHE BOOL "" FORCE) # Includes accelerated CRC32.
+    FetchContent_Declare(libdeflate
+        GIT_REPOSITORY https://github.com/ebiggers/libdeflate.git
+        GIT_TAG c8c56a20f8f621e6a966b716b31f1dedab6a41e3 # v1.25
+    )
+    FetchContent_MakeAvailable(libdeflate)
+    set_target_properties(libdeflate_static PROPERTIES FOLDER "ThirdParty")
+endif()
+
 # JSON
 
 FetchContent_Declare(
