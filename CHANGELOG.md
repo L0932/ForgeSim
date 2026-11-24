@@ -23,6 +23,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Accelerate PNG decompression with pinned, statically linked libdeflate while
+  retaining stb pixel conversion and native 16-bit height decoding. Keep an
+  optional stb-only build and include the dependency notice in packages (#135).
+
 - Split image-loading diagnostics into cache setup, encoded-key hashing, cache
   read/validation, source decode and cache write/publication worker timings (#135).
 

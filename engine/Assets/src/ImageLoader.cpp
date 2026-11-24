@@ -1,14 +1,66 @@
 #include <ForgeSim/Assets/ImageLoader.hpp>
 
+#include <algorithm>
 #include <climits>
+#include <cstdlib>
+#include <memory>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#ifdef FORGESIM_ACCELERATE_PNG
+#include <libdeflate.h>
+#define STBI_NO_ZLIB
+#endif
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+#ifdef FORGESIM_ACCELERATE_PNG
+// stb's PNG reader calls this whole-buffer inflate entry point. Keep its PNG
+// parser, filtering, transparency, channel and bit-depth conversions unchanged.
+// Allocations use malloc/free, matching this translation unit's STBI allocator.
+extern "C" char* stbi_zlib_decode_malloc_guesssize_headerflag(
+    const char* buffer, int length, int initialSize, int* outputLength, int parseHeader)
+{
+    if (!buffer || length <= 0 || initialSize < 0)
+    {
+        stbi__err("bad zlib input", "Corrupt PNG");
+        return nullptr;
+    }
+    const std::unique_ptr<libdeflate_decompressor, decltype(&libdeflate_free_decompressor)> decoder{
+        libdeflate_alloc_decompressor(), libdeflate_free_decompressor};
+    if (!decoder) { stbi__err("outofmem", "Out of memory"); return nullptr; }
+    auto capacity = static_cast<std::size_t>(std::max(initialSize, 1));
+    for (;;)
+    {
+        std::unique_ptr<char, decltype(&std::free)> output{
+            static_cast<char*>(std::malloc(capacity)), std::free};
+        if (!output) { stbi__err("outofmem", "Out of memory"); return nullptr; }
+        std::size_t actual = 0;
+        const auto result = parseHeader
+            ? libdeflate_zlib_decompress(decoder.get(), buffer, static_cast<std::size_t>(length),
+                output.get(), capacity, &actual)
+            : libdeflate_deflate_decompress(decoder.get(), buffer, static_cast<std::size_t>(length),
+                output.get(), capacity, &actual);
+        if (result == LIBDEFLATE_SUCCESS)
+        {
+            if (outputLength) *outputLength = static_cast<int>(actual);
+            return output.release();
+        }
+        if (result != LIBDEFLATE_INSUFFICIENT_SPACE || capacity == static_cast<std::size_t>(INT_MAX))
+        {
+            stbi__err("bad zlib data", "Corrupt PNG");
+            return nullptr;
+        }
+        // Adam7/packed rows may exceed stb's initial estimate. Grow only within
+        // stb's existing signed-int output-length contract.
+        capacity = std::min(capacity * 2, static_cast<std::size_t>(INT_MAX));
+    }
+}
+#endif
 
 namespace ForgeSim::Assets
 {

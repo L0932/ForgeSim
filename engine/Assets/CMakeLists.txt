@@ -55,3 +55,8 @@ set_target_properties(
 	PROPERTIES
 		FOLDER "ForgeSim/Assets"
 )
+
+if(FORGESIM_ACCELERATE_PNG)
+    target_link_libraries(ForgeSimAssets PRIVATE libdeflate::libdeflate_static)
+    target_compile_definitions(ForgeSimAssets PRIVATE FORGESIM_ACCELERATE_PNG=1)
+endif()

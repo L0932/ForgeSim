@@ -160,6 +160,33 @@ benefit against the 11.877-second observation below. An asset with at most four
 images already starts them together, so the queue's main opportunity is larger
 image sets with uneven decode times.
 
+## Accelerated PNG decompression
+
+`FORGESIM_ACCELERATE_PNG` defaults to ON. The build fetches libdeflate v1.25 at a
+pinned commit and statically links its decompression support into Assets. Runtime
+packages include its license and require no libdeflate DLL. Set the CMake option
+to OFF for the original stb-only build; changing it requires a rebuild.
+
+The integration replaces stb's whole-buffer PNG inflate operation. stb still
+handles PNG parsing, filtering, palettes, transparency, channel expansion and
+8/16-bit conversion. JPEG and HDR decoders are unchanged. Each inflate call owns
+its decompressor, so image workers share no decompressor state. The raw DEFLATE
+path used by CgBI and bounded growth beyond the PNG size estimate are retained.
+The decoder's signed-int output-size contract remains the limit. libdeflate also
+validates zlib checksums; malformed images can therefore fail earlier than with
+stb's inflater. Persistent cache format and keys are unchanged.
+
+Compatibility checks cover grayscale, RGB, alpha, transparency and Adam7 16-bit
+PNGs; existing image/glTF tests cover RGBA8, HDR, cache hits/misses and corrupt cache
+recovery. An isolated comparison on the uploaded cannon's 4096-square RGB16 normal
+PNG checked all 67,108,864 RGBA8 bytes against the original decoder and found an
+exact match. Linux GCC `-O2 -DNDEBUG` decode medians after discarding the first of
+six iterations were 987.566 ms (stb) and 554.218 ms (libdeflate). Encoded bytes were
+already in memory and GPU upload/cache work was excluded. The direct-channel
+conversion candidate did not show a repeatable improvement and was not included.
+This single-image result does not establish end-to-end Windows scene improvement.
+Repeat the empty-cache Release scene measurement, followed by cached restart.
+
 ## Release reference-scene observations
 
 Single user-captured Release runs after model reuse, before the worker-queue change:

@@ -10,6 +10,7 @@ ForgeSim uses the following third-party libraries:
 | Dear ImGui | https://github.com/ocornut/imgui |
 | ImGuizmo | https://github.com/CedricGuillemet/ImGuizmo |
 | stb_image | https://github.com/nothings/stb |
+| libdeflate (optional PNG acceleration) | https://github.com/ebiggers/libdeflate |
 | nlohmann/json | https://github.com/nlohmann/json |
 | GLAD and Khronos specification/header data | https://github.com/Dav1dde/glad |
 
