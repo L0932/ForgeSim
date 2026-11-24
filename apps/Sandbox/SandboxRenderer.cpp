@@ -152,6 +152,13 @@ namespace ForgeSim::Sandbox
                             " ms; decoded_images=" + std::to_string(timing.decodedImages) +
                             "; worker_limit=" + std::to_string(timing.workerLimit) +
                             " (operation times are worker sums; overlap and lock waits included)");
+                        Core::LogInfo("Image cache detail: mutex_wait=" + std::to_string(timing.cacheLockWaitMs) +
+                            " ms; read_io_allocate=" + std::to_string(timing.cacheReadIoMs) +
+                            " ms; read_checksum=" + std::to_string(timing.cacheReadChecksumMs) +
+                            " ms; write_checksum=" + std::to_string(timing.cacheWriteChecksumMs) +
+                            " ms; write_io=" + std::to_string(timing.cacheWriteIoMs) +
+                            " ms; publish_evict=" + std::to_string(timing.cachePublishMs) +
+                            " ms (worker sums; child intervals of cache work)");
                     }
 				},
 				.parallelImageDecode = parallelImageDecode,

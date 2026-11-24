@@ -107,6 +107,16 @@ void RunGltfImageCacheTests()
             "Warm hits must skip decoding; misses and bypasses must decode.");
         Require(timing->cacheSetupMs >= 0 && timing->cacheKeyMs >= 0 && timing->cacheReadMs >= 0 &&
             timing->decodeMs >= 0 && timing->cacheWriteMs >= 0, "Image times must be nonnegative.");
+        Require(timing->cacheLockWaitMs >= 0 && timing->cacheReadIoMs >= 0 &&
+            timing->cacheReadChecksumMs >= 0 && timing->cacheWriteChecksumMs >= 0 &&
+            timing->cacheWriteIoMs >= 0 && timing->cachePublishMs >= 0, "Cache detail times must be nonnegative.");
+        if (timing->decodedImages == 0)
+            Require(timing->cacheWriteChecksumMs == 0 && timing->cacheWriteIoMs == 0 && timing->cachePublishMs == 0,
+                "Warm hits must not report write operations.");
+        if (!stats || !stats->available)
+            Require(timing->cacheReadIoMs == 0 && timing->cacheReadChecksumMs == 0 &&
+                timing->cacheWriteIoMs == 0 && timing->cacheWriteChecksumMs == 0,
+                "Bypassed cache must not report pixel I/O/checksums.");
         Require(timing->workerLimit >= 1 && timing->workerLimit <= 4, "Bounded worker count.");
 		return stats;
 	};

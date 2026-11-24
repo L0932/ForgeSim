@@ -96,6 +96,30 @@ reuses models and will not produce this breakdown for reused assets. To measure
 warm disk-cache reads, restart the process with the populated cache retained.
 Use the same build configuration and parallel-decode setting for both captures.
 
+## Detailed cache intervals
+
+`Image cache detail` reports worker-summed child intervals of the existing cache
+read/write totals:
+
+- `mutex_wait`: time acquiring the model cache's mutex for lookups, recency updates
+  and writes. Workers may wait while another worker validates/publishes a write.
+- `read_io_allocate`: opening and validating the cache header/length, allocating
+  the decoded pixel buffer, reading pixels and closing the file. This is not a
+  disk-only counter: allocation, OS cache hits and filesystem metadata are included.
+- `read_checksum`: hashing decoded pixels and comparing the stored checksum.
+- `write_checksum`: hashing decoded pixels for a new cache entry.
+- `write_io`: opening the staging file, writing its header/pixels and closing it.
+  Closing does not imply durable storage flush; OS buffering still applies.
+- `publish_evict`: budget eviction and publishing the staging file.
+
+Do not add these values to the parent cache totals or scene-open wall time.
+Worker intervals can overlap, and minor control/metadata work remains outside
+these detailed intervals. This patch changes measurement only; checksum algorithm,
+cache directory/format, locking and publication behavior remain unchanged.
+
+Capture an empty-cache Release load to measure writes, then restart with the
+populated cache to measure reads. Same-session model reuse bypasses both paths.
+
 ## Current reuse behavior
 
 Scene Open still clears edit history and stages only the incoming scene's model

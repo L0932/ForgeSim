@@ -46,6 +46,12 @@ namespace ForgeSim::Assets
         double cacheReadMs = 0;
         double decodeMs = 0;
         double cacheWriteMs = 0;
+        double cacheLockWaitMs = 0;
+        double cacheReadIoMs = 0;
+        double cacheReadChecksumMs = 0;
+        double cacheWriteChecksumMs = 0;
+        double cacheWriteIoMs = 0;
+        double cachePublishMs = 0;
         std::size_t decodedImages = 0;
         std::size_t workerLimit = 1;
     };

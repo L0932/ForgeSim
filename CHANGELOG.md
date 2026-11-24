@@ -23,6 +23,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Separate decoded-image cache checksum, file I/O, allocation, mutex wait and
+  publication/eviction diagnostics to guide the next loading optimization (#135).
+
 - Accelerate PNG decompression with pinned, statically linked libdeflate while
   retaining stb pixel conversion and native 16-bit height decoding. Keep an
   optional stb-only build and include the dependency notice in packages (#135).
