@@ -93,14 +93,14 @@ See [project asset roots](docs/ProjectAssetRoots.md) and
 
 ### Loading and diagnostics
 
-Resource reuse, parallel image loading, and decoded-image caching reduce repeated loading work, while stage diagnostics help identify where time is spent. ForgeSim reuses unchanged self-contained GLB resources within a session, checking source size, modification time, and texture policy.
+### Loading and diagnostics
 
-Image loading uses up to four workers, with PNG decompression accelerated by
-statically linked libdeflate. An optional decoded-image disk cache avoids
-re-decoding eligible embedded GLB images across application restarts. Its default
-budget is **4096 MiB**; a smaller limit can be selected at launch.
+ForgeSim speeds up scene loading by reusing loaded models and caching image data between sessions. Loading diagnostics help you understand how long a scene takes to open and where that time is spent.
 
-Use a Release build for timing comparisons:
+To enable image caching and loading diagnostics:
+
+```bash
+./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe --loading-diagnostics --cache-decoded-images
 
 ```bash
 ./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe --loading-diagnostics --cache-decoded-images
