@@ -93,14 +93,9 @@ See [project asset roots](docs/ProjectAssetRoots.md) and
 
 ### Loading and diagnostics
 
-### Loading and diagnostics
-
 ForgeSim speeds up scene loading by reusing loaded models and caching image data between sessions. Loading diagnostics help you understand how long a scene takes to open and where that time is spent.
 
 To enable image caching and loading diagnostics:
-
-```bash
-./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe --loading-diagnostics --cache-decoded-images
 
 ```bash
 ./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe --loading-diagnostics --cache-decoded-images
