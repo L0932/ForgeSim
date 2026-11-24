@@ -1,393 +1,281 @@
 # ForgeSim
 
-ForgeSim is an independently developed real-time simulation engine and editor written in modern C++, focused on interactive mechanical systems.
-
-The project is being developed as a foundation for simulation-heavy games, interactive simulations, and training applications where mechanical components, equipment, tools, and other simulated systems can be represented through reusable engine and simulation infrastructure.
+ForgeSim is an independently developed real-time simulation engine and editor
+written in C++20. Its long-term focus is interactive mechanical systems,
+equipment, and training scenarios. The current Sandbox provides the rendering,
+asset, scene-editing, and diagnostic tools being built toward that goal.
 
-ForgeSim is currently in early development. The architecture and feature set will continue to evolve as concrete simulation requirements emerge.
-
-## Vision
-
-ForgeSim is intended to explore an engine architecture in which simulation systems are first-class components rather than application-specific implementations.
-
-Potential applications include:
-
-- Mechanical systems and assemblies
-- Vehicle and equipment simulation
-- Component interaction, replacement, and failure
-- Interactive tools and maintenance workflows
-- Procedural training scenarios
-- Simulation-heavy games
-- Debugging and visualization of simulated systems
-- Future immersive and VR interaction
+**Early development:** the current application is a Windows desktop editor using
+OpenGL 4.6. Mechanical simulation, maintenance workflows, and immersive interaction
+remain future work. Features and file formats continue to evolve.
 
-The long-term goal is not to reproduce the feature set of a general-purpose commercial game engine, but to develop reusable systems and tooling around interactive real-time simulation.
+![Chess scene rendered in ForgeSim](docs/images/chess-scene.png)
 
-## Current Status
+*The bundled Chess Board sample rendered in ForgeSim under HDR environment lighting.*
 
-## Current Status
-
-ForgeSim is currently in Phase 3: Textured Assets and PBR Scene Rendering.
-
-The current Sandbox demonstrates:
-
-- Fixed-timestep simulation scheduling with bounded catch-up
-- Interactive free-camera navigation with [scale-aware defaults and precision controls](docs/CameraNavigation.md)
-- Unified object and light selection through viewport picking and Debug UI controls
-- Viewport transform gizmos with local/world modes and keyboard shortcuts
-- Undo and redo for gizmo edits across objects and lights
-- glTF 2.0 scene loading with multiple meshes, primitives, materials, and node transforms
-- File-backed images and GLSL shaders with shader hot reloading
-- Metallic-roughness physically based rendering
-- Directional, point, and spot illumination through a shared Cook-Torrance BRDF
-- Point-light distance and range attenuation
-- Spot-light distance attenuation and smooth inner/outer cone falloff
-- Editable light properties and selectable viewport light visualizations
-- Diffuse and specular image-based lighting
-- HDR scene rendering, exposure control, tone mapping, and sRGB output
-- Configurable HDR environment backgrounds
-- Alpha masking, alpha blending, and double-sided materials
-- Reference-grid and bounding-box debug rendering
-- Dear ImGui rendering controls and runtime diagnostics
-- Headless tests for light submission, selection, transform conversion, and edit history
-
-Point and spot lighting currently uses documented artistic attenuation.
-Physical light-unit and exposure calibration are planned follow-up work.
-Point and spot lights do not yet cast shadows.
+[Build from source](#building-from-source-on-windows) ·
+[Sample scenes](docs/SampleScenes.md) ·
+[Keyboard controls](docs/KeyboardControls.md) ·
+[Changelog](CHANGELOG.md) ·
+[Roadmap](docs/Roadmap.md)
 
-## Rendering Features
+## What works today
 
-![ForgeSim PBR material gallery](docs/images/rendering-debug-controls.png)
+### Scene editing
 
-ForgeSim currently implements a forward-rendered metallic-roughness PBR pipeline for glTF 2.0 assets.
+![ForgeSim editor displaying the Bistro scene](docs/images/bistro-editor.png)
 
-Rendering features include:
+*An imported Bistro scene with its node hierarchy, per-instance transform controls,
+and material inspection. This external scene is not bundled with ForgeSim.*
 
-- Multiple glTF meshes, primitives, materials, and node hierarchies
-- Base-color, metallic-roughness, normal, occlusion, and emissive textures
-- Safe fallback textures and glTF-compatible material defaults
-- Generated normals and tangents where supported source data is missing
-- Directional, point, and spot direct lighting using a shared Cook-Torrance BRDF
-- Diffuse irradiance and prefiltered specular image-based lighting
-- Split-sum BRDF lookup texture generation
-- HDR equirectangular environment conversion to cubemaps
-- Visible environment rendering through a reusable skybox pass
-- RGBA16F HDR scene rendering
-- Configurable exposure and ACES-style tone mapping
-- Explicit linear and sRGB color-space handling
-- Opaque, masked, and blended material rendering
-- Single-sided and double-sided material support
-- [`KHR_materials_unlit`](docs/UnlitMaterials.md) base-color shading with alpha support
-- Runtime shader validation and hot reloading
+- Docked Dear ImGui workspace with Hierarchy, Inspector, Scene, and Console panels.
+- Model import, scene save/open, object duplication and deletion, and editable lights.
+- Viewport selection, transform gizmos, local/world axes, and undo/redo.
+- Imported glTF node hierarchies with per-instance node adjustments, subtree
+  selection, focusing, and gizmos.
+- Fly and orbit camera navigation with per-scene camera settings.
+- Material texture inspection with channel views, zoom, panning, and pixel values.
+- Per-scene viewport display settings, scene/editor PNG capture, and layout reset.
+- Console commands with whole-log copying and individual **Copy line** actions.
 
-Inspector texture preview conventions are documented in [Material Texture Previews](docs/MaterialTexturePreviews.md).
-See [Display Transforms](docs/DisplayTransforms.md) for Standard/sRGB output and Blender lighting comparisons.
+See [keyboard controls](docs/KeyboardControls.md),
+[imported model hierarchy](docs/ModelHierarchy.md), and
+[the runtime Console](docs/runtime-console.md).
 
-### PBR Material Validation Gallery
+### Rendering
 
-The Sandbox opens an empty workspace with an editor reference grid, one white
-directional light, neutral background, and studio environment lighting. New Scene
-uses the same setup. The initial camera looks down toward the origin with a `0.1`
-near clip. No ground geometry is added; the grid is an editor aid. The Material
-Gallery remains available from File > Samples.
+![Textured cannon under outdoor environment lighting](docs/images/cannon-pbr.png)
 
-Build and launch the Sandbox using the Debug or Release instructions
-under [Building from Source on Windows](#building-from-source-on-windows).
+*An imported cannon showing textured metal and wood under outdoor HDR lighting.*
 
-![ForgeSim metal-plate and lava material samples](docs/images/pbr-material-texture-showcase.png)
+The forward renderer supports glTF 2.0 metallic-roughness materials and:
 
-The metal-plate and lava samples combine multiple imported material
-textures, demonstrating how ForgeSim's individual PBR inputs work
-together in complete materials.
+- Base-color, metallic-roughness, normal, occlusion, and emissive textures,
+  including supported UV texture transforms.
+- Cook-Torrance directional, point, and spot lighting with editable light properties.
+- Directional shadow mapping with filtering and bias controls.
+- Diffuse irradiance and prefiltered specular image-based lighting.
+- HDR equirectangular environments, configurable backgrounds, and vertical HDRI flipping.
+- HDR rendering, exposure, ACES approximation or Standard/sRGB display output,
+  and explicit linear/sRGB handling.
+- Opaque, masked, blended, double-sided, and `KHR_materials_unlit` materials.
+- Normal/tangent generation for supported missing source attributes and GLSL hot reloading.
 
-The gallery includes:
-
-- Dielectric and metallic spheres across a roughness range.
-- Base-color factor samples.
-- Base-color texture and missing-texture comparisons.
-- Normal-map, ambient-occlusion, and emissive comparisons.
-- Safe fallback behavior for optional material textures.
-- Metal-plate and lava materials combining multiple texture inputs.
+Point and spot lights currently use artistic attenuation and do not cast shadows.
+Physical light-unit and exposure calibration remain follow-up work.
 
-Comparison pairs use matching geometry and material settings wherever
-practical so the effect of each material input remains visible.
+See [display transforms](docs/DisplayTransforms.md),
+[material texture previews](docs/MaterialTexturePreviews.md), and
+[directional shadow validation](docs/DirectionalShadowValidation.md).
 
-The Sandbox Debug UI exposes environment visibility, environment intensity, exposure, fallback background color, selection highlighting, grid visibility, bounds visualization, and runtime diagnostics. The visible environment can be disabled independently while image-based lighting remains active.
+### Assets and displacement
 
-#### Gallery Organization
+![Height-displaced material spheres in ForgeSim](docs/images/height-materials.png)
 
-The gallery is organized from top to bottom into the following
-material groups:
+*Material spheres used to inspect height displacement, surface relief, and silhouette.
+These reference assets are obtained separately.*
 
-1. Dielectric and metallic spheres with progressively changing
-   roughness values.
-2. Base-color factor samples demonstrating imported material colors.
-3. Base-color texture samples, including missing-texture fallback
-   behavior.
-4. Normal-mapping samples comparing materials with and without an
-   active normal texture.
-5. Ambient-occlusion samples comparing materials with and without an
-   occlusion texture.
-6. Emissive samples comparing disabled and enabled emissive material
-   inputs.
-7. Combined showcase materials using multiple imported texture maps,
-   including a metal plate and an emissive lava surface.
+- Load `.glb` and `.gltf` models with multiple meshes, primitives, materials, and
+  authored node transforms.
+- Discover project asset roots through `ForgeSim.project.json`, with explicit
+  overrides and missing-asset recovery during editor scene opens.
+- Choose HDR environments and height PNGs through native Windows file dialogs.
+- Apply per-object/material CPU height displacement using linear 8/16-bit PNG
+  sampling, bounded subdivision, independent height UV transforms, and optional
+  smooth-seam stitching.
+- Save applied height settings with scenes and restore them through undo/redo;
+  source models remain unchanged.
 
-The simpler comparison pairs isolate individual material properties.
-The combined showcase materials demonstrate how those properties work
-together under ForgeSim's PBR and image-based-lighting paths.
+Displacement is an opt-in prototype. It requires suitable UVs and geometry;
+subdivision does not repair distorted sphere-pole mapping. Blender shader graphs
+are not imported. Alternatively, export a GLB with displacement already baked
+into its geometry and leave ForgeSim displacement disabled.
 
-Materials that omit optional textures also verify that ForgeSim uses
-safe default resources rather than producing invalid shading or
-requiring every glTF texture slot to be populated.
-
-### Textured Asset and Editor Showcase
-
-The Flight Helmet asset demonstrates varied textured materials within
-ForgeSim’s docked workspace, alongside scene hierarchy, light inspection,
-and viewport transform controls.
-
-![Flight Helmet rendered in ForgeSim’s docked editor](docs/images/flight-helmet-editor.png)
-
-*Flight Helmet demonstrating textured PBR materials, image-based lighting,
-and interactive scene-light editing.*
+See [project asset roots](docs/ProjectAssetRoots.md) and
+[height displacement and Blender export](docs/prototypes/HeightDisplacement.md).
 
-Asset: [Flight Helmet — Khronos glTF Sample Assets](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/FlightHelmet).
+### Loading and diagnostics
 
-### Sample scenes
+Unchanged self-contained GLB resources can be reused when reopening scenes in the
+same session. Reuse checks source size, modification time, and texture policy;
+GLBs with external dependencies and `.gltf` files are reloaded. Source edits that
+preserve both size and modification time require a restart to bypass model reuse.
 
-Choose **File > Open Sample** for a small directional-shadow starter scene or the
-material gallery. Both ship with the application and open as editable copies;
-Save asks for your own destination. No separate asset download or project-root
-configuration is needed for this menu.
-
-Use **File > Open Sample > Browse Samples...** for descriptions and to open an
-external scene using automatic project-root discovery. External assets are
-obtained separately. Projects and packs define their layout in
-[`ForgeSim.project.json`](docs/ProjectAssetRoots.md); the browser requires only
-the scene file.
-
-See [Sample scenes and distribution](docs/SampleScenes.md) for saved-copy asset
-roots, source locations, credits, and the plan for optional larger showcases.
-
-### Loading an external glTF scene
-
-The Sandbox accepts an optional glTF scene path as its first
-command-line argument. When no path is supplied, it loads the bundled
-PBR material gallery.
-
-```powershell
-& ".\out\build\x64-Debug\apps\Sandbox\ForgeSimSandbox.exe" `
-    "C:\Path\To\Scene.gltf"
-```
-
-#### Intel Sponza showcase
-
-ForgeSim has been validated with Intel's modern Sponza Base Scene.
-The asset is not distributed with ForgeSim and must be downloaded
-separately from Intel's
-[GPU Research Samples](https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html)
-page.
-
-The original package contains high-resolution 4K textures and can
-require substantial loading time and memory. A local 1K development
-copy can be generated with ImageMagick:
-
-```powershell
-Set-ExecutionPolicy `
-    -Scope Process `
-    -ExecutionPolicy Bypass
-
-& ".\tools\Prepare-SponzaTextures.ps1" `
-    -SourceDirectory "C:\Path\To\NewSponza_Main_glTF" `
-    -DestinationDirectory "C:\Path\To\ForgeSimSponza1K" `
-    -MaximumTextureSize 1024
-```
-
-SourceDirectory must contain the scene’s .gltf, .bin, and textures folder. The destination must be outside the source directory.
-
-Launch the prepared scene with:
-
-```powershell
-& ".\out\build\x64-Debug\apps\Sandbox\ForgeSimSandbox.exe" `
-    "C:\Path\To\ForgeSimSponza1K\NewSponza_Main_glTF_003.gltf"
-```
-
-The generated scene copy is intended for local development and should
-not be committed to the ForgeSim repository.
-
-### Decoded image cache
-
-Use `--cache-decoded-images` to reuse decoded textures embedded in GLBs.
-The shared cache defaults to **4096 MiB** (4 GiB). Add
-`--image-cache-budget-mib 1024` to set a smaller limit for the session.
-The next eligible GLB load applies that limit to existing entries, evicting the
-least recently used first. The limit counts committed entries; a temporary file
-can use additional space until it is published or removed. A scene still loads
-from its source when the cache is busy, full, or unavailable.
-
-With `--loading-diagnostics`, the image stage reports hits, misses, evictions,
-skipped writes, and the byte budget and usage. Cache-disabled runs and
-external `.gltf` textures bypass the cache.
-
-## Rendering Color Management
-
-ForgeSim performs scene lighting in linear color space.
-- Base-color and emissive textures are uploaded using sRGB texture formats. OpenGL converts their RGB values to linear space when sampled.
-- Normal, metallic-roughness, and occlusion textures are uploaded as linear data textures.
-- Material factors, vertex colors, light colors, and shader lighting calculations are treated as linear values.
-- Scene color is rendered into an RGBA16F HDR render target.
-- The final scene is processed using an ACES approximation with configurable exposure.
-- The tone-mapping shader converts the final linear color to sRGB before writing to the default framebuffer.
-- GL_FRAMEBUFFER_SRGB remains disabled during this presentation pass because the shader performs the conversion explicitly.
-- Render-target attachments are recreated when the framebuffer size changes.
-- Rendering is skipped while the framebuffer has a zero width or height, such as when the window is minimized.
-
-## Documentation
-
-- [Keyboard controls](docs/KeyboardControls.md) — also available under Help in the editor
-- [Architecture](docs/Architecture.md)
-- [Roadmap](docs/Roadmap.md)
-
-## Technical Direction
-
-Planned areas of development include:
-
-- Mechanical simulation systems
-- Entity and scene representation
-- OpenGL rendering systems
-- Dear ImGui editor interface
-- Scene hierarchy
-- Property inspection and editing
-- UI-independent command architecture
-- Undo/redo
-- Scenario and behavior systems
-- Asset and resource management
-- Serialization and project persistence
-- Runtime/editor separation
-- Debugging and visualization tools
-- Profiling and telemetry
-- Example mechanical simulation scenarios
-
-Features are intentionally introduced as concrete requirements emerge rather than designing the complete engine architecture in advance.
-
-## Building from Source on Windows
-
-### Prerequisites
-
-ForgeSim currently supports building on Windows with:
-
-- Git
-- CMake 3.24 or later
-- Ninja
-- An x64 MSVC toolchain
-
-Run the following commands from a terminal in which the x64 MSVC developer environment is active:
+Image loading uses up to four workers, with PNG decompression accelerated by
+statically linked libdeflate. An optional decoded-image disk cache avoids
+re-decoding eligible embedded GLB images across application restarts. Its default
+budget is **4096 MiB**; a smaller limit can be selected at launch.
+
+Use a Release build for timing comparisons:
 
 ```bash
-git --version
-cmake --version
-ninja --version
-cl
+./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe --loading-diagnostics --cache-decoded-images
 ```
 
-These commands should all succeed before configuring ForgeSim.
+Diagnostics report document loading, model preparation, image/cache work,
+environment preparation, and scene-open completion. These are host timings;
+graphics API submission times do not measure completed GPU execution. Same-session
+resource reuse and disk-cache reuse are separate paths.
 
-An internet connection is required during the first configuration so CMake can retrieve GLFW. GLAD's generated source and headers are included in the repository; Python and Jinja2 are not required.
+The cache normally resides at
+`%LOCALAPPDATA%/ForgeSim/Cache/decoded-images-v2/` on Windows. It stores uncompressed
+decoded pixels and can consume substantial disk space. Older cache versions remain
+on disk outside the active version's budget. Disabling caching bypasses the cache
+without deleting it; unusable entries fall back to source decoding.
 
-### Clone the Repository
+See [scene-loading performance](docs/performance/SceneLoading.md) for measured
+results, cache behavior, timing definitions, and repeatable benchmark steps.
+
+## Try the Sandbox
+
+Download an available Windows package from [Releases](https://github.com/L0932/ForgeSim/releases),
+or build from source below. For a portable package, extract the complete folder
+and keep `assets`, `ForgeSim.project.json`, and dependency notices with the executable.
+An OpenGL 4.6-capable graphics driver is required.
+
+Startup and **New Scene** open an empty workspace with a reference grid,
+directional light, neutral background, and studio environment lighting.
+The grid is an editor aid rather than ground geometry.
+
+Choose **File > Open Sample**:
+
+| Bundled sample | What to explore |
+| --- | --- |
+| Starter: Directional Shadows | Transform cubes and inspect shadows on a solid floor. |
+| Material Gallery | Compare material factors, texture inputs, and roughness. |
+| Chess Board | Inspect imported pieces and a table under an interior HDRI. |
+
+Samples include their required assets and open as editable copies. Save asks for
+your own destination. Other models shown in development screenshots or discussed
+in prototype guides may require separate downloads; they are not automatically
+included with the application.
+
+See [sample scenes and asset credits](docs/SampleScenes.md) and
+[running the installed application](docs/InstalledApplication.md).
+
+## Use your own assets
+
+Pass a model path to import it at launch:
+
+```bash
+./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe "C:/MyProject/models/Example.glb"
+```
+
+Open a saved ForgeSim scene with `--scene`:
+
+```bash
+./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe --scene "C:/MyProject/scenes/Example.scene.json"
+```
+
+Place a `ForgeSim.project.json` manifest in the project folder:
+
+```json
+{
+  "version": 1,
+  "assetRoot": "."
+}
+```
+
+Keep scenes beneath that folder and store model/environment references relative
+to the declared asset root, such as `models/Example.glb`. ForgeSim searches upward
+from a scene for the nearest manifest. Standalone model imports without a manifest
+use the model's containing folder. No particular drive or asset-directory name is
+required. Saving a scene writes references; it does not bundle its assets or create
+a manifest.
+
+Use `--project-root "C:/MyProject"` for an explicit root override. In the Console,
+`project.root.auto` clears a session override and restores discovery for future
+editor opens. See [project asset roots](docs/ProjectAssetRoots.md) for saved sample
+copies, fallback behavior, and asset recovery.
+
+Useful launch options:
+
+| Option | Purpose |
+| --- | --- |
+| `--allow-texture-fallbacks` | Skip unusable texture/UV bindings and retain material factors. |
+| `--cache-decoded-images` | Enable the decoded-image disk cache. |
+| `--image-cache-budget-mib 1024` | Set a session cache budget; requires caching enabled. |
+| `--loading-diagnostics` | Log import progress and loading-stage timings. |
+| `--serial-image-decode` | Decode images serially for comparisons. |
+| `--help` | Show supported arguments. |
+
+Console commands `images.cache`, `loading.diagnostics`, and `textures.fallback`
+accept `on` or `off`, or report the current setting without an argument. They apply
+to subsequent loads; changing a setting does not reload the active model.
+
+For large Intel Sponza assets, [Prepare-SponzaTextures.ps1](tools/Prepare-SponzaTextures.ps1)
+can create a lower-resolution development copy using ImageMagick. The source
+assets must be obtained separately; generated copies should remain outside this
+repository.
+
+## Building from source on Windows
+
+Use Git, CMake **3.24 or later**, Ninja, and an x64 MSVC toolchain with C++20 support.
+Run commands from a terminal with the x64 MSVC developer environment active.
+Check `git --version`, `cmake --version`, `ninja --version`, and `cl` first.
+
+Initial configuration downloads dependencies through CMake FetchContent. GLAD's
+generated source is included; generating it does not require Python or Jinja2.
 
 ```bash
 git clone https://github.com/L0932/ForgeSim.git
 cd ForgeSim
 ```
 
-### Debug Configuration
-
-Configure and build:
+Configure, build, test, and launch Debug:
 
 ```bash
 cmake -S . -B out/build/x64-Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build out/build/x64-Debug --parallel
-```
-
-Run the tests:
-
-```bash
 ctest --test-dir out/build/x64-Debug --output-on-failure
-```
-
-Launch the Sandbox:
-
-```bash
 ./out/build/x64-Debug/apps/Sandbox/ForgeSimSandbox.exe
 ```
 
-### Release Configuration
-
-Configure and build:
+For Release:
 
 ```bash
 cmake -S . -B out/build/x64-Release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build out/build/x64-Release --parallel
-```
-
-Run the tests:
-
-```bash
 ctest --test-dir out/build/x64-Release --output-on-failure
-```
-
-Launch the Sandbox:
-
-```bash
 ./out/build/x64-Release/apps/Sandbox/ForgeSimSandbox.exe
 ```
 
-## Development Priorities
+The test suite covers core timing, asset processing, scene data, selection,
+transforms, edit history, displacement, and cache behavior. Native file dialogs
+and interactive rendering also require manual Windows checks.
 
-The current development sequence is broadly focused on:
+PNG acceleration is enabled by default. Configure with
+`-DFORGESIM_ACCELERATE_PNG=OFF` for the stb-only path. Displacement command-line
+tools are optional; see the [prototype guide](docs/prototypes/HeightDisplacement.md).
+Package preparation and validation are documented in [Releasing](docs/Releasing.md).
 
-1. Project and build infrastructure
-2. Application and platform foundation
-3. Rendering foundation
-4. Timing and fixed-timestep simulation
-5. Entity and scene representation
-6. Editor integration
-7. Scene hierarchy and property inspection
-8. Command and undo/redo architecture
-9. Simulation and mechanical systems
-10. Scenario systems
-11. Serialization and project persistence
-12. Debugging and profiling tools
-13. Example simulation scenarios
+## Documentation
 
-This sequence is expected to evolve as implementation exposes new requirements.
+| Area | Guides |
+| --- | --- |
+| Editor | [Keyboard controls](docs/KeyboardControls.md), [camera navigation](docs/CameraNavigation.md), [screenshots](docs/Screenshots.md) |
+| Imported models | [Hierarchy and node edits](docs/ModelHierarchy.md), [transforms](docs/ImportedTransforms.md), [texture transforms](docs/TextureTransforms.md) |
+| Materials | [Inspection](docs/MaterialInspection.md), [texture previews](docs/MaterialTexturePreviews.md), [display transforms](docs/DisplayTransforms.md), [unlit materials](docs/UnlitMaterials.md) |
+| Projects and samples | [Asset roots](docs/ProjectAssetRoots.md), [sample scenes](docs/SampleScenes.md), [installed application](docs/InstalledApplication.md) |
+| Diagnostics | [Runtime Console](docs/runtime-console.md), [scene-loading performance](docs/performance/SceneLoading.md) |
+| Development | [Architecture](docs/Architecture.md), [roadmap](docs/Roadmap.md), [changelog](CHANGELOG.md), [release process](docs/Releasing.md) |
 
-## Project Goals
+## Direction and development approach
 
-ForgeSim serves several related goals:
+The longer-term goal is reusable infrastructure for mechanical assemblies,
+component interaction and failure, equipment operation, and training scenarios.
+Scenario systems and future immersive/VR interaction will build on the current
+scene, rendering, and editor foundation.
 
-- Develop reusable infrastructure for interactive real-time simulation
-- Explore architecture for mechanical and systems-oriented simulation
-- Develop modern C++ engine and tools systems
-- Strengthen graphics and rendering engineering
-- Explore editor and workflow tooling
-- Develop deterministic and fixed-timestep simulation infrastructure
-- Build debugging, visualization, and profiling tools for simulation
-- Provide a foundation for future simulation applications and experiments
-- Demonstrate engineering work relevant to simulation, engine, graphics, and tools development
-- Potentially support future open-source, educational, consulting, or commercial work
+ForgeSim is developed incrementally around concrete requirements. It includes
+fixed-timestep scheduling with bounded catch-up, but this alone does not establish
+deterministic simulation. Architecture and acceptance criteria evolve with the
+project; see the roadmap for planned work.
 
-## Development Approach
-
-ForgeSim is developed incrementally around concrete engineering requirements.
-
-Architecture, module boundaries, technical direction, and acceptance criteria are evaluated as the project develops rather than attempting to fully design the engine in advance.
-
-AI-assisted tools may be used during development for research, review, validation, and implementation assistance. All committed material remains the project owner's responsibility and is expected to be understood, reviewed, tested, and maintainable.
-
-AI-generated output is not assumed to be correct and must satisfy the same architectural and verification requirements as any other contribution.
+AI-assisted tools may be used for research, review, validation, and implementation
+assistance. All committed material remains the project owner's responsibility and
+must be understood, reviewed, tested, and maintainable. Generated output is subject
+to the same verification requirements as other contributions.
 
 ## Independent Development
 
