@@ -23,7 +23,7 @@ The Sandbox brings rendering, asset workflows, and scene editing together so you
 
 Build and arrange scenes through the docked editor, with viewport controls for direct manipulation and an Inspector for precise adjustments.
 
-![ForgeSim editor displaying the Bistro scene](docs/images/bistro-outdoors-editor.png)
+![ForgeSim editor displaying the Bistro scene](docs/images/bistro-editor.png)
 
 *An imported Bistro scene with its node hierarchy, per-instance transform controls,
 and material inspection.*
