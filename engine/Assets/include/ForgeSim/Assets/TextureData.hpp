@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <vector>
+#include <string>
 
 namespace ForgeSim::Assets
 {
@@ -91,9 +92,16 @@ namespace ForgeSim::Assets
 		std::optional<std::size_t> samplerIndex;
 	};
 
+    struct ImageSource
+    {
+        std::string name;
+        bool embeddedPng = false;
+    };
+
 	struct TextureResources
 	{
 		std::vector<ImageData> images;
+        std::vector<ImageSource> imageSources;
 		std::vector<SamplerData> samplers;
 		std::vector<TextureData> textures;
 

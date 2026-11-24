@@ -21,7 +21,8 @@ namespace ForgeSim::Sandbox
             "\nAsset folder: " + RecoveryPathText(missing.root);
         for (const auto& asset : missing.assets)
         {
-            text += asset.field == "rendering.environment.asset" ? "\n\nMissing environment: " : "\n\nMissing model: ";
+            text += asset.field == "rendering.environment.asset" ? "\n\nMissing environment: " :
+                asset.field.ends_with(".heightAsset") ? "\n\nMissing height image: " : "\n\nMissing model: ";
             text += asset.reference + "\nLooked here: " + RecoveryPathText(asset.attemptedPath);
         }
         return text;

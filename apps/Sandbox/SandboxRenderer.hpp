@@ -200,6 +200,11 @@ namespace ForgeSim::Sandbox
 
         [[nodiscard]] const ModelNodeQuery* InspectModelNodes(const std::string& modelReference) const;
         [[nodiscard]] const Assets::SceneAsset* InspectModelHierarchy(const std::string& modelReference) const;
+        [[nodiscard]] const Assets::SceneAsset* InspectObjectHierarchy(const SandboxObject& object) const;
+        [[nodiscard]] const ModelNodeQuery* InspectObjectNodes(const SandboxObject& object) const;
+        void PrepareDisplacement(const SandboxObject& object, const std::filesystem::path& root,
+            const MaterialDisplacements& settings);
+        void RefreshObjectBounds(std::span<SandboxObject> objects) const;
         [[nodiscard]] ModelMaterialInspection InspectModelMaterials(const std::string& modelReference) const;
 
 	private:
@@ -296,6 +301,19 @@ namespace ForgeSim::Sandbox
             std::vector<Renderer::OpenGL::Sampler> samplers;
             std::vector<GpuMaterialResource> materials;
         };
+        struct GeometryVariant
+        {
+            const Assets::SceneAsset* source = nullptr;
+            MaterialDisplacements settings;
+            Assets::SceneAsset asset;
+            std::vector<GpuPrimitiveResource> primitives;
+        };
+        // Retain prepared variants for undo/redo. Texture/material GPU resources remain shared.
+        std::vector<std::shared_ptr<GeometryVariant>> m_DisplacementVariants;
+        [[nodiscard]] std::shared_ptr<GeometryVariant> CreateGeometryVariant(const Assets::SceneAsset& source,
+            const std::filesystem::path& model, const std::filesystem::path& root,
+            const MaterialDisplacements& settings);
+        [[nodiscard]] const GeometryVariant* FindGeometryVariant(const SandboxObject& object) const;
         std::map<std::filesystem::path, std::shared_ptr<ModelResources>> m_Models;
         mutable std::map<const Assets::SceneAsset*, ModelNodeQuery> m_NodeQueries;
         mutable TexturePreviewCache m_TexturePreviews;

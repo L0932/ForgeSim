@@ -125,10 +125,12 @@ namespace ForgeSim::Platform
                 IID_PPV_ARGS(dialog.GetAddressOf())),
             "Create file dialog");
 
+        static constexpr GUID heightImageDialogId{0xe9a5b3b1, 0x94f2, 0x4305, {0xa4,0x28,0x53,0xa2,0x61,0x3b,0xb7,0x17}};
         const GUID& historyId = saving ? saveDialogId : folder ? folderDialogId :
             specification.purpose == FileDialogPurpose::ModelImport ? importDialogId :
             specification.purpose == FileDialogPurpose::ModelRecovery ? recoveryDialogId :
-            specification.purpose == FileDialogPurpose::EnvironmentImage ? environmentImageDialogId : openDialogId;
+            specification.purpose == FileDialogPurpose::EnvironmentImage ? environmentImageDialogId :
+            specification.purpose == FileDialogPurpose::HeightImage ? heightImageDialogId : openDialogId;
         CheckResult(
             dialog->SetClientGuid(historyId),
             "Set file dialog history");

@@ -1,4 +1,5 @@
 #pragma once
+#include "MaterialDisplacement.hpp"
 
 #include "Transform.hpp"
 #include "NodeTransformOverrides.hpp"
@@ -24,5 +25,6 @@ namespace ForgeSim::Sandbox
         // Runtime model bounds; reconstructed when loading resources.
         std::optional<Renderer::AxisAlignedBoundingBox> localBounds = std::nullopt;
         NodeTransformOverrides nodeOverrides{};
+        MaterialDisplacements displacement{};
 	};
 }

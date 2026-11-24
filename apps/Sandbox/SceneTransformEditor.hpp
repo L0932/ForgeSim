@@ -29,6 +29,7 @@ namespace ForgeSim::Sandbox
 		bool showLights = true;
 		bool navigationActive = false;
         std::function<const ModelNodeQuery*(const std::string&)> inspectNodes;
+        std::function<const ModelNodeQuery*(const SandboxObject&)> inspectObjectNodes;
 	};
 
 	class SceneTransformEditor final
@@ -42,6 +43,8 @@ namespace ForgeSim::Sandbox
         [[nodiscard]] bool SetSelectedObjectPivots(SandboxScene& scene, const SceneSelection& selection,
             const Renderer::AxisAlignedBoundingBox& fallbackBounds, bool boundsCenter);
         [[nodiscard]] bool SetSelectionVisible(SandboxScene& scene, const SceneSelection& selection, bool visible);
+
+        [[nodiscard]] bool SetDisplacement(SandboxObject& object, const MaterialDisplacements& value);
 
         // Changes only the pivot, preserving placement and recording undo/redo.
         [[nodiscard]] bool SetObjectPivot(SandboxObject& object, const glm::vec3& pivot);

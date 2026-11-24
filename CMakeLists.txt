@@ -337,3 +337,9 @@ endif()
 if(FORGESIM_BUILD_SANDBOX AND WIN32)
     include("${PROJECT_SOURCE_DIR}/cmake/PackageSandbox.cmake")
 endif()
+
+# Opt-in technical prototype; excluded from application packaging.
+option(FORGESIM_BUILD_DISPLACEMENT_PROTOTYPE "Build the CPU height displacement prototype" OFF)
+if(FORGESIM_BUILD_DISPLACEMENT_PROTOTYPE)
+    add_subdirectory(tools/displacement)
+endif()

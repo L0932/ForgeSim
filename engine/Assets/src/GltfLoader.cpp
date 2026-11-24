@@ -1487,6 +1487,19 @@ namespace ForgeSim::Assets
 		};
 	} // EOF anonymous namespace
 
+    HeightField LoadGltfHeightPng(const std::filesystem::path& path, std::size_t imageIndex, unsigned channel)
+    {
+        const auto data = LoadGltfDocument(path);
+        if (imageIndex >= data->images_count) throw std::invalid_argument("Height image index no longer exists.");
+        const auto& image = data->images[imageIndex];
+        if (!image.buffer_view || !image.mime_type || std::string_view{image.mime_type} != "image/png")
+            throw std::invalid_argument("Choose an embedded PNG, or browse to an external height PNG.");
+        const auto* bytes = cgltf_buffer_view_data(image.buffer_view);
+        if (!bytes) throw std::invalid_argument("Height image has no accessible buffer data.");
+        return DecodeHeightPng({bytes, image.buffer_view->size}, channel,
+            image.name ? std::string_view{image.name} : std::string_view{"embedded height"});
+    }
+
 	MeshData LoadGltfMesh(const std::filesystem::path& path)
 	{
 		const GltfDataPointer data =
@@ -1530,7 +1543,13 @@ namespace ForgeSim::Assets
 		const GltfDataPointer data =
 			LoadGltfDocument(path, &options);
 
-		SceneAsset sceneAsset;
+        SceneAsset sceneAsset;
+        if (data->extras.data)
+        {
+            const auto extras = nlohmann::json::parse(data->extras.data,nullptr,false);
+            if (extras.is_object() && extras.contains("forgeSimHeightBake"))
+                sceneAsset.heightGeometryBaked = true;
+        }
 
 		if (data->scene != nullptr &&
 			data->scene->name != nullptr)
@@ -1564,6 +1583,14 @@ namespace ForgeSim::Assets
 
 		sceneAsset.textureResources.images.reserve(
 			data->images_count);
+
+        sceneAsset.textureResources.imageSources.reserve(data->images_count);
+        for (cgltf_size index = 0; index < data->images_count; ++index)
+        {
+            const auto& image = data->images[index];
+            sceneAsset.textureResources.imageSources.push_back({image.name ? image.name : "Image " + std::to_string(index),
+                image.buffer_view && image.mime_type && std::string_view{image.mime_type} == "image/png"});
+        }
 
 		LoadStage images{&options, "Load and decode images", data->images_count};
 		std::optional<DecodedImageCache> cache;

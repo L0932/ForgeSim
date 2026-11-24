@@ -14,6 +14,8 @@ target_sources(
 		src/GltfLoader.cpp
 		src/ImageLoader.cpp
 		src/MeshProcessing.cpp
+        src/MeshDisplacement.cpp
+        src/HeightImage.cpp
 		src/TextureTransform.cpp
 	PUBLIC
 		FILE_SET HEADERS
@@ -24,6 +26,7 @@ target_sources(
 			include/ForgeSim/Assets/MaterialData.hpp
 			include/ForgeSim/Assets/MeshData.hpp
 			include/ForgeSim/Assets/MeshProcessing.hpp
+            include/ForgeSim/Assets/MeshDisplacement.hpp
 			include/ForgeSim/Assets/TextureData.hpp
 			include/ForgeSim/Assets/TextureTransform.hpp
 )

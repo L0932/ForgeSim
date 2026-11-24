@@ -27,3 +27,11 @@ when texture fallbacks are enabled, recovered maps may contain fallback imagery.
 Repeated imports and duplicated objects share asset materials. Switching selection
 shows the selected model's resources; this view does not retain GPU handles across
 scene replacements. Use Blender or another asset editor to change source materials.
+
+## Height displacement
+
+The Materials section also offers per-object **Height / Displacement** overrides.
+Choose an embedded PNG or browse to a separate PNG, adjust the mesh-space scale,
+midlevel and subdivision level, then Apply. Settings support undo/redo and scene
+persistence. See [Height displacement](prototypes/HeightDisplacement.md) for the
+concrete reference, geometry limits and image export requirements.

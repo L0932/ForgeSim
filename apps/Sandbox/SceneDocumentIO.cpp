@@ -46,6 +46,14 @@ namespace ForgeSim::Sandbox
                 const SceneObjectData& object =
                     document.objects[index];
 
+                for (const auto& [material, height] : object.displacement)
+                {
+                    if (height.heightAsset.empty()) continue;
+                    const auto path = projectRoot / ModelPathFromUtf8(height.heightAsset);
+                    error.clear();
+                    if (!fs::is_regular_file(path,error) || error)
+                        missing.push_back({"objects[" + std::to_string(index) + "].displacement[" + std::to_string(material) + "].heightAsset",height.heightAsset,path});
+                }
                 if (object.modelPath == BuiltinCubeReference) continue;
 
                 const fs::path resolvedPath =

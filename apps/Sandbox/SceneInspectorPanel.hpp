@@ -6,6 +6,8 @@
 #include "SceneLightValidation.hpp"
 
 #include <optional>
+#include <map>
+#include <functional>
 #include <string>
 
 namespace ForgeSim::Renderer
@@ -29,6 +31,8 @@ namespace ForgeSim::Sandbox
         SceneTransformEditor* transformEditor = nullptr;
         ModelMaterialInspection materials;
         const ModelNodeQuery* nodeQuery = nullptr;
+        std::function<void(SandboxObject&, const MaterialDisplacements&)> applyDisplacement;
+        std::function<std::optional<std::string>()> browseHeightImage;
 	};
 
 	class SceneInspectorPanel final
@@ -45,7 +49,17 @@ namespace ForgeSim::Sandbox
         std::optional<ObjectBatchEdit> m_ObjectEdit;
         std::vector<SandboxObjectId> m_EditTargets;
         void FinishObjectEdit(SceneTransformEditor* editor);
-        void DrawMaterials(const ModelMaterialInspection& inspection);
+        void DrawMaterials(const ModelMaterialInspection& inspection, const SceneInspectorPanelContext& context);
+        void DrawDisplacement(std::size_t material, const SceneInspectorPanelContext& context);
+        struct HeightDraft
+        {
+            MaterialDisplacement value;
+            std::optional<MaterialDisplacement> applied;
+            std::string error;
+        };
+        std::map<std::size_t, HeightDraft> m_HeightDrafts;
+        SandboxObjectId m_HeightOwner = 0;
+        std::string m_HeightModel;
         void DrawTextureViewer(const ModelMaterialInspection& inspection);
         struct TextureViewer
         {
