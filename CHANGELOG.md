@@ -19,6 +19,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Split image-loading diagnostics into cache setup, encoded-key hashing, cache
+  read/validation, source decode and cache write/publication worker timings (#135).
+
 - Add a per-entry Console context menu to copy individual messages or commands.
 
 - Add a Console Copy log button for copying retained messages and commands to

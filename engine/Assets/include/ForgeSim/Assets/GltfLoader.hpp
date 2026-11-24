@@ -37,6 +37,19 @@ namespace ForgeSim::Assets
 		bool available = false;
 	};
 
+    // Per-operation worker sums can overlap when decoding is parallel.
+    // Cache setup is a separate serial interval. Neither is a GPU/CPU usage counter.
+    struct GltfImageLoadTimings
+    {
+        double cacheSetupMs = 0;
+        double cacheKeyMs = 0;
+        double cacheReadMs = 0;
+        double decodeMs = 0;
+        double cacheWriteMs = 0;
+        std::size_t decodedImages = 0;
+        std::size_t workerLimit = 1;
+    };
+
 	struct GltfLoadProgress
 	{
 		std::string_view stage;
@@ -45,6 +58,7 @@ namespace ForgeSim::Assets
 		std::optional<std::size_t> total;
 		std::chrono::milliseconds elapsed;
 		std::optional<GltfImageCacheStats> imageCache = std::nullopt;
+        std::optional<GltfImageLoadTimings> imageTimings = std::nullopt;
 	};
 
 	struct GltfImportOptions

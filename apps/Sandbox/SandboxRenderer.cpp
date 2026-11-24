@@ -141,6 +141,18 @@ namespace ForgeSim::Sandbox
 						message += ")";
 					}
 					Core::LogInfo(message);
+                    if (progress.imageTimings)
+                    {
+                        const auto& timing = *progress.imageTimings;
+                        Core::LogInfo("Image work breakdown: cache_setup=" + std::to_string(timing.cacheSetupMs) +
+                            " ms; encoded_key=" + std::to_string(timing.cacheKeyMs) +
+                            " ms; cache_read_validate=" + std::to_string(timing.cacheReadMs) +
+                            " ms; source_load_decode=" + std::to_string(timing.decodeMs) +
+                            " ms; cache_write_publish=" + std::to_string(timing.cacheWriteMs) +
+                            " ms; decoded_images=" + std::to_string(timing.decodedImages) +
+                            "; worker_limit=" + std::to_string(timing.workerLimit) +
+                            " (operation times are worker sums; overlap and lock waits included)");
+                    }
 				},
 				.parallelImageDecode = parallelImageDecode,
 				.imageCacheDirectory = std::move(imageCacheDirectory),

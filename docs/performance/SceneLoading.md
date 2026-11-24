@@ -68,6 +68,34 @@ Record OS-cache state as uncontrolled unless separately managed.
   including repeated references within this load; it is not a disk-cache hit count.
   Existing decoded-image logs separately report persistent cache hits/misses.
 
+## Image-stage breakdown
+
+Completed image stages also report `Image work breakdown` with:
+
+- `cache_setup`: cache initialization, lease acquisition, budget scan/trim.
+- `encoded_key`: hashing encoded embedded bytes and constructing cache keys.
+- `cache_read_validate`: cache lookup, pixel reads, checksum validation and recency
+  updates; misses include the attempted lookup.
+- `source_load_decode`: source image access, decompression and conversion to the
+  loader's RGBA representation. Embedded bytes may already be in memory.
+- `cache_write_publish`: cache mutex waits, checksum generation, file writes,
+  eviction and publication. This is more than filesystem write time alone.
+- `decoded_images`: how many images used the source decoder instead of cached pixels.
+- `worker_limit`: configured concurrency limit for image batches, capped at four;
+  actual concurrency can be lower for small image counts or final batches.
+
+Only `cache_setup` is a serial interval. Other times sum each worker's operation
+wall duration, including lock waits. They can overlap across workers and must not
+be added to the overall image stage or interpreted as CPU utilization. Timings
+still report when caching is disabled/unavailable; bypassed operations have zero
+time and images are decoded normally. No cache format or decoding policy changes.
+
+To measure uncached costs, close ForgeSim and move Cache aside before launching.
+Keep caching enabled, then capture a first scene open. A same-session reopen now
+reuses models and will not produce this breakdown for reused assets. To measure
+warm disk-cache reads, restart the process with the populated cache retained.
+Use the same build configuration and parallel-decode setting for both captures.
+
 ## Current reuse behavior
 
 Scene Open still clears edit history and stages only the incoming scene's model

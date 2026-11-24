@@ -91,15 +91,23 @@ void RunGltfImageCacheTests()
 	const auto load = [&](const fs::path& asset)
 	{
 		std::optional<GltfImageCacheStats> stats;
+        std::optional<GltfImageLoadTimings> timing;
 		options.onProgress = [&](const GltfLoadProgress& progress)
 		{
 			if (progress.imageCache)
 				stats = progress.imageCache;
+            if (progress.imageTimings) timing = progress.imageTimings;
 		};
 		const auto scene = LoadGltfScene(asset, options);
 		options.onProgress = {};
 		Require(scene.textureResources.images.at(0).pixels ==
 			std::vector<std::uint8_t>{255, 0, 0, 255}, "Cache changed decoded pixels.");
+        Require(timing.has_value(), "Image completion must report timing even without caching.");
+        Require(timing->decodedImages == (stats && stats->available ? stats->misses : 1),
+            "Warm hits must skip decoding; misses and bypasses must decode.");
+        Require(timing->cacheSetupMs >= 0 && timing->cacheKeyMs >= 0 && timing->cacheReadMs >= 0 &&
+            timing->decodeMs >= 0 && timing->cacheWriteMs >= 0, "Image times must be nonnegative.");
+        Require(timing->workerLimit >= 1 && timing->workerLimit <= 4, "Bounded worker count.");
 		return stats;
 	};
 
@@ -156,4 +164,8 @@ void RunGltfImageCacheTests()
 
 	options.imageCacheDirectory.clear();
 	Require(!load(a), "Disabled cache should not report cache work.");
+    options.imageCacheDirectory = directory.path / "ParallelCache";
+    options.parallelImageDecode = true;
+    options.imageCacheBudgetBytes = 2 * bytes;
+    Require(load(a)->misses == 1 && load(a)->hits == 1, "Parallel option must retain timing and cache behavior.");
 }

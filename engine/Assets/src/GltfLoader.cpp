@@ -144,6 +144,27 @@ namespace ForgeSim::Assets
 				std::string(CgltfResultDescription(result)));
 		}
 
+        // Worker-local timers: aggregation happens only after every future joins.
+        // Durations include waits in the measured operation, not CPU utilization.
+        class ImageOperationTimer
+        {
+        public:
+            ImageOperationTimer(double& milliseconds, bool enabled)
+                : m_Result(milliseconds), m_Enabled(enabled)
+            {
+                if (enabled) m_Start = std::chrono::steady_clock::now();
+            }
+            ~ImageOperationTimer()
+            {
+                if (m_Enabled) m_Result += std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - m_Start).count();
+            }
+        private:
+            double& m_Result;
+            bool m_Enabled;
+            std::chrono::steady_clock::time_point m_Start{};
+        };
+
 		class LoadStage
 		{
 		public:
@@ -171,10 +192,11 @@ namespace ForgeSim::Assets
 				}
 			}
 
-			void Finish(std::optional<GltfImageCacheStats> cacheStats = std::nullopt) const
+			void Finish(std::optional<GltfImageCacheStats> cacheStats = std::nullopt,
+                std::optional<GltfImageLoadTimings> imageTimings = std::nullopt) const
 			{
 				if (Enabled())
-					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheStats);
+					Report(GltfProgressPhase::Completed, m_Total.value_or(0), Clock::now(), cacheStats, imageTimings);
 			}
 
 		private:
@@ -183,10 +205,11 @@ namespace ForgeSim::Assets
 			bool Enabled() const { return m_Options && m_Options->onProgress; }
 
 			void Report(GltfProgressPhase phase, std::size_t completed, Clock::time_point now,
-				std::optional<GltfImageCacheStats> cacheStats = std::nullopt) const
+				std::optional<GltfImageCacheStats> cacheStats = std::nullopt,
+                std::optional<GltfImageLoadTimings> imageTimings = std::nullopt) const
 			{
 				m_Options->onProgress({m_Name, phase, completed, m_Total,
-					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheStats});
+					std::chrono::duration_cast<std::chrono::milliseconds>(now - m_Start), cacheStats, imageTimings});
 			}
 
 			const GltfImportOptions* m_Options;
@@ -1593,37 +1616,54 @@ namespace ForgeSim::Assets
         }
 
 		LoadStage images{&options, "Load and decode images", data->images_count};
+        const bool measureImages = static_cast<bool>(options.onProgress);
+        GltfImageLoadTimings imageTimings;
+        std::vector<GltfImageLoadTimings> perImage(data->images_count);
 		std::optional<DecodedImageCache> cache;
-		if (!options.imageCacheDirectory.empty() && data->file_type == cgltf_file_type_glb)
-			cache.emplace(options.imageCacheDirectory, options.imageCacheBudgetBytes);
-		const auto decodeImage = [&](cgltf_size index)
-		{
-			const auto& source = data->images[index];
-			const auto* view = source.buffer_view;
-			if (!cache || !cache->Available() || source.uri || !view || !view->buffer ||
-				view->buffer != data->buffers || view->buffer->uri || view->size == 0)
-				return LoadGltfImage(source, path, index);
-			const auto* encoded = cgltf_buffer_view_data(view);
-			if (!encoded)
-				return LoadGltfImage(source, path, index);
+        {
+            const ImageOperationTimer timer{imageTimings.cacheSetupMs, measureImages};
+            if (!options.imageCacheDirectory.empty() && data->file_type == cgltf_file_type_glb)
+                cache.emplace(options.imageCacheDirectory, options.imageCacheBudgetBytes);
+        }
+        const auto decodeImage = [&](cgltf_size index)
+        {
+            auto& timing = perImage[index];
+            const auto& source = data->images[index];
+            const auto decode = [&]
+            {
+                const ImageOperationTimer timer{timing.decodeMs, measureImages};
+                ++timing.decodedImages;
+                return LoadGltfImage(source, path, index);
+            };
+            const auto* view = source.buffer_view;
+            if (!cache || !cache->Available() || source.uri || !view || !view->buffer ||
+                view->buffer != data->buffers || view->buffer->uri || view->size == 0)
+                return decode();
+            const auto* encoded = cgltf_buffer_view_data(view);
+            if (!encoded) return decode();
 
-			std::filesystem::path entry;
-			try
-			{
-				entry = cache->PathFor({encoded, view->size});
-				if (auto cached = cache->Read(entry))
-					return std::move(*cached);
-			}
-			catch (const std::exception&)
-			{
-				// Cache I/O must not prevent a normal import.
-			}
-
-			auto image = LoadGltfImage(source, path, index);
-			if (!entry.empty())
-				cache->Store(entry, image);
-			return image;
-		};
+            std::filesystem::path entry;
+            try
+            {
+                {
+                    const ImageOperationTimer timer{timing.cacheKeyMs, measureImages};
+                    entry = cache->PathFor({encoded, view->size});
+                }
+                const ImageOperationTimer timer{timing.cacheReadMs, measureImages};
+                if (auto cached = cache->Read(entry)) return std::move(*cached);
+            }
+            catch (const std::exception&)
+            {
+                // Cache I/O must not prevent a normal import.
+            }
+            auto image = decode();
+            if (!entry.empty())
+            {
+                const ImageOperationTimer timer{timing.cacheWriteMs, measureImages};
+                cache->Store(entry, image);
+            }
+            return image;
+        };
 		const auto appendImage = [&](ImageData image)
 		{
 			sceneAsset.textureResources.images.push_back(std::move(image));
@@ -1652,7 +1692,16 @@ namespace ForgeSim::Assets
 		}
 		const auto cacheStats = cache ? std::optional{cache->Finish()} : std::nullopt;
 		cache.reset();
-		images.Finish(cacheStats);
+        imageTimings.workerLimit = batchSize;
+        for (const auto& timing : perImage)
+        {
+            imageTimings.cacheKeyMs += timing.cacheKeyMs;
+            imageTimings.cacheReadMs += timing.cacheReadMs;
+            imageTimings.decodeMs += timing.decodeMs;
+            imageTimings.cacheWriteMs += timing.cacheWriteMs;
+            imageTimings.decodedImages += timing.decodedImages;
+        }
+        images.Finish(cacheStats, measureImages ? std::optional{imageTimings} : std::nullopt);
 
 		sceneAsset.textureResources.samplers.reserve(
 			data->samplers_count);
