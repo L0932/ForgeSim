@@ -87,7 +87,7 @@ void RunGltfImageCacheTests()
 
 	GltfImportOptions options;
 	options.imageCacheDirectory = directory.path / "Cache";
-	const auto cache = options.imageCacheDirectory / "decoded-images-v1";
+	const auto cache = options.imageCacheDirectory / DecodedImageCacheDirectoryName;
 	const auto load = [&](const fs::path& asset)
 	{
 		std::optional<GltfImageCacheStats> stats;
@@ -130,6 +130,27 @@ void RunGltfImageCacheTests()
 		throw std::runtime_error("Missing cache entry A.");
 	}();
 	const auto bytes = fs::file_size(entryA);
+    {
+        std::fstream entry(entryA, std::ios::in | std::ios::out | std::ios::binary);
+        entry.seekp(4 * sizeof(std::uint64_t));
+        entry.put('\0'); // First cached byte should be red=255.
+    }
+    Require(load(a)->misses == 1 && load(a)->hits == 1, "Pixel corruption must rebuild then hit.");
+    // A v1 checksum placed in the v2 directory must not be trusted.
+    const auto legacy = directory.path / "Cache" / "decoded-images-v1";
+    fs::create_directory(legacy);
+    std::ofstream(legacy / "keep-old-cache") << "retained";
+    Require(load(a)->hits == 1 && fs::exists(legacy / "keep-old-cache"), "Legacy directory must remain untouched.");
+    {
+        std::uint64_t fnv = 14695981039346656037ull;
+        for (auto byte : std::vector<std::uint8_t>{255,0,0,255}) fnv = (fnv ^ byte) * 1099511628211ull;
+        const std::uint64_t oldChecksum = fnv ^ (std::uint64_t{1} << 32) ^ 1;
+        std::fstream entry(entryA, std::ios::in | std::ios::out | std::ios::binary);
+        entry.seekp(3 * sizeof(std::uint64_t));
+        entry.write(reinterpret_cast<const char*>(&oldChecksum),sizeof(oldChecksum));
+    }
+    Require(load(a)->misses == 1 && load(a)->hits == 1, "Legacy checksum must rebuild safely.");
+
 	options.imageCacheBudgetBytes = 2 * bytes;
 	Require(load(b)->bytesAfter == 2 * bytes, "A and B should both fit.");
 	fs::path entryB;

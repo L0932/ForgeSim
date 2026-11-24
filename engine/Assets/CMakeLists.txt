@@ -13,6 +13,7 @@ target_sources(
 	PRIVATE
 		src/GltfLoader.cpp
         src/ImageDecodeQueue.hpp
+        src/ImageCacheChecksum.hpp
 		src/ImageLoader.cpp
 		src/MeshProcessing.cpp
         src/MeshDisplacement.cpp

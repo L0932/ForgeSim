@@ -22,6 +22,8 @@ namespace ForgeSim::Assets
 
 	enum class GltfProgressPhase { Started, Advanced, Completed };
 
+	inline constexpr char DecodedImageCacheDirectoryName[] = "decoded-images-v2";
+
 	inline constexpr std::uint64_t ImageCacheMiB = 1024ull * 1024;
 	inline constexpr std::uint64_t DefaultImageCacheBudgetMiB = 4096;
 

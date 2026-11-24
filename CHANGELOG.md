@@ -9,6 +9,10 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Reduce decoded-image cache checksum cost with CRC32 and compute write checksums
+  outside the cache mutex. Version the cache as v2, retain source-key validation
+  and rebuild stale/corrupt entries without changing decoded pixels (#135).
+
 - Keep up to four image-decode workers occupied across uneven image sets instead
   of waiting at batch boundaries. Preserve source image indices, ordered errors,
   serial decoding and graphics-context ownership (#135).

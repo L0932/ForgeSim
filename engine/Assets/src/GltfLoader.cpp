@@ -30,6 +30,7 @@
 
 #include "DecodedImageCacheBudget.hpp"
 #include "ImageDecodeQueue.hpp"
+#include "ImageCacheChecksum.hpp"
 
 namespace ForgeSim::Assets
 {
@@ -1374,7 +1375,7 @@ namespace ForgeSim::Assets
             }
             {
                 const ImageOperationTimer timer{timing ? timing->cacheReadChecksumMs : ignored, timing != nullptr};
-                if ((HashImageBytes(image.pixels) ^ (header[0] << 32) ^ header[1]) != header[3]) return std::nullopt;
+                if (Detail::ImageCacheChecksum(image.pixels, image.width, image.height) != header[3]) return std::nullopt;
             }
             return image;
         }
@@ -1388,7 +1389,7 @@ namespace ForgeSim::Assets
 				m_Stats.budgetBytes = limit;
 				try
 				{
-					m_Directory = root / "decoded-images-v1";
+					m_Directory = root / DecodedImageCacheDirectoryName;
 					std::filesystem::create_directories(m_Directory);
 					m_Lease.emplace(m_Directory / ".budget.lock");
 					if (m_Lease->Acquired() && m_Budget.Scan(m_Directory))
@@ -1456,12 +1457,21 @@ namespace ForgeSim::Assets
 			{
                 double ignored = 0;
 				const auto bytes = sizeof(ImageCacheHeader) + image.pixels.size();
+                const bool oversized = image.pixels.size() > MaxCachedImageBytes || bytes > m_Stats.budgetBytes;
+                std::uint64_t checksum = 0;
+                if (!oversized)
+                {
+                    // Pixels are worker-owned and immutable. Hash before taking the
+                    // cache mutex; serialize only staging, budget and publication.
+                    const ImageOperationTimer timer{timing ? timing->cacheWriteChecksumMs : ignored, timing != nullptr};
+                    checksum = Detail::ImageCacheChecksum(image.pixels, image.width, image.height);
+                }
 				std::unique_lock lock{m_Mutex, std::defer_lock};
                     {
                         const ImageOperationTimer timer{timing ? timing->cacheLockWaitMs : ignored, timing != nullptr};
                         lock.lock();
                     }
-				if (image.pixels.size() > MaxCachedImageBytes || bytes > m_Stats.budgetBytes)
+				if (oversized)
 				{
 					++m_Stats.skippedWrites;
 					return;
@@ -1484,11 +1494,6 @@ namespace ForgeSim::Assets
 						return;
 					}
 					ownsTemporary = true;
-                    std::uint64_t checksum = 0;
-                    {
-                        const ImageOperationTimer timer{timing ? timing->cacheWriteChecksumMs : ignored, timing != nullptr};
-                        checksum = HashImageBytes(image.pixels) ^ (std::uint64_t{image.width} << 32) ^ image.height;
-                    }
                     const ImageCacheHeader header{image.width, image.height, image.channelCount, checksum};
                     bool written = false;
                     {
@@ -1516,9 +1521,9 @@ namespace ForgeSim::Assets
 				if (!committed)
 				{
 					++m_Stats.skippedWrites;
-					std::error_code ignored;
+					std::error_code cleanupError;
 					if (ownsTemporary)
-						std::filesystem::remove(temporary, ignored);
+						std::filesystem::remove(temporary, cleanupError);
 				}
 			}
 

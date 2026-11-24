@@ -102,7 +102,7 @@ Use the same build configuration and parallel-decode setting for both captures.
 read/write totals:
 
 - `mutex_wait`: time acquiring the model cache's mutex for lookups, recency updates
-  and writes. Workers may wait while another worker validates/publishes a write.
+  and writes. Workers may wait while another worker stages/publishes a write.
 - `read_io_allocate`: opening and validating the cache header/length, allocating
   the decoded pixel buffer, reading pixels and closing the file. This is not a
   disk-only counter: allocation, OS cache hits and filesystem metadata are included.
@@ -114,11 +114,40 @@ read/write totals:
 
 Do not add these values to the parent cache totals or scene-open wall time.
 Worker intervals can overlap, and minor control/metadata work remains outside
-these detailed intervals. This patch changes measurement only; checksum algorithm,
-cache directory/format, locking and publication behavior remain unchanged.
+these detailed intervals. The cache format and locking rules are described below.
 
 Capture an empty-cache Release load to measure writes, then restart with the
 populated cache to measure reads. Same-session model reuse bypasses both paths.
+
+## Version 2 cache integrity and write locking
+
+Decoded pixels now use IEEE CRC-32 instead of byte-at-a-time FNV-1a. The existing
+libdeflate dependency supplies an accelerated implementation when PNG acceleration
+is enabled; the stb-only build uses a matching portable implementation. Both builds
+can read each other's v2 entries. CRC32 detects accidental corruption; it does not
+authenticate untrusted data. The encoded-source filename key remains the existing
+64-bit FNV-1a plus encoded length, so this change does not reduce key width.
+
+The cache directory is now `Cache/decoded-images-v2`. Old v1 files are ignored and
+rebuilt from source. Old folders are retained, not deleted automatically. The disk
+budget applies to the active v2 directory; keeping v1 as well consumes additional
+space. After closing ForgeSim, obsolete `decoded-images-v1` may be removed if its
+cached data is no longer needed. No source assets or scene files are migrated.
+
+Write checksums are computed from worker-owned immutable pixels before acquiring
+the cache mutex. Only staging-file ownership, budget/eviction and file publication
+remain serialized. Oversized entries still skip storage, failed reads rebuild,
+and failures must preserve unrelated files. Read checksum validation remains
+mandatory before a cache hit is accepted.
+
+Tests exercise CRC32 known vectors, misaligned/tail lengths, portable/accelerated
+agreement, valid-length pixel corruption, stale checksum rejection, busy leases,
+eviction and failed writes. On the cannon's 64 MiB decoded normal image, Linux GCC
+`-O2 -DNDEBUG` median checksum times after one warm-up were about 78.27 ms (FNV-1a)
+and 2.55 ms (accelerated CRC32). This excludes decoding, allocation and disk I/O;
+it is not an end-to-end speedup claim. Existing observations before this change
+were 8.474 seconds with 58 misses and 3.425 seconds with 59 hits, in Release.
+Repeat cache-population and cached-restart measurements using the new v2 directory.
 
 ## Current reuse behavior
 
