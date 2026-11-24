@@ -19,6 +19,8 @@ contains the detailed implementation record.
 
 ### Added
 
+- Add a per-entry Console context menu to copy individual messages or commands.
+
 - Add a Console Copy log button for copying retained messages and commands to
   the clipboard, including entries hidden by severity or text filters.
 

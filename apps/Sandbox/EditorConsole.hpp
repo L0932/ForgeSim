@@ -123,6 +123,7 @@ namespace ForgeSim::Sandbox
                             level = "Error";
                             color = light ? ImVec4(.70f,.08f,.08f,1) : ImVec4(1,.40f,.37f,1);
                         }
+                        ImGui::PushID(&row);
                         ImGui::PushStyleColor(ImGuiCol_Text, color);
                         if (row.command)
                             ImGui::TextWrapped("%s", entry.message.c_str());
@@ -130,10 +131,21 @@ namespace ForgeSim::Sandbox
                             ImGui::TextWrapped("[%s] %s", level, entry.message.c_str());
                         ImGui::PopStyleColor();
                         if (row.command)
-                            ImGui::SetItemTooltip("Submitted command");
+                            ImGui::SetItemTooltip("Submitted command. Right-click to copy.");
                         else
-                            ImGui::SetItemTooltip("%s:%u", entry.sourceFile.c_str(),
+                            ImGui::SetItemTooltip("%s:%u\nRight-click to copy.", entry.sourceFile.c_str(),
                                 static_cast<unsigned int>(entry.sourceLine));
+                        if (ImGui::BeginPopupContextItem("##ConsoleRow", ImGuiPopupFlags_MouseButtonRight))
+                        {
+                            if (ImGui::MenuItem("Copy line"))
+                            {
+                                const std::string text = row.command ? entry.message :
+                                    "[" + std::string(level) + "] " + entry.message;
+                                ImGui::SetClipboardText(text.c_str());
+                            }
+                            ImGui::EndPopup();
+                        }
+                        ImGui::PopID();
                     }
                     if (!visible) ImGui::TextDisabled("No matching messages.");
                     if (m_ScrollToBottom || (m_AutoScroll && !incoming.empty() && atBottom))
