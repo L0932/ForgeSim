@@ -46,6 +46,31 @@ namespace ForgeSim::Sandbox
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 1.0f));
                 ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 4.0f));
                 if (ImGui::Button("Clear")) Clear();
+                const auto& toolbarStyle = ImGui::GetStyle();
+                const float copyWidth = ImGui::CalcTextSize("Copy log").x + toolbarStyle.FramePadding.x * 2.0f;
+                const float toolbarUsed = ImGui::GetItemRectMax().x - ImGui::GetCursorScreenPos().x;
+                if (ImGui::GetContentRegionAvail().x - toolbarUsed >= copyWidth + toolbarStyle.ItemSpacing.x)
+                    ImGui::SameLine();
+                if (ImGui::Button("Copy log"))
+                {
+                    std::string text;
+                    for (const auto& row : m_Entries)
+                    {
+                        if (!row.command)
+                        {
+                            const char* level = row.log.level == Core::LogLevel::Warning ? "Warning" :
+                                row.log.level == Core::LogLevel::Error ? "Error" : "Info";
+                            text += "[";
+                            text += level;
+                            text += "] ";
+                        }
+                        text += row.log.message;
+                        text += '\n';
+                    }
+                    ImGui::SetClipboardText(text.c_str());
+                }
+                ImGui::SetItemTooltip("Copy all retained messages and commands, ignoring filters. History is limited to %zu rows.",
+                    Core::LogHistoryCapacity);
                 const auto option = [](const char* label, bool& value)
                 {
                     const auto& style = ImGui::GetStyle();

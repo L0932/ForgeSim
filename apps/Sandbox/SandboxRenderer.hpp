@@ -1,5 +1,6 @@
 #pragma once
 #include "ModelMaterialInspection.hpp"
+#include "ModelReuse.hpp"
 #include "TexturePreviewCache.hpp"
 #include "ModelNodeQuery.hpp"
 #include "SceneSelection.hpp"
@@ -295,6 +296,8 @@ namespace ForgeSim::Sandbox
         struct ModelResources
         {
             Assets::SceneAsset asset;
+            std::optional<ModelReuseStamp> reuseStamp;
+            Assets::GltfTexturePolicy importPolicy = Assets::GltfTexturePolicy::Strict;
             Renderer::AxisAlignedBoundingBox bounds;
             std::vector<GpuPrimitiveResource> primitives;
             std::vector<GpuTextureResource> textures;

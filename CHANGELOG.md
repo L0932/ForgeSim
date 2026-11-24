@@ -9,10 +9,18 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Reuse unchanged self-contained GLB model resources across scene replacements,
+  avoiding repeat image reads, mesh processing and GPU uploads. Validate source
+  size/time and texture policy; externally referenced assets retain full reloads.
+  Rebuild per-scene displacement and retain saved node overrides (#135).
+
 - Keep the HDR image picker folder history separate from Open Scene.
 - Remove shadowed bounds variables in orbit controls, resolving MSVC warning C4456.
 
 ### Added
+
+- Add a Console Copy log button for copying retained messages and commands to
+  the clipboard, including entries hidden by severity or text filters.
 
 - Expand optional scene-loading diagnostics with per-model resource timings,
   mesh/texture upload preparation, environment stages, reuse counts and CPU

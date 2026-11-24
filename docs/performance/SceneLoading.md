@@ -1,8 +1,8 @@
 # Scene loading measurements (#135)
 
-This first measurement pass extends `loading.diagnostics on`. It does not change
-cache policy, asset quality, or resource ownership. Performance targets and an
-optimization will be selected after measuring the reference scene.
+The diagnostics extend `loading.diagnostics on`. A first optimization now shares
+unchanged, self-contained GLB model resources across scene replacements. It does
+not change asset quality or the persistent decoded-image cache format/policy.
 
 ## Capture a baseline
 
@@ -70,16 +70,59 @@ Record OS-cache state as uncontrolled unless separately managed.
 
 ## Current reuse behavior
 
-Scene Open explicitly sets `reuseLoadedModels=false`: each distinct model is
-imported/uploaded again on reopen, while duplicate references within that scene
-share resources. Importing additional objects can reuse existing models. An
-unchanged environment path reuses its current lighting resources.
+Scene Open still clears edit history and stages only the incoming scene's model
+bindings. It can now borrow a previous model's immutable CPU meshes, materials,
+images and GPU resources when the canonical model path, texture import policy,
+file size and last-write time match. The GLB JSON is checked for external URIs;
+only self-contained GLBs (including inline data URIs) qualify. Built-in cubes can
+also be reused. JSON glTF and GLBs with external images/buffers keep the full
+reload path, so external dependency edits cannot produce stale model reuse.
 
-Do not enable cross-scene model reuse using only a path comparison. An optimization
-must account for changed model/external dependencies, import settings and texture
-policy, and preserve failure rollback, material boundaries, node identity and
-saved overrides. Existing image-cache tests cover their own cache behavior; this
-measurement patch does not introduce a processed-mesh cache.
+Failed or unavailable metadata checks bypass reuse. A source that changes during
+import is not marked reusable. Invalid source imports still fail without replacing
+the active scene's model bindings. Same-size edits that also preserve the original
+last-write timestamp are not detected: restart the application to force a fresh
+model import in that case. This is metadata validation, not content hashing.
+
+`reused_models` counts distinct resources borrowed from the previous scene;
+`reused_object_bindings` also includes repeated references in the incoming scene.
+`preserve_history_resources` distinguishes an import from a scene replacement; it
+does not indicate whether replacement-scene model sharing occurred.
+
+Displacement variants are rebuilt on scene replacement, including external height
+image sampling. Saved node overrides and per-object transforms remain applied to
+that scene's objects; they are not stored in shared source meshes. Models absent
+from the incoming scene are released after commit. There is no growing global
+model cache. Old and newly loaded changed models can coexist temporarily while
+staging, preserving rollback at the cost of transient peak memory. Existing import
+and undo resource retention remains unchanged.
+
+An unchanged environment path reuses its lighting resources as before; environment
+content-change invalidation is not introduced by this patch. Disk image caching
+still speeds process restarts; model sharing applies within one process only.
+
+## Initial reference-scene observations
+
+These are single user-captured runs before model reuse, not medians or a controlled
+Release benchmark. Hardware, build configuration and OS-cache state have not yet
+been supplied. The scene loaded 18 distinct model resources and reused one object
+binding within that load. Decoded CPU image payloads total about 2.40 GiB; the
+persistent image cache occupied about 2.27 GiB. These are different measurements,
+not total process RAM or VRAM.
+
+| Host measurement | Cache population | Restart, cache warm | Same-session reopen |
+| --- | ---: | ---: | ---: |
+| Scene open | 34.102 s | 5.766 s | 6.660 s |
+| Image load/decode/cache phase | 30.370 s | 2.748 s | 2.338 s |
+| Mesh processing | 0.888 s | 0.936 s | 0.722 s |
+| Texture/material preparation | 1.632 s | 0.916 s | 2.588 s |
+| Persistent image hits / misses | 2 / 57 | 59 / 0 | 59 / 0 |
+
+These results motivate avoiding redundant resource preparation on reopen. They
+do not measure the new optimization. Repeat the three scenarios after applying
+model reuse, and inspect material appearance, object transforms, imported-node
+overrides, shadows and picking. Also re-export a model, change texture policy,
+and test a GLB with an external image to confirm full reload where required.
 
 ## Results to fill from the reference scene
 
@@ -92,7 +135,7 @@ measurement patch does not introduce a processed-mesh cache.
 | Persistent image hits/misses | pending | pending | pending |
 | Process peak RAM / cache disk bytes | pending | pending | pending |
 
-The reported approximately 28.7-second load is context, not a reproducible baseline
-for this build. No speedup is claimed yet. Use measured dominant stages to choose
+The earlier approximately 28.7-second report is context, not a reproducible baseline
+for this build. No speedup from the model-reuse patch is claimed yet. Use measured dominant stages to choose
 the next change, then repeat all three scenarios and check rendering, transforms,
 picking and imported-node overrides on the same scene.

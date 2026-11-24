@@ -2654,13 +2654,16 @@ namespace ForgeSim::Sandbox
     {
         const auto resourcesStart = LoadClock::now();
         std::size_t loadedModels = 0;
+        std::size_t reusedModels = 0;
         std::size_t reusedObjects = 0;
         // Stage all resources. Failed imports leave the active bindings and GPU resources intact.
         // Preserve resources referenced by deletion history during imports. A
-        // scene replacement clears history and prepares a fresh resource set.
+        // scene replacement clears history and keeps only resources used by the
+        // incoming scene, borrowing unchanged self-contained GLBs from the old set.
         auto models = reuseLoadedModels ? m_Models : decltype(m_Models){};
         auto bindings = reuseLoadedModels ? m_ModelBindings : decltype(m_ModelBindings){};
         auto variants = reuseLoadedModels ? m_DisplacementVariants : decltype(m_DisplacementVariants){};
+        const auto effectivePolicy = texturePolicy.value_or(m_TexturePolicy);
         const auto prepareHeight = [&](SandboxObject& object, const Assets::SceneAsset& asset,
             const std::filesystem::path& model)
         {
@@ -2695,16 +2698,32 @@ namespace ForgeSim::Sandbox
             }
             if (!models.contains(path))
             {
-                if (const auto existing = m_Models.find(path); reuseLoadedModels && existing != m_Models.end())
+                const auto existing = m_Models.find(path);
+                // Imports preserve undo resources as before. Replacement scenes can
+                // borrow immutable model resources after validating source metadata
+                // and texture policy; displacement variants are rebuilt separately.
+                const auto stamp = builtinCube ? std::nullopt : ReadModelReuseStamp(path);
+                const bool canReuse = existing != m_Models.end() &&
+                    existing->second->importPolicy == effectivePolicy &&
+                    (builtinCube || (stamp && existing->second->reuseStamp == stamp));
+                if (canReuse)
+                {
                     models.emplace(path, existing->second);
+                    ++reusedModels;
+                    ++reusedObjects;
+                    if (m_LoadingDiagnostics) Core::LogInfo("Model resources reused: " + path.string());
+                }
                 else
                 {
                     const auto modelStart = LoadClock::now();
                     if (m_LoadingDiagnostics) Core::LogInfo("Loading model resources: " + path.string());
                     auto model = std::make_shared<ModelResources>();
-                    model->asset = builtinCube ? CreateBuiltinCubeAsset() : LoadSceneWithTexturePolicy(path, texturePolicy.value_or(m_TexturePolicy),
+                    model->asset = builtinCube ? CreateBuiltinCubeAsset() : LoadSceneWithTexturePolicy(path, effectivePolicy,
                         m_LoadingDiagnostics, m_ParallelImageDecode, m_CacheDecodedImages,
                         m_ImageCacheBudgetBytes, m_OnLoadProgress, drawProgress);
+                    model->importPolicy = effectivePolicy;
+                    const auto afterImport = builtinCube ? std::nullopt : ReadModelReuseStamp(path);
+                    if (stamp && afterImport == stamp) model->reuseStamp = stamp;
                     const auto boundsStart = LoadClock::now();
                     model->bounds = CalculateSceneBounds(model->asset);
                     LogLoadTiming(m_LoadingDiagnostics, "model bounds", boundsStart);
@@ -2757,8 +2776,9 @@ namespace ForgeSim::Sandbox
         LogLoadTiming(m_LoadingDiagnostics, "scene resources total", resourcesStart);
         if (m_LoadingDiagnostics)
             Core::LogInfo("Scene resource reuse: loaded_models=" + std::to_string(loadedModels) +
+                " reused_models=" + std::to_string(reusedModels) +
                 " reused_object_bindings=" + std::to_string(reusedObjects) +
-                " reuse_previous_scene=" + (reuseLoadedModels ? "yes" : "no"));
+                " preserve_history_resources=" + (reuseLoadedModels ? "yes" : "no"));
     }
 
     void SandboxRenderer::LoadSceneResources(
