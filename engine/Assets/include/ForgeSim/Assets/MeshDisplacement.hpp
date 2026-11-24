@@ -2,6 +2,7 @@
 
 #include <ForgeSim/Assets/MeshData.hpp>
 #include <ForgeSim/Assets/TextureData.hpp>
+#include <ForgeSim/Assets/TextureTransform.hpp>
 #include <array>
 #include <cstddef>
 #include <filesystem>
@@ -33,6 +34,7 @@ namespace ForgeSim::Assets
         // with matching source normals. Preserve UV splits and hard edges.
         bool stitchSmoothSeams = false;
         unsigned subdivisionLevels = 0;
+        TextureTransform heightUvTransform{};
         TextureWrap wrapU = TextureWrap::Repeat;
         TextureWrap wrapV = TextureWrap::Repeat;
         std::size_t maxVertices = 1'048'576;

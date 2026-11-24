@@ -40,6 +40,9 @@ namespace ForgeSim::Sandbox
                     settings.subdivisionLevels = value.subdivisions;
                     settings.inverted = value.inverted;
                     settings.stitchSmoothSeams = value.stitchSeams;
+                    settings.heightUvTransform.scale = value.uvScale;
+                    settings.heightUvTransform.offset = value.uvOffset;
+                    settings.heightUvTransform.rotationRadians = value.uvRotationRadians;
                     settings.wrapU = static_cast<Assets::TextureWrap>(value.wrapU);
                     settings.wrapV = static_cast<Assets::TextureWrap>(value.wrapV);
                     primitive.geometry = Assets::DisplaceMesh(primitive.geometry, height, settings);

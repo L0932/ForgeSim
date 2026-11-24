@@ -469,6 +469,21 @@ namespace ForgeSim::Sandbox
         }
         int channel = static_cast<int>(draft.value.channel);
         if (ImGui::Combo("Height channel", &channel,"R / grayscale\0G\0B\0A\0")) draft.value.channel = static_cast<unsigned>(channel);
+        ImGui::InputFloat2("Height UV scale",draft.value.uvScale.data(),"%.3f");
+        ImGui::InputFloat2("Height UV offset",draft.value.uvOffset.data(),"%.3f");
+        float rotation = glm::degrees(draft.value.uvRotationRadians);
+        if (ImGui::InputFloat("Height UV rotation (deg)",&rotation,0,0,"%.2f"))
+            draft.value.uvRotationRadians = glm::radians(rotation);
+        const auto& baseMap = context.materials.asset->materials[material].metallicRoughness.baseColorTexture;
+        ImGui::BeginDisabled(!baseMap || baseMap->textureCoordinateSet != 0);
+        if (ImGui::Button("Use base-color UV mapping") && baseMap)
+        {
+            draft.value.uvScale = baseMap->transform.scale;
+            draft.value.uvOffset = baseMap->transform.offset;
+            draft.value.uvRotationRadians = baseMap->transform.rotationRadians;
+        }
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Height UV mapping is separate from color/normal mapping. Match their tiling when the images describe the same surface.");
         ImGui::InputFloat("Scale (mesh units)",&draft.value.scale,.001f,.01f,"%.5f");
         ImGui::SliderFloat("Midlevel",&draft.value.midlevel,0,1,"%.4f");
         int levels = static_cast<int>(draft.value.subdivisions);

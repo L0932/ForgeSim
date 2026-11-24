@@ -127,7 +127,8 @@ namespace ForgeSim::Sandbox
                     {"heightAsset",value.heightAsset},{"channel",value.channel},{"scale",value.scale},
                     {"midlevel",value.midlevel},{"subdivisions",value.subdivisions},{"inverted",value.inverted},
                     {"stitchSeams",value.stitchSeams},{"wrapU",static_cast<int>(value.wrapU)},
-                    {"wrapV",static_cast<int>(value.wrapV)}});
+                    {"wrapV",static_cast<int>(value.wrapV)},
+                    {"uvScale",value.uvScale},{"uvOffset",value.uvOffset},{"uvRotationRadians",value.uvRotationRadians}});
             return Json{
                 { "displacement", displacement },
                 { "nodeOverrides", overrides },
@@ -555,6 +556,17 @@ namespace ForgeSim::Sandbox
                     height.subdivisions = static_cast<unsigned>(number("subdivisions",8));
                     height.inverted = ReadBool(member("inverted"),field + ".inverted");
                     height.stitchSeams = ReadBool(member("stitchSeams"),field + ".stitchSeams");
+                    const auto readUvPair = [&](const char* name, std::array<float,2>& target)
+                    {
+                        if (!entry.contains(name)) return;
+                        const auto& pair = ReadArray(member(name),field + "." + name);
+                        if (pair.size() != 2) ReadError(field + "." + name,"Expected two UV coordinates.");
+                        target = {ReadFloat(pair[0],field + "." + name + "[0]"),ReadFloat(pair[1],field + "." + name + "[1]")};
+                    };
+                    readUvPair("uvScale",height.uvScale);
+                    readUvPair("uvOffset",height.uvOffset);
+                    if (entry.contains("uvRotationRadians"))
+                        height.uvRotationRadians = ReadFloat(member("uvRotationRadians"),field + ".uvRotationRadians");
                     height.wrapU = static_cast<HeightWrap>(number("wrapU",2));
                     height.wrapV = static_cast<HeightWrap>(number("wrapV",2));
                     if (!result.displacement.emplace(static_cast<std::size_t>(number("materialIndex",std::numeric_limits<std::size_t>::max())),height).second)

@@ -82,6 +82,32 @@ namespace
         settings.scale=.05f; settings.enabled=false;
         Require(DisplaceMesh(source,{},settings).indices==source.indices,"Disabled displacement must require no height texture");
     }
+    void HeightUvMapping()
+    {
+        auto source = Plane();
+        for (auto& vertex : source.vertices)
+            for (float& uv : vertex.textureCoordinates) uv = .125f + .25f * uv;
+        const HeightField height{2,2,{0,.25f,.75f,1}};
+        MeshDisplacementSettings settings; settings.scale=1; settings.midlevel=0;
+        settings.heightUvTransform.scale={2,2};
+        const auto scaled=DisplaceMesh(source,height,settings);
+        const float expected[]{0,.25f,.75f,1};
+        for (unsigned i=0;i<4;++i)
+        {
+            Require(Near(scaled.vertices[i].position[1],expected[i]),"Height UV scale must reach known texel centers");
+            Require(scaled.vertices[i].textureCoordinates==source.vertices[i].textureCoordinates,"Height mapping must preserve rendering UVs");
+        }
+        settings.heightUvTransform.offset={.5f,0};
+        const auto offset=DisplaceMesh(source,height,settings);
+        Require(Near(offset.vertices[0].position[1],.25f) && Near(offset.vertices[1].position[1],0),"Height UV offset must apply before wrapping");
+        settings.heightUvTransform.rotationRadians=1.57079632679f;
+        settings.heightUvTransform.offset={1,0};
+        const auto rotated=DisplaceMesh(source,height,settings);
+        Require(Near(rotated.vertices[0].position[1],.25f) && Near(rotated.vertices[1].position[1],1) &&
+            Near(rotated.vertices[2].position[1],0),"Height mapping must scale, then rotate, then translate");
+        settings.heightUvTransform.scale[0]=std::numeric_limits<float>::quiet_NaN();
+        Reject([&]{static_cast<void>(DisplaceMesh(source,height,settings));},"Reject nonfinite height mapping");
+    }
     void SeamStitching()
     {
         const auto plane=Plane();MeshData split;
@@ -152,7 +178,7 @@ namespace
 }
 int main()
 {
-    try { Sampling(); Displacement(); SeamStitching(); Validation(); ImagePrecision(); }
+    try { Sampling(); Displacement(); HeightUvMapping(); SeamStitching(); Validation(); ImagePrecision(); }
     catch(const std::exception& error) { std::cerr<<error.what()<<'\n'; return 1; }
     std::cout<<"Height precision, sampling, displacement, normals, subdivision, budgets and no-op checks passed\n";
 }

@@ -2,6 +2,7 @@
 
 #include "SceneAssetPath.hpp"
 #include <cmath>
+#include <array>
 #include <cstddef>
 #include <vector>
 #include <algorithm>
@@ -27,6 +28,9 @@ namespace ForgeSim::Sandbox
         unsigned subdivisions = 1;
         bool inverted = false;
         bool stitchSeams = true;
+        std::array<float,2> uvScale{1,1};
+        std::array<float,2> uvOffset{0,0};
+        float uvRotationRadians = 0;
         HeightWrap wrapU = HeightWrap::Repeat;
         HeightWrap wrapV = HeightWrap::Repeat;
         bool operator==(const MaterialDisplacement&) const = default;
@@ -113,7 +117,10 @@ namespace ForgeSim::Sandbox
                 wrap == HeightWrap::ClampToEdge;
         };
         if (!std::isfinite(value.scale) || !std::isfinite(value.midlevel) || value.midlevel < 0 || value.midlevel > 1 ||
-            value.subdivisions > 8 || value.channel > 3 || !validWrap(value.wrapU) || !validWrap(value.wrapV))
+            value.subdivisions > 8 || value.channel > 3 ||
+            !std::isfinite(value.uvScale[0]) || !std::isfinite(value.uvScale[1]) ||
+            !std::isfinite(value.uvOffset[0]) || !std::isfinite(value.uvOffset[1]) ||
+            !std::isfinite(value.uvRotationRadians) || !validWrap(value.wrapU) || !validWrap(value.wrapV))
             throw std::invalid_argument("Invalid height settings: finite scale, midlevel 0–1, channel 0–3, levels 0–8 required.");
         if ((!value.heightAsset.empty() && (!IsValidSceneAssetPath(value.heightAsset) || value.imageIndex)) ||
             (value.enabled && value.heightAsset.empty() && !value.imageIndex))

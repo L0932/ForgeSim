@@ -78,7 +78,7 @@ namespace ForgeSim::Assets
         if (!settings.enabled || settings.scale == 0) return source;
         if (!std::isfinite(settings.scale) || !std::isfinite(settings.midlevel) ||
             settings.midlevel < 0 || settings.midlevel > 1 || settings.subdivisionLevels > 8 ||
-            !settings.maxVertices || !settings.maxTriangles || !ValidWrap(settings.wrapU) || !ValidWrap(settings.wrapV))
+            !settings.maxVertices || !settings.maxTriangles || !IsFiniteTextureTransform(settings.heightUvTransform) || !ValidWrap(settings.wrapU) || !ValidWrap(settings.wrapV))
             throw std::invalid_argument("Invalid displacement settings (maximum eight subdivision levels).");
         ValidateHeight(height);
         if (!source.availableAttributes.textureCoordinates || source.vertices.empty() || source.indices.empty() ||
@@ -191,9 +191,13 @@ namespace ForgeSim::Assets
             seamSum.resize(result.vertices.size(),glm::dvec3{0});
             seamCount.resize(result.vertices.size(),0);
         }
+        const auto heightRows = CalculateTextureTransformRows(settings.heightUvTransform);
         for (auto& vertex : result.vertices)
         {
-            float sample = Sample(height, vertex.textureCoordinates[0], vertex.textureCoordinates[1], settings.wrapU, settings.wrapV);
+            const auto& uv = vertex.textureCoordinates;
+            const float u = heightRows[0][0] * uv[0] + heightRows[0][1] * uv[1] + heightRows[0][2];
+            const float v = heightRows[1][0] * uv[0] + heightRows[1][1] * uv[1] + heightRows[1][2];
+            float sample = Sample(height, u, v, settings.wrapU, settings.wrapV);
             if (settings.inverted) sample = 1 - sample;
             const auto position = Vector(vertex.position) + Vector(vertex.normal) * ((sample - settings.midlevel) * settings.scale);
             for (unsigned axis = 0; axis < 3; ++axis)

@@ -77,6 +77,12 @@ namespace
         Require(repeated.meshes[0].primitives[0].geometry.vertices[0].position==mesh.vertices[0].position,"Apply must never accumulate offsets");
         const ModelNodeQuery query{changed};
         Require(query.ModelBounds({})->maximum.y > 3,"Bounds must include displaced geometry and node transform");
+        auto mapped=values; mapped[0].uvScale={2,2};
+        const auto withMapping=BuildDisplacedGeometry(source,path,fixture.directory,mapped);
+        Require(withMapping.meshes[0].primitives[0].geometry.vertices[0].position[1] != mesh.vertices[0].position[1],
+            "Editor height mapping must reach CPU displacement");
+        Require(withMapping.meshes[0].primitives[0].geometry.vertices[0].textureCoordinates == source.meshes[0].primitives[0].geometry.vertices[0].textureCoordinates,
+            "Editor height mapping must not retile color/normal maps");
         auto baked = source; baked.heightGeometryBaked = true;
         Reject([&]{static_cast<void>(BuildDisplacedGeometry(baked,path,fixture.directory,values));},"Reject prototype double displacement");
         auto disabled = values; disabled[0].enabled = false;
@@ -100,6 +106,7 @@ namespace
         SceneTransformEditor editor;
         auto value = Height(); value.inverted = true; value.stitchSeams = false;
         value.wrapU = HeightWrap::ClampToEdge; value.wrapV = HeightWrap::MirroredRepeat;
+        value.uvScale={2,3}; value.uvOffset={.2f,-1}; value.uvRotationRadians=.6f;
         const MaterialDisplacements settings{{0,value}};
         Require(editor.SetDisplacement(scene.Objects().front(),settings),"Apply editor settings");
         const auto document = scene.ToDocument();
@@ -118,10 +125,18 @@ namespace
         Require(scene.FindObject(id)->displacement==settings,"Another instance must remain unchanged");
         auto legacy=nlohmann::json::parse(text); legacy["version"]=5; legacy["objects"][0].erase("displacement");
         Require(DeserializeSceneDocument(legacy.dump()).objects[0].displacement.empty(),"Older scenes default to no displacement");
+        auto oldHeight=nlohmann::json::parse(text);
+        auto& oldEntry=oldHeight["objects"][0]["displacement"][0];
+        oldEntry.erase("uvScale"); oldEntry.erase("uvOffset"); oldEntry.erase("uvRotationRadians");
+        const auto oldSettings=DeserializeSceneDocument(oldHeight.dump()).objects[0].displacement[0];
+        Require(oldSettings.uvScale==std::array<float,2>{1,1} && oldSettings.uvOffset==std::array<float,2>{0,0} && oldSettings.uvRotationRadians==0,
+            "Existing height overrides must retain identity UV mapping");
         auto invalid=nlohmann::json::parse(text); invalid["objects"][0]["displacement"][0]["subdivisions"]=9;
         Reject([&]{static_cast<void>(DeserializeSceneDocument(invalid.dump()));},"Reject unsafe persisted detail");
         invalid=nlohmann::json::parse(text); invalid["objects"][0]["displacement"][0]["heightAsset"]="../height.png";
         Reject([&]{static_cast<void>(DeserializeSceneDocument(invalid.dump()));},"Reject nonportable or conflicting height assignment");
+        invalid=nlohmann::json::parse(text); invalid["objects"][0]["displacement"][0]["uvScale"]={1,2,3};
+        Reject([&]{static_cast<void>(DeserializeSceneDocument(invalid.dump()));},"Reject malformed saved UV pair");
         invalid=nlohmann::json::parse(text); invalid["objects"][0]["displacement"].push_back(invalid["objects"][0]["displacement"][0]);
         Reject([&]{static_cast<void>(DeserializeSceneDocument(invalid.dump()));},"Reject duplicate material assignment");
     }

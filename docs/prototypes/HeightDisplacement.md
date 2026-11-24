@@ -41,7 +41,7 @@ selected object. Other instances share the source textures/materials while using
 independent generated geometry. Render and shadow submissions, node queries,
 bounds, focusing and picking use that geometry. Material/image indices assume the
 same source export; if you replace the GLB, recheck assignments. UV0 is required;
-height UV transforms and vector displacement are not implemented.
+height UV transforms are independent of the rendering maps; vector displacement is not implemented.
 
 Scene files now use **version 6**; versions 1–5 load without height overrides when
 the field is absent. Older ForgeSim versions will reject version 6 rather than
@@ -53,6 +53,109 @@ triangles across its selected materials. At the configuration limit, save/reopen
 the scene to release old preview geometry. Excessive detail reports an error;
 it is never silently reduced. File-dialog/native Windows rendering verification
 still needs a Windows build; automated coverage runs headlessly.
+
+## Match height mapping to tiled materials
+
+Height sampling has independent **Height UV scale**, **Height UV offset**, and
+**Height UV rotation (deg)** controls. These apply scale → rotate → translate,
+followed by the selected height wrap mode. They do not change the mapping used
+by color, normal, or roughness textures.
+
+When the height image describes the same surface as the base-color image, click
+**Use base-color UV mapping**, then **Apply height settings**. This copies the
+base-color texture's UV0 transform into the height settings.
+
+For example, a material whose color texture repeats twice along each axis may
+need height UV scale `(2, 2)`. Match any offset and rotation as well. These values
+depend on the asset; do not assume every tiled material uses the same mapping.
+
+Choose the channel containing height data, usually **R / grayscale**. An alpha
+channel containing only white produces a uniform offset rather than surface
+detail. Height images are sampled as linear data.
+
+Tune the remaining controls for the model:
+
+- **Scale** controls the depth of the relief in mesh-local units. Start small
+  relative to the model's dimensions and inspect the silhouette.
+- **Midlevel** sets the height value that produces no displacement. Values above
+  it move outward; values below it move inward when Scale is positive.
+- **Subdivision levels** add geometry for sampling the height image. Each level
+  multiplies the triangle count by four. Start low and increase as needed.
+- **Wrap modes** determine sampling outside the image boundaries. Use Repeat for
+  a repeating height texture.
+- **Stitch smooth seams** keeps compatible coincident boundaries joined. It does
+  not repair mismatched textures or distorted UV mapping.
+
+Height UV settings save with each object/material override and participate in
+undo/redo. Existing overrides without UV fields load with identity mapping.
+After replacing a height image's contents on disk, reopen the scene to regenerate
+geometry and clear retained preview configurations.
+
+Third-party models and height images used during development are not bundled
+with ForgeSim. The synthetic comparison described below requires no external
+textures.
+
+## Bake displacement into geometry in Blender
+
+Use this workflow when the exported GLB should already contain displaced
+geometry. ForgeSim then loads the resulting mesh without needing to interpret
+Blender's displacement shader graph.
+
+1. Save a working copy and select the mesh you intend to export.
+2. Disconnect the shader Displacement output from the Material Output's
+   Displacement input. Keep the base-color, roughness, normal-map, and surface
+   connections.
+3. Add a Subdivision Surface modifier **before** the Displace modifier. Use
+   **Simple** to add geometry without smoothing the base shape. Choose the
+   subdivision level according to the source mesh's density and required detail.
+4. Assign a texture datablock to the Displace modifier. In Texture Properties,
+   set its type to **Image or Movie**, load the height image, and use
+   **Non-Color** data.
+5. In the Displace modifier, set **Coordinates** to UV, choose the mesh's UV map,
+   and set **Direction** to Normal.
+6. Match the height texture's tiling to the material using the modifier texture's
+   Mapping controls. Shader Mapping nodes do not configure this texture.
+   Check that displaced features align with the color and normal maps.
+7. Adjust **Strength** and **Midlevel** for the model. Strength controls relief
+   depth; Midlevel sets the unchanged height value. Values that suit one model
+   may be excessive or barely visible on another.
+8. Export the selected mesh as **glTF Binary (.glb)** with **Apply Modifiers**,
+   **UVs**, and **Normals** enabled. The exporter writes the evaluated geometry;
+   the modifiers can remain editable in the working `.blend` file.
+9. Import the GLB into ForgeSim and leave **ForgeSim displacement disabled**
+   to avoid displacing the mesh twice.
+
+Blender exports do not contain the ForgeSim prototype's bake metadata.
+ForgeSim therefore cannot automatically identify these meshes as already
+displaced.
+
+If moving a `.blend` file breaks its image references, use **Find Missing Files**,
+then **Make Paths Relative** and save. **Pack Resources** can embed the resolved
+images in the `.blend` file. Check missing environment HDR images separately from
+the material's height image.
+
+## Known limitation: sphere poles
+
+UV spheres can show radial texture stretching where their mapping converges
+at the poles. Displacement can make this distortion more noticeable, and baking
+preserves it. Additional subdivision and seam stitching do not correct the UVs.
+
+Use a flat, subdivided plane to inspect displacement without spherical mapping
+distortion. Improving a sphere's pole mapping is a separate asset-authoring task.
+Any UV changes must keep height, color, roughness, and normal maps aligned.
+
+## Validation checklist
+
+- Save and reopen a scene; confirm height settings, UV mapping, and regenerated
+  geometry are preserved.
+- Duplicate a displaced object and confirm edits to the duplicate leave the
+  original unchanged.
+- Verify undo/redo restores both the applied settings and visible geometry.
+- Inspect displaced silhouettes, shadows, focusing, and picking.
+- Import a Blender-baked GLB with ForgeSim displacement disabled.
+- Run the Windows build and CTest suite, and record the results in the PR.
+  Automated headless checks do not verify native file dialogs or interactive
+  rendering.
 
 ## Build and run
 
@@ -112,8 +215,7 @@ GLB mode defaults to two subdivision levels and Repeat sampling; plane mode
 defaults to six levels and Clamp to Edge. Only static triangle primitives with
 POSITION, NORMAL, TEXCOORD_0 and optional TANGENT attributes are supported.
 UV0 is required. Extra attributes, primitive extensions and morph targets are
-rejected rather than silently discarded. Skinning and UV transforms are not
-supported. Other primitives remain unchanged; all instances of the selected
+rejected rather than silently discarded. Skinning is not supported in the prototype GLB tool. Other primitives remain unchanged; all instances of the selected
 mesh use its baked geometry.
 
 ## Conventions
@@ -200,7 +302,7 @@ material/image metadata, actual ForgeSim importer reload, ambiguous/missing imag
 selection, explicit assignment, conflicting selectors and double-bake protection.
 Mesh tests also cover smooth-seam averaging, retained UV splits and hard normals.
 
-Next stages include automatic height suggestions, transformed UVs, more general
+Next stages include automatic height suggestions, more general
 seam/material-boundary handling, and visual review of the concrete reference.
 The initial Inspector controls, undo/redo and per-object scene persistence are
 implemented. Automatic Blender displacement metadata import remains future work.
