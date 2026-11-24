@@ -17,7 +17,11 @@ editing, asset inspection, and performance diagnostics in a docked workspace.
 
 ## Features
 
+The Sandbox brings rendering, asset workflows, and scene editing together so you can build, inspect, and refine interactive scenes in one workspace.
+
 ### Scene editing
+
+Build and arrange scenes through the docked editor, with viewport controls for direct manipulation and an Inspector for precise adjustments.
 
 ![ForgeSim editor displaying the Bistro scene](docs/images/bistro-editor.png)
 
@@ -40,11 +44,11 @@ See [keyboard controls](docs/KeyboardControls.md),
 
 ### Rendering
 
+ForgeSim's forward renderer combines physically based materials, direct lighting, shadows, and HDR environment lighting to render imported glTF scenes.
+
 ![Textured cannon under outdoor environment lighting](docs/images/cannon-pbr.png)
 
 *An imported cannon showing textured metal and wood under outdoor HDR lighting.*
-
-The forward renderer supports glTF 2.0 metallic-roughness materials and:
 
 - Base-color, metallic-roughness, normal, occlusion, and emissive textures,
   including supported UV texture transforms.
@@ -62,6 +66,8 @@ See [display transforms](docs/DisplayTransforms.md),
 [directional shadow validation](docs/DirectionalShadowValidation.md).
 
 ### Assets and displacement
+
+Bring models into a project, inspect their materials and hierarchy, and add height-based surface detail through per-object displacement controls.
 
 ![Height-displaced material spheres in ForgeSim](docs/images/height-materials.png)
 
@@ -87,8 +93,7 @@ See [project asset roots](docs/ProjectAssetRoots.md) and
 
 ### Loading and diagnostics
 
-ForgeSim reuses unchanged self-contained GLB resources when reopening scenes in
-the same session, checking source size, modification time, and texture policy.
+Resource reuse, parallel image loading, and decoded-image caching reduce repeated loading work, while stage diagnostics help identify where time is spent. ForgeSim reuses unchanged self-contained GLB resources within a session, checking source size, modification time, and texture policy.
 
 Image loading uses up to four workers, with PNG decompression accelerated by
 statically linked libdeflate. An optional decoded-image disk cache avoids
@@ -231,6 +236,8 @@ tools are optional; see the [prototype guide](docs/prototypes/HeightDisplacement
 Package preparation and validation are documented in [Releasing](docs/Releasing.md).
 
 ## Documentation
+
+The guides below cover everyday editor workflows, rendering and asset behavior, and the architecture behind ForgeSim.
 
 | Area | Guides |
 | --- | --- |
