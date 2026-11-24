@@ -1,13 +1,9 @@
 # ForgeSim
 
 ForgeSim is an independently developed real-time simulation engine and editor
-written in C++20. Its long-term focus is interactive mechanical systems,
-equipment, and training scenarios. The current Sandbox provides the rendering,
-asset, scene-editing, and diagnostic tools being built toward that goal.
-
-**Early development:** the current application is a Windows desktop editor using
-OpenGL 4.6. Mechanical simulation, maintenance workflows, and immersive interaction
-remain future work. Features and file formats continue to evolve.
+written in C++20, focused on interactive mechanical systems, equipment, and
+training scenarios. Its Windows Sandbox combines OpenGL 4.6 rendering, scene
+editing, asset inspection, and performance diagnostics in a docked workspace.
 
 ![Chess scene rendered in ForgeSim](docs/images/chess-scene.png)
 
@@ -19,14 +15,14 @@ remain future work. Features and file formats continue to evolve.
 [Changelog](CHANGELOG.md) ·
 [Roadmap](docs/Roadmap.md)
 
-## What works today
+## Features
 
 ### Scene editing
 
 ![ForgeSim editor displaying the Bistro scene](docs/images/bistro-editor.png)
 
 *An imported Bistro scene with its node hierarchy, per-instance transform controls,
-and material inspection. This external scene is not bundled with ForgeSim.*
+and material inspection.*
 
 - Docked Dear ImGui workspace with Hierarchy, Inspector, Scene, and Console panels.
 - Model import, scene save/open, object duplication and deletion, and editable lights.
@@ -61,9 +57,6 @@ The forward renderer supports glTF 2.0 metallic-roughness materials and:
 - Opaque, masked, blended, double-sided, and `KHR_materials_unlit` materials.
 - Normal/tangent generation for supported missing source attributes and GLSL hot reloading.
 
-Point and spot lights currently use artistic attenuation and do not cast shadows.
-Physical light-unit and exposure calibration remain follow-up work.
-
 See [display transforms](docs/DisplayTransforms.md),
 [material texture previews](docs/MaterialTexturePreviews.md), and
 [directional shadow validation](docs/DirectionalShadowValidation.md).
@@ -72,8 +65,7 @@ See [display transforms](docs/DisplayTransforms.md),
 
 ![Height-displaced material spheres in ForgeSim](docs/images/height-materials.png)
 
-*Material spheres used to inspect height displacement, surface relief, and silhouette.
-These reference assets are obtained separately.*
+*Material spheres used to inspect height displacement, surface relief, and silhouette.*
 
 - Load `.glb` and `.gltf` models with multiple meshes, primitives, materials, and
   authored node transforms.
@@ -86,20 +78,17 @@ These reference assets are obtained separately.*
 - Save applied height settings with scenes and restore them through undo/redo;
   source models remain unchanged.
 
-Displacement is an opt-in prototype. It requires suitable UVs and geometry;
-subdivision does not repair distorted sphere-pole mapping. Blender shader graphs
-are not imported. Alternatively, export a GLB with displacement already baked
-into its geometry and leave ForgeSim displacement disabled.
+Configure height displacement in the Inspector, or export displaced geometry
+from Blender as a GLB. For Blender-baked meshes, leave ForgeSim displacement
+disabled to preserve the exported shape.
 
 See [project asset roots](docs/ProjectAssetRoots.md) and
 [height displacement and Blender export](docs/prototypes/HeightDisplacement.md).
 
 ### Loading and diagnostics
 
-Unchanged self-contained GLB resources can be reused when reopening scenes in the
-same session. Reuse checks source size, modification time, and texture policy;
-GLBs with external dependencies and `.gltf` files are reloaded. Source edits that
-preserve both size and modification time require a restart to bypass model reuse.
+ForgeSim reuses unchanged self-contained GLB resources when reopening scenes in
+the same session, checking source size, modification time, and texture policy.
 
 Image loading uses up to four workers, with PNG decompression accelerated by
 statically linked libdeflate. An optional decoded-image disk cache avoids
@@ -113,15 +102,11 @@ Use a Release build for timing comparisons:
 ```
 
 Diagnostics report document loading, model preparation, image/cache work,
-environment preparation, and scene-open completion. These are host timings;
-graphics API submission times do not measure completed GPU execution. Same-session
-resource reuse and disk-cache reuse are separate paths.
+environment preparation, and scene-open completion using host timings.
 
 The cache normally resides at
-`%LOCALAPPDATA%/ForgeSim/Cache/decoded-images-v2/` on Windows. It stores uncompressed
-decoded pixels and can consume substantial disk space. Older cache versions remain
-on disk outside the active version's budget. Disabling caching bypasses the cache
-without deleting it; unusable entries fall back to source decoding.
+`%LOCALAPPDATA%/ForgeSim/Cache/decoded-images-v2/` on Windows. The configurable
+budget controls storage for the active cache version.
 
 See [scene-loading performance](docs/performance/SceneLoading.md) for measured
 results, cache behavior, timing definitions, and repeatable benchmark steps.
@@ -135,7 +120,6 @@ An OpenGL 4.6-capable graphics driver is required.
 
 Startup and **New Scene** open an empty workspace with a reference grid,
 directional light, neutral background, and studio environment lighting.
-The grid is an editor aid rather than ground geometry.
 
 Choose **File > Open Sample**:
 
@@ -146,9 +130,8 @@ Choose **File > Open Sample**:
 | Chess Board | Inspect imported pieces and a table under an interior HDRI. |
 
 Samples include their required assets and open as editable copies. Save asks for
-your own destination. Other models shown in development screenshots or discussed
-in prototype guides may require separate downloads; they are not automatically
-included with the application.
+your own destination. External showcase assets are obtained separately; the
+sample guide records bundled content and asset credits.
 
 See [sample scenes and asset credits](docs/SampleScenes.md) and
 [running the installed application](docs/InstalledApplication.md).
@@ -179,9 +162,9 @@ Place a `ForgeSim.project.json` manifest in the project folder:
 Keep scenes beneath that folder and store model/environment references relative
 to the declared asset root, such as `models/Example.glb`. ForgeSim searches upward
 from a scene for the nearest manifest. Standalone model imports without a manifest
-use the model's containing folder. No particular drive or asset-directory name is
-required. Saving a scene writes references; it does not bundle its assets or create
-a manifest.
+use the model's containing folder. Save scenes and their referenced assets together
+under the project folder for portability. Create the manifest manually; scene files
+store asset references rather than embedding the assets.
 
 Use `--project-root "C:/MyProject"` for an explicit root override. In the Console,
 `project.root.auto` clears a session override and restores discovery for future
@@ -205,8 +188,7 @@ to subsequent loads; changing a setting does not reload the active model.
 
 For large Intel Sponza assets, [Prepare-SponzaTextures.ps1](tools/Prepare-SponzaTextures.ps1)
 can create a lower-resolution development copy using ImageMagick. The source
-assets must be obtained separately; generated copies should remain outside this
-repository.
+assets are obtained separately.
 
 ## Building from source on Windows
 
@@ -241,8 +223,7 @@ ctest --test-dir out/build/x64-Release --output-on-failure
 ```
 
 The test suite covers core timing, asset processing, scene data, selection,
-transforms, edit history, displacement, and cache behavior. Native file dialogs
-and interactive rendering also require manual Windows checks.
+transforms, edit history, displacement, and cache behavior.
 
 PNG acceleration is enabled by default. Configure with
 `-DFORGESIM_ACCELERATE_PNG=OFF` for the stb-only path. Displacement command-line
@@ -267,10 +248,9 @@ component interaction and failure, equipment operation, and training scenarios.
 Scenario systems and future immersive/VR interaction will build on the current
 scene, rendering, and editor foundation.
 
-ForgeSim is developed incrementally around concrete requirements. It includes
-fixed-timestep scheduling with bounded catch-up, but this alone does not establish
-deterministic simulation. Architecture and acceptance criteria evolve with the
-project; see the roadmap for planned work.
+ForgeSim combines fixed-timestep scheduling with bounded catch-up, reusable engine
+modules, and editor tooling. See the roadmap for upcoming simulation and workflow
+features.
 
 AI-assisted tools may be used for research, review, validation, and implementation
 assistance. All committed material remains the project owner's responsibility and
@@ -298,8 +278,6 @@ Unless otherwise explicitly stated, ForgeSim and original material contained in 
 Third-party libraries and dependencies remain subject to their respective licenses.
 
 ### Licensing
-
-ForgeSim is currently under active development.
 
 Copyright © 2026 Arnold Lopez. All rights reserved.
 
