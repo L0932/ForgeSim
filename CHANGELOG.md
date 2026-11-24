@@ -14,6 +14,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Expand optional scene-loading diagnostics with per-model resource timings,
+  mesh/texture upload preparation, environment stages, reuse counts and CPU
+  payload sizes. Add a repeatable three-scenario loading benchmark guide (#135).
+
 - CPU height displacement with linear 8/16-bit PNG sampling, bounded triangle
   subdivision, rebuilt normals/tangents, and optional smooth-seam stitching.
 - Per-object material height controls with embedded/external PNG selection,
