@@ -12,6 +12,7 @@ target_sources(
 	ForgeSimAssets
 	PRIVATE
 		src/GltfLoader.cpp
+        src/ImageDecodeQueue.hpp
 		src/ImageLoader.cpp
 		src/MeshProcessing.cpp
         src/MeshDisplacement.cpp

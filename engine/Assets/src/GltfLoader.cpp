@@ -29,6 +29,7 @@
 #include <ForgeSim/Assets/MeshProcessing.hpp>
 
 #include "DecodedImageCacheBudget.hpp"
+#include "ImageDecodeQueue.hpp"
 
 namespace ForgeSim::Assets
 {
@@ -1671,25 +1672,7 @@ namespace ForgeSim::Assets
 		};
 		const cgltf_size batchSize = options.parallelImageDecode
 			? std::clamp(std::thread::hardware_concurrency(), 1u, 4u) : 1u;
-		for (cgltf_size first = 0; first < data->images_count;)
-		{
-			const cgltf_size count = std::min(batchSize, data->images_count - first);
-			if (count == 1)
-			{
-				appendImage(decodeImage(first));
-			}
-			else
-			{
-				// Join in source order to preserve image indices and error order.
-				// Futures also join on unwind before the glTF document is freed.
-				std::array<std::future<ImageData>, 4> jobs;
-				for (cgltf_size offset = 0; offset < count; ++offset)
-					jobs[offset] = std::async(std::launch::async, decodeImage, first + offset);
-				for (cgltf_size offset = 0; offset < count; ++offset)
-					appendImage(jobs[offset].get());
-			}
-			first += count;
-		}
+        Detail::ProcessImagesInOrder(data->images_count, batchSize, decodeImage, appendImage);
 		const auto cacheStats = cache ? std::optional{cache->Finish()} : std::nullopt;
 		cache.reset();
         imageTimings.workerLimit = batchSize;

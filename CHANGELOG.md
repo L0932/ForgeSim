@@ -9,6 +9,10 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Keep up to four image-decode workers occupied across uneven image sets instead
+  of waiting at batch boundaries. Preserve source image indices, ordered errors,
+  serial decoding and graphics-context ownership (#135).
+
 - Reuse unchanged self-contained GLB model resources across scene replacements,
   avoiding repeat image reads, mesh processing and GPU uploads. Validate source
   size/time and texture policy; externally referenced assets retain full reloads.

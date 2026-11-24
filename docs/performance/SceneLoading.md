@@ -1,6 +1,6 @@
 # Scene loading measurements (#135)
 
-The diagnostics extend `loading.diagnostics on`. A first optimization now shares
+The diagnostics extend `loading.diagnostics on`. Model reuse shares
 unchanged, self-contained GLB model resources across scene replacements. It does
 not change asset quality or the persistent decoded-image cache format/policy.
 
@@ -128,6 +128,52 @@ and undo resource retention remains unchanged.
 An unchanged environment path reuses its lighting resources as before; environment
 content-change invalidation is not introduced by this patch. Disk image caching
 still speeds process restarts; model sharing applies within one process only.
+
+## Keep image workers occupied
+
+Parallel image loading now uses a per-model queue with at most four workers,
+rather than waiting for an entire group of four before starting the next group.
+A worker starts another image as soon as it finishes its previous image. Models
+remain sequential; GPU work remains on the graphics-context thread. The serial
+option is unchanged.
+
+Results, progress consumption and decode errors are delivered in source-image
+order, preserving image indices and deterministic error order. Futures join before
+the source glTF document or worker-local timing records can be destroyed, including
+on failure. Completed out-of-order results can wait in futures until earlier images
+finish. This retains decoded images within the same final image payload budget;
+there is no additional unbounded thread pool. Cache storage remains serialized
+by its existing mutex and persistent format is unchanged.
+
+A local Linux GCC `-O2 -DNDEBUG` check used a synthetic GLB with seven RGB PNGs:
+one 4096-square image, three 512-square images, then three 4096-square images.
+Images used Python Random seed 135 bytes and PNG compression level 1. Persistent
+caching was disabled and four workers enabled. Across two alternating baseline/new
+blocks, with each process's first iteration discarded, the six retained loads had
+median times of 483.951 ms (batches) and 312.322 ms (queue). Measurements include
+GLB file access, decode and a pixel checksum pass; OS caches were not cleared.
+Decoded byte totals and pixel checksums matched. This is an uneven-work scheduling
+probe, not a forecast of the Windows reference-scene speedup or a decoder change.
+
+Repeat an empty-cache Release scene open with the same flags to measure the real
+benefit against the 11.877-second observation below. An asset with at most four
+images already starts them together, so the queue's main opportunity is larger
+image sets with uneven decode times.
+
+## Release reference-scene observations
+
+Single user-captured Release runs after model reuse, before the worker-queue change:
+
+| Scenario | Scene open |
+| --- | ---: |
+| Empty ForgeSim image cache | 11.877 s |
+| Process restart, populated image cache | 3.602 s |
+| Same-session reopen | 0.0469 s |
+
+The restart had 59 cache hits and no misses. The reopen reused 17 model resources
+and reloaded the external-dependency barrels asset. Hardware and controlled repeat
+statistics remain to be recorded. These are distinct from the earlier Debug
+measurements; do not treat the configuration change as a code optimization.
 
 ## Initial reference-scene observations
 
