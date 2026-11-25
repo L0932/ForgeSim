@@ -7,6 +7,20 @@ install(
         CONFIGURATIONS Release RelWithDebInfo MinSizeRel
 )
 
+# The default template opens as an unsaved copy at startup and New Scene.
+install(FILES
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/scenes/Default.scene.json"
+    DESTINATION assets/scenes
+    COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
+# Keep the template environment portable in installed/relocated applications.
+install(FILES
+    "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/lonely_road_afternoon_puresky_4k.hdr"
+    DESTINATION assets/environments
+    COMPONENT SandboxRuntime
+    CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
+
 # Explicitly select bundled samples, not arbitrary user documents.
 install(
     FILES

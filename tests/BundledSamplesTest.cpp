@@ -103,6 +103,42 @@ int main()
                 "Saved sample reloads with bundled asset root");
             Require(fs::file_size(sourcePath) == sourceSize, "Bundled source is untouched");
         }
+        // A default workspace template has no model geometry, but must retain
+        // authored camera/light/environment settings and remain an unsaved copy.
+        {
+            SceneDocument defaults;
+            defaults.name = "Untitled";
+            defaults.camera = SceneCameraData{};
+            defaults.camera->position = {3.0f, 4.0f, 5.0f};
+            defaults.cameraMovementSpeed = 7.0f;
+            defaults.directionalLight.directionToLight = {0.25f, 1.0f, -0.5f};
+            defaults.directionalLight.intensity = 2.0f;
+            defaults.rendering.environmentSource = SceneEnvironmentSource::ProjectAsset;
+            defaults.rendering.environmentAsset = "assets/environments/default-test.hdr";
+            defaults.rendering.showEnvironmentBackground = true;
+            defaults.rendering.flipEnvironmentVertically = true;
+            fs::create_directories(bundle / "assets/environments");
+            std::ofstream(bundle / defaults.rendering.environmentAsset) << "asset-validation fixture";
+            const auto templatePath = bundle / "assets/scenes/Default.scene.json";
+            SaveSceneDocument(defaults, templatePath, bundle);
+            const auto expected = SerializeSceneDocument(defaults);
+            auto fresh = current.PrepareSample(templatePath, bundle);
+            Require(fresh.Scene().Objects().empty() && !fresh.ScenePath(),
+                "Empty template opens without geometry or a save destination");
+            Require(fresh.ProjectRoot() == fs::canonical(bundle) &&
+                fresh.DefaultSceneDirectory() == userDirectory,
+                "Default template uses bundled root and user save directory");
+            Require(SerializeSceneDocument(fresh.Scene().ToDocument()) == expected,
+                "Default template retains authored camera, light and environment");
+            bool requiresDestination = false;
+            try { fresh.Save(); } catch (const std::logic_error&) { requiresDestination = true; }
+            Require(requiresDestination, "Default template must require Save As");
+            fresh.SaveAs(userDirectory / "new-scene.json");
+            Require(SerializeSceneDocument(LoadSceneDocument(templatePath, bundle)) == expected,
+                "Saving a new scene must leave its template unchanged");
+            Require(current.ProjectRoot() == fs::canonical(externalRoot),
+                "Template preparation must not change the active project");
+        }
         bool failed = false;
         try { static_cast<void>(current.PrepareSample(bundle / "missing.json", bundle)); }
         catch (const std::exception&) { failed = true; }
