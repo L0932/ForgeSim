@@ -105,8 +105,9 @@ Diagnostics report document loading, model preparation, image/cache work,
 environment preparation, and scene-open completion using host timings.
 
 The cache normally resides at
-`%LOCALAPPDATA%/ForgeSim/Cache/decoded-images-v2/` on Windows. The configurable
-budget controls storage for the active cache version.
+`%LOCALAPPDATA%/ForgeSim/Cache/decoded-images-v3/` on Windows. The configurable
+budget controls storage for the active cache version. Eligible images use lossless
+LZ4 compression, with raw storage for small or poorly compressible images.
 
 See [scene-loading performance](docs/performance/SceneLoading.md) for measured
 results, cache behavior, timing definitions, and repeatable benchmark steps.

@@ -14,6 +14,8 @@ target_sources(
 		src/GltfLoader.cpp
         src/ImageDecodeQueue.hpp
         src/ImageCacheChecksum.hpp
+        src/ImageCacheCodec.hpp
+        src/ImageCacheCodec.cpp
 		src/ImageLoader.cpp
 		src/MeshProcessing.cpp
         src/MeshDisplacement.cpp
@@ -37,6 +39,7 @@ target_link_libraries(
 	ForgeSimAssets
 	PRIVATE
 		Threads::Threads
+        ForgeSimLz4
 		ForgeSimStb
 		ForgeSim::Cgltf
 		nlohmann_json::nlohmann_json

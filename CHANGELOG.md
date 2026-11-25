@@ -5,10 +5,12 @@ This file records meaningful changes in published ForgeSim releases.
 Changes under Unreleased have not yet been published. Git history
 contains the detailed implementation record.
 
-## [Unreleased]
+## [0.1.0-preview.12] - 2026-11-25
 
 ### Fixed
 
+- Fix portable packaging by removing an incorrect duplicate sky HDR install path
+  (#150).
 - Reduce repeated scene-loading work by reusing unchanged self-contained GLB CPU
   and GPU resources, validating source size/time and texture import policy.
   Rebuild per-scene displacement and preserve saved node overrides (#135).
@@ -21,6 +23,16 @@ contains the detailed implementation record.
 
 ### Added
 
+- Store eligible decoded images losslessly with LZ4 in the versioned v3 cache,
+  retaining raw fallback, stored-byte budgets, CRC checks, and source recovery.
+  Add compression/restoration timings and package the static LZ4 license (#148).
+  The reference scene cache uses 45.4% less disk space, with a three-run median
+  restarted load of 2.68 seconds.
+- Opt-in decoded-image cache benchmark comparing raw pixels, LZ4 and lossless DEFLATE
+  storage sizes, write costs and warm restore times with exact pixel validation (#148).
+- Load startup and New Scene from a bundled default scene template as an unsaved
+  copy, restoring its camera viewpoint, directional light and sky environment.
+  Include the template and Lonely Road Afternoon PureSky HDR in packages (#149).
 - Accelerate PNG decompression with pinned, statically linked libdeflate while
   retaining stb pixel conversion, native 16-bit height decoding and an optional
   stb-only build. Include the dependency notice in runtime packages (#135).
@@ -45,6 +57,9 @@ contains the detailed implementation record.
 
 ### Fixed
 
+- Improve depth precision and automatic framing with scale-aware clipping.
+  Restore temporary focus clipping during navigation, prevent overlapping focus
+  and orbit modes, and accept focus shortcuts over the viewport (#136).
 - Keep Ctrl+F object orbit and the Camera checkbox synchronized through the same
   saved orbit action.
 - Save viewport grid, light guide, bounds, selection highlight and transform gizmo

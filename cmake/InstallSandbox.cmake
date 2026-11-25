@@ -223,3 +223,5 @@ install(FILES "${PROJECT_SOURCE_DIR}/docs/ProjectAssetRoots.md"
 if(FORGESIM_ACCELERATE_PNG)
     forgesim_install_notice(libdeflate "${libdeflate_SOURCE_DIR}/COPYING")
 endif()
+
+forgesim_install_notice(lz4 "${forgesim_lz4_SOURCE_DIR}/lib/LICENSE")

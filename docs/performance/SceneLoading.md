@@ -1,5 +1,11 @@
 # Scene loading measurements (#135)
 
+The #135 measurements below used the v2 raw-pixel cache. The #148 prototype now
+uses v3 with selective lossless LZ4 storage; those historical timings are not v3
+results. See [decoded-image cache storage](DecodedImageCache.md) for the active
+format, cleanup, and Windows validation steps.
+
+
 Scene-loading diagnostics identify CPU import, image/cache work, GPU resource
 preparation and environment preparation costs. Optimizations reuse unchanged GLB
 resources, schedule image work without batch barriers, accelerate PNG inflate and
@@ -129,7 +135,7 @@ can read each other's v2 entries. CRC32 detects accidental corruption; it does n
 authenticate untrusted data. The encoded-source filename key remains the existing
 64-bit FNV-1a plus encoded length, so this change does not reduce key width.
 
-The cache directory is now `Cache/decoded-images-v2`. Old v1 files are ignored and
+For the #135 measurements, the cache directory was `Cache/decoded-images-v2`. Old v1 files are ignored and
 rebuilt from source. Old folders are retained, not deleted automatically. The disk
 budget applies to the active v2 directory; keeping v1 as well consumes additional
 space. After closing ForgeSim, obsolete `decoded-images-v1` may be removed if its

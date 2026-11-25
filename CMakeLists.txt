@@ -292,12 +292,16 @@ target_include_directories(
 
 # PNG inflate acceleration; retain the stb-only build for comparisons/fallback.
 option(FORGESIM_ACCELERATE_PNG "Use libdeflate for PNG decompression" ON)
+option(FORGESIM_BUILD_CACHE_BENCHMARK "Build the decoded-image cache compression benchmark" OFF)
+if(FORGESIM_BUILD_CACHE_BENCHMARK AND NOT FORGESIM_ACCELERATE_PNG)
+    message(FATAL_ERROR "The cache benchmark requires FORGESIM_ACCELERATE_PNG=ON.")
+endif()
 if(FORGESIM_ACCELERATE_PNG)
     set(LIBDEFLATE_BUILD_STATIC_LIB ON CACHE BOOL "" FORCE)
     set(LIBDEFLATE_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
     set(LIBDEFLATE_BUILD_GZIP OFF CACHE BOOL "" FORCE)
     set(LIBDEFLATE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(LIBDEFLATE_COMPRESSION_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_COMPRESSION_SUPPORT ${FORGESIM_BUILD_CACHE_BENCHMARK} CACHE BOOL "" FORCE)
     set(LIBDEFLATE_GZIP_SUPPORT ON CACHE BOOL "" FORCE) # Includes accelerated CRC32.
     FetchContent_Declare(libdeflate
         GIT_REPOSITORY https://github.com/ebiggers/libdeflate.git
@@ -306,6 +310,16 @@ if(FORGESIM_ACCELERATE_PNG)
     FetchContent_MakeAvailable(libdeflate)
     set_target_properties(libdeflate_static PROPERTIES FOLDER "ThirdParty")
 endif()
+
+# Shared, pinned LZ4 dependency for lossless decoded-image cache storage.
+FetchContent_Declare(forgesim_lz4
+    GIT_REPOSITORY https://github.com/lz4/lz4.git
+    GIT_TAG ebb370ca83af193212df4dcbadcc5d87bc0de2f0 # v1.10.0
+)
+FetchContent_MakeAvailable(forgesim_lz4)
+add_library(ForgeSimLz4 STATIC "${forgesim_lz4_SOURCE_DIR}/lib/lz4.c")
+target_include_directories(ForgeSimLz4 SYSTEM PUBLIC "${forgesim_lz4_SOURCE_DIR}/lib")
+set_target_properties(ForgeSimLz4 PROPERTIES FOLDER "ThirdParty")
 
 # JSON
 
@@ -359,4 +373,9 @@ endif()
 option(FORGESIM_BUILD_DISPLACEMENT_PROTOTYPE "Build the CPU height displacement prototype" OFF)
 if(FORGESIM_BUILD_DISPLACEMENT_PROTOTYPE)
     add_subdirectory(tools/displacement)
+endif()
+
+# Benchmark tool is opt-in and is not included in application packages.
+if(FORGESIM_BUILD_CACHE_BENCHMARK)
+    add_subdirectory(tools/cache-benchmark)
 endif()
