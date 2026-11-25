@@ -1,0 +1,87 @@
+{
+  "camera": {
+    "farClippingPlane": 1000.0,
+    "forwardDirection": [
+      -0.7674002051353455,
+      -0.31694626808166504,
+      0.557352602481842
+    ],
+    "nearClippingPlane": 0.10000000149011612,
+    "position": [
+      17.470947265625,
+      6.121851444244385,
+      -13.459159851074219
+    ],
+    "referenceViewport": {
+      "height": 1008,
+      "width": 1997
+    },
+    "upDirection": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "verticalFieldOfViewRadians": 0.7853981852531433
+  },
+  "cameraBookmarks": [],
+  "cameraMovementSpeed": null,
+  "directionalLight": {
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "directionToLight": [
+      0.7701838612556458,
+      0.28457289934158325,
+      0.5708196759223938
+    ],
+    "enabled": true,
+    "id": 1,
+    "intensity": 3.0,
+    "position": [
+      5.778022289276123,
+      4.330242156982422,
+      -0.26739001274108887
+    ]
+  },
+  "editorVisibility": {
+    "hiddenLightIds": [],
+    "hiddenObjectIds": []
+  },
+  "name": "Untitled",
+  "objects": [],
+  "pointLights": [],
+  "rendering": {
+    "backgroundColor": [
+      0.03200000151991844,
+      0.035999998450279236,
+      0.04399999976158142
+    ],
+    "directionalShadows": {
+      "enabled": true,
+      "filteringEnabled": true,
+      "minimumBias": 0.0005000000237487257,
+      "slopeBias": 0.0024999999441206455
+    },
+    "environment": {
+      "asset": null,
+      "flipVertical": true,
+      "source": "bundledSky"
+    },
+    "environmentIntensity": 0.20000000298023224,
+    "exposure": 1.0,
+    "orbitObjectId": null,
+    "showEnvironmentBackground": true,
+    "toneMapping": "acesApproximation",
+    "viewport": {
+      "showObjectBounds": false,
+      "showReferenceGrid": true,
+      "showSceneLights": true,
+      "showSelectionHighlight": true,
+      "showTransformGizmo": true
+    }
+  },
+  "spotLights": [],
+  "version": 6
+}

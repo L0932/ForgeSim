@@ -9,6 +9,11 @@ namespace ForgeSim::Sandbox
     // not create an authored camera or inherit cameras from the previous scene.
     [[nodiscard]] inline SceneDocument CreateDefaultWorkspace()
     {
-        return SceneDocument{};
+        SceneDocument document;
+        document.rendering.environmentSource =
+            SceneEnvironmentSource::BundledSky;
+        document.rendering.showEnvironmentBackground = true;
+        document.rendering.flipEnvironmentVertically = true;
+        return document;
     }
 }

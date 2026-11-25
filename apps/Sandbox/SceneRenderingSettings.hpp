@@ -14,7 +14,8 @@ namespace ForgeSim::Sandbox
     {
         BundledStudio,
         None,
-        ProjectAsset
+        ProjectAsset,
+        BundledSky
     };
 
     enum class SceneToneMapping { AcesApproximation, Standard };
