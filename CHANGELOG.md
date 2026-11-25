@@ -21,6 +21,10 @@ contains the detailed implementation record.
 
 ### Added
 
+- Store eligible decoded images losslessly with LZ4 in the versioned v3 cache,
+  retaining raw fallback, stored-byte budgets, CRC checks, and source recovery.
+  Add compression/restoration timings and package the static LZ4 license (#148).
+
 - Opt-in decoded-image cache benchmark comparing raw pixels, LZ4 and lossless DEFLATE
   storage sizes, write costs and warm restore times with exact pixel validation (#148).
 

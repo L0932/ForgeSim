@@ -10,6 +10,7 @@ ForgeSim uses the following third-party libraries:
 | Dear ImGui | https://github.com/ocornut/imgui |
 | ImGuizmo | https://github.com/CedricGuillemet/ImGuizmo |
 | stb_image | https://github.com/nothings/stb |
+| LZ4 (decoded-image cache) | https://github.com/lz4/lz4 |
 | libdeflate (optional PNG acceleration) | https://github.com/ebiggers/libdeflate |
 | nlohmann/json | https://github.com/nlohmann/json |
 | GLAD and Khronos specification/header data | https://github.com/Dav1dde/glad |
@@ -28,10 +29,10 @@ Microsoft compiler runtime files may accompany Windows builds.
 These third-party notices do not grant a license to ForgeSim-owned
 code or assets. ForgeSim distribution terms are managed separately.
 
-## Optional cache benchmark
+## Decoded-image cache compression
 
-The opt-in `ForgeSimCacheBenchmark` tool statically links LZ4 v1.10.0
-(commit `ebb370ca83af193212df4dcbadcc5d87bc0de2f0`), distributed under the
-BSD 2-Clause license. Upstream: https://github.com/lz4/lz4.
-The build copies `lib/LICENSE` beside the benchmark as `LZ4-LICENSE.txt`.
-LZ4 is not linked into the Sandbox or included in runtime packages.
+ForgeSim statically links LZ4 v1.10.0 (commit
+`ebb370ca83af193212df4dcbadcc5d87bc0de2f0`), distributed under the BSD 2-Clause
+license. The installed `notices/lz4/LICENSE` contains the upstream license.
+The optional cache benchmark shares this dependency and receives its own
+`LZ4-LICENSE.txt` beside the tool executable. No additional runtime DLL is required.

@@ -4,6 +4,9 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
+#include <iterator>
+#include <nlohmann/json.hpp>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -73,6 +76,54 @@ namespace
 		out.write(reinterpret_cast<const char*>(png.data()), png.size());
 		Require(static_cast<bool>(out), "Could not write cache test GLB.");
 	}
+    void WriteCompressedFixture(const fs::path& path)
+    {
+        const std::vector<std::uint8_t> png{
+            137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,128,0,0,0,128,
+            8,6,0,0,0,195,62,97,203,0,0,1,48,73,68,65,84,120,156,237,210,161,17,0,
+            32,16,192,176,95,129,67,32,217,127,75,198,64,52,34,190,162,179,246,185,116,205,239,0,
+            12,128,1,48,0,6,192,0,24,0,3,96,0,12,128,1,48,0,6,192,0,24,0,3,
+            96,0,12,128,1,48,0,6,192,0,24,0,3,96,0,12,128,1,48,0,6,192,0,24,
+            0,3,96,0,12,128,1,48,0,6,192,0,24,0,3,96,0,12,128,1,48,64,156,1,
+            226,12,16,103,128,56,3,196,25,32,206,0,113,6,136,51,64,156,1,226,12,16,103,128,
+            56,3,196,25,32,206,0,113,6,136,51,64,156,1,226,12,16,103,128,56,3,196,25,32,
+            206,0,113,6,136,51,64,156,1,226,12,16,103,128,56,3,196,25,32,206,0,113,6,136,
+            51,64,156,1,226,12,16,103,128,56,3,196,25,32,206,0,113,6,136,51,64,156,1,226,
+            12,16,103,128,56,3,196,25,32,206,0,113,6,136,51,64,156,1,226,12,16,103,128,56,
+            3,196,25,32,206,0,113,6,136,51,64,156,1,226,12,16,103,128,56,3,196,25,32,206,
+            0,113,6,136,51,64,156,1,226,12,16,103,128,56,3,196,25,32,206,0,113,6,136,51,
+            64,156,1,226,12,16,103,128,56,3,196,25,32,206,0,113,6,136,51,64,156,1,226,12,
+            16,103,128,184,7,94,124,129,75,143,205,235,231,0,0,0,0,73,69,78,68,174,66,96,
+            130,
+        };
+        std::vector<std::uint8_t> binary=png;
+        while (binary.size()%4) binary.push_back(0);
+        const auto secondOffset=binary.size();
+        binary.insert(binary.end(),png.begin(),png.end());
+        binary.push_back(1); // Distinct encoded key, identical decoded pixels.
+        const auto secondLength=png.size()+1;
+        while (binary.size()%4) binary.push_back(0);
+        nlohmann::json json={
+            {"asset",{{"version","2.0"}}},
+            {"buffers", {{{"byteLength",binary.size()}}}},
+            {"bufferViews", {{{"buffer",0},{"byteOffset",0},{"byteLength",png.size()}},
+                {{"buffer",0},{"byteOffset",secondOffset},{"byteLength",secondLength}}}},
+            {"images", {{{"bufferView",0},{"mimeType","image/png"}},
+                {{"bufferView",1},{"mimeType","image/png"}}}}
+        };
+        auto text=json.dump(); while(text.size()%4) text.push_back(' ');
+        std::ofstream output(path,std::ios::binary);
+        const auto word=[&](std::uint32_t value) {
+            for(unsigned i=0;i<4;++i) output.put(static_cast<char>(value>>(i*8)));
+        };
+        output.write("glTF",4);word(2);word(static_cast<std::uint32_t>(28+text.size()+binary.size()));
+        word(static_cast<std::uint32_t>(text.size()));output.write("JSON",4);
+        output.write(text.data(),static_cast<std::streamsize>(text.size()));
+        word(static_cast<std::uint32_t>(binary.size()));output.write("BIN\0",4);
+        output.write(reinterpret_cast<const char*>(binary.data()),static_cast<std::streamsize>(binary.size()));
+        Require(static_cast<bool>(output),"Write compressed cache fixture");
+    }
+
 }
 
 void RunGltfImageCacheTests()
@@ -132,14 +183,17 @@ void RunGltfImageCacheTests()
 	const auto bytes = fs::file_size(entryA);
     {
         std::fstream entry(entryA, std::ios::in | std::ios::out | std::ios::binary);
-        entry.seekp(4 * sizeof(std::uint64_t));
+        entry.seekp(8 * sizeof(std::uint64_t));
         entry.put('\0'); // First cached byte should be red=255.
     }
     Require(load(a)->misses == 1 && load(a)->hits == 1, "Pixel corruption must rebuild then hit.");
-    // A v1 checksum placed in the v2 directory must not be trusted.
+    // A legacy checksum placed in the current directory must not be trusted.
     const auto legacy = directory.path / "Cache" / "decoded-images-v1";
     fs::create_directory(legacy);
     std::ofstream(legacy / "keep-old-cache") << "retained";
+    const auto previous = directory.path / "Cache" / "decoded-images-v2";
+    fs::create_directory(previous);
+    std::ofstream(previous / "keep-v2") << "retained";
     Require(load(a)->hits == 1 && fs::exists(legacy / "keep-old-cache"), "Legacy directory must remain untouched.");
     {
         std::uint64_t fnv = 14695981039346656037ull;
@@ -199,4 +253,74 @@ void RunGltfImageCacheTests()
     options.parallelImageDecode = true;
     options.imageCacheBudgetBytes = 2 * bytes;
     Require(load(a)->misses == 1 && load(a)->hits == 1, "Parallel option must retain timing and cache behavior.");
+
+    const auto compressedAsset=directory.path / "compressed.glb";
+    WriteCompressedFixture(compressedAsset);
+    GltfImportOptions compressedOptions;
+    compressedOptions.parallelImageDecode=true;
+    compressedOptions.imageCacheDirectory=directory.path / "CompressedCache";
+    std::optional<GltfImageCacheStats> compressedStats;
+    compressedOptions.onProgress=[&](const GltfLoadProgress& progress) {
+        if(progress.imageCache) compressedStats=progress.imageCache;
+    };
+    const auto loadCompressed=[&]() {
+        auto loaded=LoadGltfScene(compressedAsset,compressedOptions);
+        Require(loaded.textureResources.images.size()==2,"Both image jobs must complete");
+        for(const auto& image:loaded.textureResources.images) {
+            Require(image.pixels.size()==128*128*4,"Decoded dimensions preserved");
+            for(std::size_t i=0;i<image.pixels.size();i+=4)
+                Require(image.pixels[i]==17 && image.pixels[i+1]==19 &&
+                    image.pixels[i+2]==23 && image.pixels[i+3]==31,"Exact nonopaque pixels preserved");
+        }
+        return compressedStats.value();
+    };
+    auto cold=loadCompressed();
+    Require(cold.misses==2 && cold.bytesAfter<2*65536,"Parallel compressed writes must reduce disk bytes");
+    auto warm=loadCompressed();Require(warm.hits==2,"Warm compressed reads must hit");
+    const auto compressedDirectory=compressedOptions.imageCacheDirectory / DecodedImageCacheDirectoryName;
+    fs::path compressedEntry;
+    for(const auto& file:fs::directory_iterator(compressedDirectory))
+        if(file.path().filename()!=".budget.lock") {compressedEntry=file.path();break;}
+    std::ifstream entryInput(compressedEntry,std::ios::binary);
+    const std::vector<char> originalEntry{std::istreambuf_iterator<char>(entryInput),{}};
+    entryInput.close();
+    Require(static_cast<unsigned char>(originalEntry.at(40))==1,"Entry must explicitly select LZ4");
+    const auto damageAndRecover=[&](std::size_t offset) {
+        {std::fstream file(compressedEntry,std::ios::in|std::ios::out|std::ios::binary);
+            file.seekp(static_cast<std::streamoff>(offset));file.put(static_cast<char>(originalEntry.at(offset)^0x7f));}
+        Require(loadCompressed().misses==1 && loadCompressed().hits==2,"Malformed compressed entry must rebuild then hit");
+    };
+    damageAndRecover(64); // Compressed payload damage.
+    damageAndRecover(24); // Decoded-pixel checksum damage.
+    damageAndRecover(40); // Unknown codec.
+    damageAndRecover(56); // Decoded size mismatch.
+    damageAndRecover(48); // Stored size mismatch.
+    damageAndRecover(32); // Magic/version mismatch.
+    damageAndRecover(0); // Dimensions no longer agree with decoded size.
+    fs::resize_file(compressedEntry,65);
+    Require(loadCompressed().misses==1 && loadCompressed().hits==2,"Truncated compressed entry recovers");
+    compressedOptions.imageCacheBudgetBytes=cold.bytesAfter;
+    Require(loadCompressed().hits==2,"Budget is based on compressed disk bytes, not decoded size");
+    {
+        Detail::DecodedImageCacheLease held(compressedDirectory / ".budget.lock");
+        Require(held.Acquired() && !loadCompressed().available,
+            "Busy compressed cache must decode without waiting");
+    }
+    compressedOptions.imageCacheBudgetBytes=cold.bytesAfter/2;
+    const auto trimmed=loadCompressed();
+    Require(trimmed.bytesAfter<=compressedOptions.imageCacheBudgetBytes && trimmed.evictions>=1,
+        "Compressed entries must obey LRU eviction after lowering the budget");
+    compressedOptions.imageCacheBudgetBytes=cold.bytesAfter;
+    static_cast<void>(loadCompressed());
+    Require(loadCompressed().hits==2,"Both compressed entries repopulate after eviction");
+    for(const auto& entry:fs::directory_iterator(compressedDirectory))
+        Require(!entry.path().filename().string().ends_with(".pending"),"No partial files after successful imports");
+    // Competing importers may bypass a busy cache, but must both return exact pixels.
+    auto firstOptions=compressedOptions;firstOptions.onProgress={};
+    auto secondOptions=firstOptions;
+    auto first=std::async(std::launch::async,[&]{return LoadGltfScene(compressedAsset,firstOptions);});
+    auto second=std::async(std::launch::async,[&]{return LoadGltfScene(compressedAsset,secondOptions);});
+    Require(first.get().textureResources.images.at(0).pixels==second.get().textureResources.images.at(0).pixels,
+        "Concurrent imports must agree regardless of lease bypass");
+    Require(fs::exists(previous / "keep-v2"),"v3 loads must retain old v2 entries");
 }

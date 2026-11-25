@@ -311,6 +311,16 @@ if(FORGESIM_ACCELERATE_PNG)
     set_target_properties(libdeflate_static PROPERTIES FOLDER "ThirdParty")
 endif()
 
+# Shared, pinned LZ4 dependency for lossless decoded-image cache storage.
+FetchContent_Declare(forgesim_lz4
+    GIT_REPOSITORY https://github.com/lz4/lz4.git
+    GIT_TAG ebb370ca83af193212df4dcbadcc5d87bc0de2f0 # v1.10.0
+)
+FetchContent_MakeAvailable(forgesim_lz4)
+add_library(ForgeSimLz4 STATIC "${forgesim_lz4_SOURCE_DIR}/lib/lz4.c")
+target_include_directories(ForgeSimLz4 SYSTEM PUBLIC "${forgesim_lz4_SOURCE_DIR}/lib")
+set_target_properties(ForgeSimLz4 PROPERTIES FOLDER "ThirdParty")
+
 # JSON
 
 FetchContent_Declare(

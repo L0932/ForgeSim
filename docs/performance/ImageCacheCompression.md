@@ -1,9 +1,15 @@
 # Decoded-image cache size investigation (#148)
 
+Runtime follow-up: the prototype now uses selective LZ4 acceleration 1 in the v3
+cache. See [decoded-image cache storage](DecodedImageCache.md). The benchmark
+results and earlier investigation notes below describe the candidate experiments;
+the comparison tool itself still does not modify the application cache.
+
+
 The current v2 cache stores decoded RGBA8 pixels. This investigation compares
 that raw payload with lossless raw DEFLATE at levels 1, 3 and 6, and LZ4 block
 compression at acceleration 1 and 4. libdeflate uses the existing pinned dependency;
-LZ4 v1.10.0 is pinned separately and built only for this tool. The benchmark does not change the application cache
+LZ4 v1.10.0 is pinned as a shared static dependency. The benchmark does not change the application cache
 format, migrate entries, or delete cache directories.
 
 ## Build and run on Windows
@@ -20,7 +26,7 @@ The tool requires `FORGESIM_ACCELERATE_PNG=ON` (the default). It is excluded fro
 runtime packages and normal builds. Disable it afterward with
 `-DFORGESIM_BUILD_CACHE_BENCHMARK=OFF` if desired. Compression support is enabled
 in libdeflate only when this benchmark is selected. Initial configuration also
-fetches the pinned LZ4 source; no LZ4 DLL or runtime dependency is added to Sandbox.
+fetches the pinned LZ4 source. The runtime now shares its static dependency; no LZ4 DLL is required.
 The benchmark's LZ4 license is copied beside its executable.
 
 Pass a GLB, glTF, or an individual image. The optional run count must be odd,
@@ -96,7 +102,8 @@ modestly while increasing compression cost.
 On these runs, plain DEFLATE reduces storage but substantially increases warm
 restore cost. It is not selected as a runtime default. Investigate faster restore
 strategies and selective storage before changing the production format. The
-existing v2 cache and its loading behavior remain unchanged by this increment.
+v2 cache remained unchanged during that benchmark increment; the later runtime
+follow-up is described at the top of this guide.
 
 ## Windows DEFLATE comparison
 
@@ -144,4 +151,5 @@ LZ4 reduces restore overhead relative to DEFLATE on these reference textures,
 but raw storage remains faster to restore here. Do not select a production codec
 from storage savings alone; compare the updated tool on Windows next. Candidate
 order is fixed, the OS cache is warm, and these results do not isolate storage
-hardware throughput. The v2 runtime cache remains unchanged.
+hardware throughput. At the benchmark stage the v2 runtime cache remained unchanged; the later runtime
+follow-up uses the versioned v3 cache described above.
