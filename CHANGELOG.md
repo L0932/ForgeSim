@@ -21,6 +21,9 @@ contains the detailed implementation record.
 
 ### Added
 
+- Opt-in decoded-image cache benchmark comparing raw pixels and lossless DEFLATE
+  storage sizes, write costs and warm restore times with exact pixel validation (#148).
+
 - Accelerate PNG decompression with pinned, statically linked libdeflate while
   retaining stb pixel conversion, native 16-bit height decoding and an optional
   stb-only build. Include the dependency notice in runtime packages (#135).

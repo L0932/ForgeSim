@@ -1,0 +1,5 @@
+add_executable(ForgeSimCacheBenchmark CacheBenchmark.cpp)
+target_link_libraries(ForgeSimCacheBenchmark PRIVATE ForgeSim::Assets libdeflate::libdeflate_static)
+target_compile_features(ForgeSimCacheBenchmark PRIVATE cxx_std_20)
+FORGESIM_SET_PROJECT_WARNINGS(ForgeSimCacheBenchmark)
+set_target_properties(ForgeSimCacheBenchmark PROPERTIES FOLDER "ForgeSim/Tools")

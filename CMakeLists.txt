@@ -292,12 +292,16 @@ target_include_directories(
 
 # PNG inflate acceleration; retain the stb-only build for comparisons/fallback.
 option(FORGESIM_ACCELERATE_PNG "Use libdeflate for PNG decompression" ON)
+option(FORGESIM_BUILD_CACHE_BENCHMARK "Build the decoded-image cache compression benchmark" OFF)
+if(FORGESIM_BUILD_CACHE_BENCHMARK AND NOT FORGESIM_ACCELERATE_PNG)
+    message(FATAL_ERROR "The cache benchmark requires FORGESIM_ACCELERATE_PNG=ON.")
+endif()
 if(FORGESIM_ACCELERATE_PNG)
     set(LIBDEFLATE_BUILD_STATIC_LIB ON CACHE BOOL "" FORCE)
     set(LIBDEFLATE_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
     set(LIBDEFLATE_BUILD_GZIP OFF CACHE BOOL "" FORCE)
     set(LIBDEFLATE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(LIBDEFLATE_COMPRESSION_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(LIBDEFLATE_COMPRESSION_SUPPORT ${FORGESIM_BUILD_CACHE_BENCHMARK} CACHE BOOL "" FORCE)
     set(LIBDEFLATE_GZIP_SUPPORT ON CACHE BOOL "" FORCE) # Includes accelerated CRC32.
     FetchContent_Declare(libdeflate
         GIT_REPOSITORY https://github.com/ebiggers/libdeflate.git
@@ -359,4 +363,9 @@ endif()
 option(FORGESIM_BUILD_DISPLACEMENT_PROTOTYPE "Build the CPU height displacement prototype" OFF)
 if(FORGESIM_BUILD_DISPLACEMENT_PROTOTYPE)
     add_subdirectory(tools/displacement)
+endif()
+
+# Benchmark tool is opt-in and is not included in application packages.
+if(FORGESIM_BUILD_CACHE_BENCHMARK)
+    add_subdirectory(tools/cache-benchmark)
 endif()
