@@ -62,7 +62,7 @@ install(
     FILES
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/studio_small_01_4k.hdr"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/thatch_chapel_4k.hdr"
-        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environment/lonely_road_afternoon_puresky_4k.hdr"
+        "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/lonely_road_afternoon_puresky_4k.hdr"
         "${PROJECT_SOURCE_DIR}/apps/Sandbox/assets/environments/README.md"
     DESTINATION assets/environments
     COMPONENT SandboxRuntime
