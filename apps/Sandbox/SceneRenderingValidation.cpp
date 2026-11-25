@@ -83,6 +83,7 @@ namespace ForgeSim::Sandbox
         switch (settings.environmentSource)
         {
         case SceneEnvironmentSource::BundledStudio:
+        case SceneEnvironmentSource::BundledSky:
         case SceneEnvironmentSource::None:
             if (!settings.environmentAsset.empty())
             {

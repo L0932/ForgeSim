@@ -572,9 +572,9 @@ namespace
             workspace.directionalLight.enabled && workspace.directionalLight.color == glm::vec3{1.0f} &&
             workspace.directionalLight.intensity > 0.0f &&
             workspace.directionalLight.directionToLight.y > 0.0f &&
-            workspace.rendering.environmentIntensity > 0.0f && !workspace.rendering.showEnvironmentBackground &&
+            workspace.rendering.environmentIntensity > 0.0f && workspace.rendering.showEnvironmentBackground &&
             !workspace.camera && workspace.cameraBookmarks.empty(),
-            "Workspace must provide basic lighting without models or inherited cameras.");
+            "Workspace must provide basic lighting and a visible environment without models or inherited cameras.");
         fresh.SaveAs("Workspace.scene.json");
         const auto restoredWorkspace = LoadSceneDocument(*fresh.ScenePath(), projectRoot);
         Require(SerializeSceneDocument(restoredWorkspace) == SerializeSceneDocument(workspace),
@@ -730,7 +730,8 @@ namespace
             "Reopened rendering settings appeared modified.");
 
         const EditorSession fresh = session.PrepareNew();
-        const SceneRenderingSettings defaults;
+        const SceneRenderingSettings defaults = 
+            CreateDefaultWorkspace().rendering;
 
         const SceneRenderingSettings& freshSettings =
             fresh.Scene().RenderingSettings();

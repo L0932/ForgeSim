@@ -1664,8 +1664,10 @@ namespace ForgeSim::Sandbox
 						else if (
 							pendingAction == PendingSceneAction::New)
 						{
-							EditorSession replacement =
-								m_EditorSession->PrepareNew();
+                            const auto bundledAssets = BundledAssetDirectory();
+                            EditorSession replacement = m_EditorSession->PrepareSample(
+                                bundledAssets / "scenes" / "Default.scene.json",
+                                bundledAssets.parent_path());
 
                             m_Renderer.LoadSceneModels(replacement.ProjectRoot(), replacement.Scene().Objects(),
                                 ResolveSceneEnvironment(replacement.Scene().RenderingSettings(),

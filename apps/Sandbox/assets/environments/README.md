@@ -22,3 +22,16 @@ A warm interior HDR environment used by the Chess Board sample.
 - License URL: https://creativecommons.org/publicdomain/zero/1.0/
 - Modifications: HDR bytes unchanged. The scene enables ForgeSim's vertical
   environment flip for background, diffuse lighting and specular reflections.
+
+## Lonely Road Afternoon Pure Sky — 4K
+
+A clear afternoon sky with a bright sun and a soft blue horizon, used as the
+HDR background and environment lighting for ForgeSim's default empty scene.
+
+- File: `lonely_road_afternoon_puresky_4k.hdr`
+- Source: https://polyhaven.com/a/lonely_road_afternoon_puresky
+- Authors: Dimitrios Savva (photography), Jarod Guest (processing)
+- License: Creative Commons Zero v1.0 Universal (CC0-1.0)
+- License URL: https://creativecommons.org/publicdomain/zero/1.0/
+- Modifications: HDR file unchanged. ForgeSim applies vertical environment
+  flipping consistently to the background, diffuse lighting, and specular reflections.

@@ -287,8 +287,6 @@ int main(int argumentCount, char* arguments[])
         std::optional<ForgeSim::Sandbox::SceneDocument> document;
 
         const auto& scenePath = commandLine.scenePath;
-        if (!scenePath && !commandLine.modelSpecified)
-            document = ForgeSim::Sandbox::CreateDefaultWorkspace();
 
         fs::path modelFilename = commandLine.modelFilename;
 
@@ -299,6 +297,25 @@ int main(int argumentCount, char* arguments[])
             .verticalSync = true,
             .startMaximized = true
         };
+
+        if (!scenePath && !commandLine.modelSpecified)
+        {
+            try
+            {
+                const auto bundledAssets = ForgeSim::Sandbox::BundledAssetDirectory();
+                projectRoot = bundledAssets.parent_path();
+                document = ForgeSim::Sandbox::LoadSceneDocument(
+                    bundledAssets / "scenes" / "Default.scene.json", projectRoot);
+                document->name = "Untitled";
+                modelFilename = ResolveInitialModel(*document, projectRoot);
+            }
+            catch (const std::exception& exception)
+            {
+                ForgeSim::Core::LogError(exception.what());
+                ForgeSim::Sandbox::SandboxApplication::ShowStartupError(windowSpec, exception.what());
+                return EXIT_FAILURE;
+            }
+        }
 
         if (scenePath)
         {

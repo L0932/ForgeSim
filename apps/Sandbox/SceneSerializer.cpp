@@ -105,9 +105,15 @@ namespace ForgeSim::Sandbox
                 },
                 { "environment", {
                     { "flipVertical", settings.flipEnvironmentVertically },
-                    { "source", settings.environmentSource == SceneEnvironmentSource::BundledStudio
-                        ? "bundledStudio" : settings.environmentSource == SceneEnvironmentSource::None
-                            ? "none" : "projectAsset" },
+                    { "source",
+                        settings.environmentSource == SceneEnvironmentSource::BundledStudio
+                            ? "bundledStudio"
+                            : settings.environmentSource == SceneEnvironmentSource::BundledSky
+                                ? "bundledSky"
+                                : settings.environmentSource == SceneEnvironmentSource::None
+                                    ? "none"
+                                    : "projectAsset" 
+                    },
                     { "asset", settings.environmentSource == SceneEnvironmentSource::ProjectAsset
                         ? Json(settings.environmentAsset) : Json(nullptr) }
                 } },
@@ -500,6 +506,8 @@ namespace ForgeSim::Sandbox
                 {
                     if (source == "bundledStudio")
                         settings.environmentSource = SceneEnvironmentSource::BundledStudio;
+                    else if (source == "bundledSky")
+                        settings.environmentSource = SceneEnvironmentSource::BundledSky;
                     else if (source == "none")
                         settings.environmentSource = SceneEnvironmentSource::None;
                     else

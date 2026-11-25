@@ -711,7 +711,7 @@ namespace ForgeSim::Sandbox
             ImGui::TextWrapped("Source");
             ImGui::SetNextItemWidth(-1.0f);
             const bool environmentSourceChanged = ImGui::Combo("##Source", &environmentSource,
-                "Bundled studio\0None\0Project HDR asset\0");
+                "Bundled studio\0None\0Project HDR asset\0Bundled Sky\0");
             const auto rootBytes = context.projectRoot.generic_u8string();
             const std::string rootText{rootBytes.begin(), rootBytes.end()};
             ImGui::TextWrapped("Asset root: %s", rootText.c_str());
