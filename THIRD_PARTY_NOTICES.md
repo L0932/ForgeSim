@@ -27,3 +27,11 @@ Microsoft compiler runtime files may accompany Windows builds.
 
 These third-party notices do not grant a license to ForgeSim-owned
 code or assets. ForgeSim distribution terms are managed separately.
+
+## Optional cache benchmark
+
+The opt-in `ForgeSimCacheBenchmark` tool statically links LZ4 v1.10.0
+(commit `ebb370ca83af193212df4dcbadcc5d87bc0de2f0`), distributed under the
+BSD 2-Clause license. Upstream: https://github.com/lz4/lz4.
+The build copies `lib/LICENSE` beside the benchmark as `LZ4-LICENSE.txt`.
+LZ4 is not linked into the Sandbox or included in runtime packages.

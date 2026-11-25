@@ -1,8 +1,9 @@
 # Decoded-image cache size investigation (#148)
 
 The current v2 cache stores decoded RGBA8 pixels. This investigation compares
-that raw payload with lossless raw DEFLATE at levels 1, 3 and 6 using the existing
-pinned libdeflate dependency. The benchmark does not change the application cache
+that raw payload with lossless raw DEFLATE at levels 1, 3 and 6, and LZ4 block
+compression at acceleration 1 and 4. libdeflate uses the existing pinned dependency;
+LZ4 v1.10.0 is pinned separately and built only for this tool. The benchmark does not change the application cache
 format, migrate entries, or delete cache directories.
 
 ## Build and run on Windows
@@ -18,7 +19,9 @@ cmake --build out/build/x64-Release --target ForgeSimCacheBenchmark --parallel
 The tool requires `FORGESIM_ACCELERATE_PNG=ON` (the default). It is excluded from
 runtime packages and normal builds. Disable it afterward with
 `-DFORGESIM_BUILD_CACHE_BENCHMARK=OFF` if desired. Compression support is enabled
-in libdeflate only when this benchmark is selected.
+in libdeflate only when this benchmark is selected. Initial configuration also
+fetches the pinned LZ4 source; no LZ4 DLL or runtime dependency is added to Sandbox.
+The benchmark's LZ4 license is copied beside its executable.
 
 Pass a GLB, glTF, or an individual image. The optional run count must be odd,
 between 3 and 21; default 3. GLB/glTF files are loaded without persistent image
@@ -38,7 +41,8 @@ completion or a caught error. A terminated process may leave its own
 | --- | --- |
 | `image`, `width`, `height` | Source image index and decoded dimensions. |
 | `decoded_bytes` | Original RGBA8 pixel payload. |
-| `deflate_level` | 0 is raw storage; 1, 3, 6 are compression levels. |
+| `codec` | `raw`, `deflate`, or `lz4`. |
+| `parameter` | 0 for raw; compression level 1/3/6 for DEFLATE; acceleration 1/4 for LZ4. |
 | `stored_bytes`, `saved_percent` | Payload size and savings versus decoded bytes; excludes file headers. Negative savings mean expansion. |
 | `compression_ms` | Median compression plus output-buffer preparation. Raw storage reports zero. |
 | `write_io_ms` | Median payload file open/write/close; no durable flush. |
@@ -46,8 +50,8 @@ completion or a caught error. A terminated process may leave its own
 | `exact_pixels` | `yes` after full byte comparison for every run. |
 
 Each candidate receives an unreported warm-up, then the requested measured runs.
-Compressor/decompressor allocation is outside the timed loop; buffer resizing is
-inside. Full comparison is outside the read timing, while CRC32 is inside.
+DEFLATE compressor/decompressor allocation is outside the timed loop; buffer
+resizing is inside. LZ4 uses its stateless compression/decompression entry points. Full comparison is outside the read timing, while CRC32 is inside.
 Medians are computed independently and need not add up to a median total.
 
 These reads follow writes to the same scratch file and therefore measure an
@@ -75,7 +79,8 @@ implementation steps after choosing the format; this benchmark does not mark
 Release/O2 build, three measured repetitions after a warm-up, serial images.
 The supplied source exports are local reference assets, not added to the repository.
 Times below sum independent per-image medians; they are not scene-open durations.
-The warm file reads used the OS cache. Windows measurements are still required.
+The warm file reads used the OS cache. These initial rows predate the Windows
+measurements below.
 
 | Asset | Images | Raw MiB | DEFLATE level 1 MiB | Savings | Raw restore ms | Compressed restore ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -92,3 +97,51 @@ On these runs, plain DEFLATE reduces storage but substantially increases warm
 restore cost. It is not selected as a runtime default. Investigate faster restore
 strategies and selective storage before changing the production format. The
 existing v2 cache and its loading behavior remain unchanged by this increment.
+
+## Windows DEFLATE comparison
+
+The supplied Windows CSV contains three 4096x4096 decoded images matching the
+cannon reference payload sizes. All restored pixels matched. Times are sums of
+independent per-image medians, not full-scene durations or cold disk timings.
+
+| Codec/level | Payload MiB | Savings | Compression ms | Write ms | Warm restore+CRC ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Raw | 192.00 | 0% | 0 | 164.64 | 163.33 |
+| DEFLATE 1 | 90.98 | 52.61% | 777.88 | 81.04 | 368.92 |
+| DEFLATE 3 | 88.72 | 53.79% | 1330.64 | 118.97 | 351.87 |
+| DEFLATE 6 | 86.22 | 55.09% | 2080.66 | 78.77 | 347.30 |
+
+This supports evaluating LZ4 before selecting a runtime representation. After
+applying this increment, rerun the command above and use a new output filename
+such as `cache-comparison-lz4.csv`. CSV now uses `codec` and `parameter` instead
+of the earlier `deflate_level` column. Keep the existing runtime cache; this tool
+continues to use separate scratch files.
+
+## Local LZ4 candidate measurements
+
+Release/O2, three measured repetitions after warm-up, same source exports as
+above. All six candidates passed exact pixel comparison on each image. Tiny,
+nonopaque-alpha and incompressible image fixtures also passed; LZ4 expands the
+small/noisy inputs in these fixtures, so selective raw fallback remains relevant.
+These are OS-cached, serial microbenchmarks, not Windows or whole-scene results.
+
+| Asset | Candidate | Stored MiB | Savings | Compression ms | Warm restore+CRC ms |
+| --- | --- | ---: | ---: | ---: | ---: |
+| cannon | raw 0 | 192.00 | 0.0% | 0.00 | 105.86 |
+| cannon | deflate 1 | 90.98 | 52.6% | 1112.89 | 415.81 |
+| cannon | lz4 1 | 132.87 | 30.8% | 386.26 | 189.56 |
+| cannon | lz4 4 | 138.09 | 28.1% | 294.10 | 184.39 |
+| medieval | raw 0 | 12.00 | 0.0% | 0.00 | 1.46 |
+| medieval | deflate 1 | 6.33 | 47.2% | 82.55 | 25.81 |
+| medieval | lz4 1 | 9.03 | 24.7% | 13.68 | 4.18 |
+| medieval | lz4 4 | 9.21 | 23.3% | 8.87 | 4.24 |
+| planks | raw 0 | 16.00 | 0.0% | 0.00 | 1.54 |
+| planks | deflate 1 | 4.25 | 73.4% | 71.51 | 19.10 |
+| planks | lz4 1 | 6.89 | 57.0% | 23.78 | 5.55 |
+| planks | lz4 4 | 7.37 | 54.0% | 18.56 | 5.40 |
+
+LZ4 reduces restore overhead relative to DEFLATE on these reference textures,
+but raw storage remains faster to restore here. Do not select a production codec
+from storage savings alone; compare the updated tool on Windows next. Candidate
+order is fixed, the OS cache is warm, and these results do not isolate storage
+hardware throughput. The v2 runtime cache remains unchanged.

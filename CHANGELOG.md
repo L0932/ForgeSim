@@ -21,7 +21,7 @@ contains the detailed implementation record.
 
 ### Added
 
-- Opt-in decoded-image cache benchmark comparing raw pixels and lossless DEFLATE
+- Opt-in decoded-image cache benchmark comparing raw pixels, LZ4 and lossless DEFLATE
   storage sizes, write costs and warm restore times with exact pixel validation (#148).
 
 - Accelerate PNG decompression with pinned, statically linked libdeflate while

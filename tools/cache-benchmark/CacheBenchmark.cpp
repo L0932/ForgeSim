@@ -1,6 +1,7 @@
 #include <ForgeSim/Assets/GltfLoader.hpp>
 #include <ForgeSim/Assets/ImageLoader.hpp>
 #include <libdeflate.h>
+#include <lz4.h>
 
 #include <algorithm>
 #include <charconv>
@@ -64,13 +65,26 @@ namespace
         const auto& original = image.pixels;
         if (original.empty()) throw std::runtime_error("Empty image.");
         const auto expectedCrc = libdeflate_crc32(0, original.data(), original.size());
-        for (const int level : {0, 1, 3, 6})
+        if (original.size() > static_cast<std::size_t>(LZ4_MAX_INPUT_SIZE))
+            throw std::runtime_error("Image exceeds the LZ4 input limit.");
+        const int originalSize = static_cast<int>(original.size());
+        enum class Codec { Raw, Deflate, Lz4 };
+        struct Candidate { Codec codec; const char* name; int parameter; };
+        const Candidate candidates[]{
+            {Codec::Raw, "raw", 0},
+            {Codec::Deflate, "deflate", 1}, {Codec::Deflate, "deflate", 3},
+            {Codec::Deflate, "deflate", 6},
+            {Codec::Lz4, "lz4", 1}, {Codec::Lz4, "lz4", 4}
+        };
+        for (const auto& candidate : candidates)
         {
+            const bool compressed = candidate.codec != Codec::Raw;
+            const bool deflate = candidate.codec == Codec::Deflate;
             std::unique_ptr<libdeflate_compressor, decltype(&libdeflate_free_compressor)> compressor{
-                level ? libdeflate_alloc_compressor(level) : nullptr, libdeflate_free_compressor};
+                deflate ? libdeflate_alloc_compressor(candidate.parameter) : nullptr, libdeflate_free_compressor};
             std::unique_ptr<libdeflate_decompressor, decltype(&libdeflate_free_decompressor)> decompressor{
-                libdeflate_alloc_decompressor(), libdeflate_free_decompressor};
-            if ((level && !compressor) || !decompressor) throw std::bad_alloc{};
+                deflate ? libdeflate_alloc_decompressor() : nullptr, libdeflate_free_decompressor};
+            if (deflate && (!compressor || !decompressor)) throw std::bad_alloc{};
             Bytes encoded;
             std::vector<double> compression, writes, reads;
             std::size_t stored = 0;
@@ -78,7 +92,7 @@ namespace
             for (int run = -1; run < runs; ++run)
             {
                 auto start = Clock::now();
-                if (level)
+                if (deflate)
                 {
                     encoded.resize(libdeflate_deflate_compress_bound(compressor.get(), original.size()));
                     stored = libdeflate_deflate_compress(compressor.get(), original.data(), original.size(),
@@ -86,22 +100,44 @@ namespace
                     if (!stored) throw std::runtime_error("Compression failed.");
                     encoded.resize(stored);
                 }
+                else if (candidate.codec == Codec::Lz4)
+                {
+                    const int bound = LZ4_compressBound(originalSize);
+                    if (bound <= 0) throw std::runtime_error("Invalid LZ4 bound.");
+                    encoded.resize(static_cast<std::size_t>(bound));
+                    const int size = LZ4_compress_fast(
+                        reinterpret_cast<const char*>(original.data()),
+                        reinterpret_cast<char*>(encoded.data()), originalSize, bound,
+                        candidate.parameter);
+                    if (size <= 0) throw std::runtime_error("LZ4 compression failed.");
+                    stored = static_cast<std::size_t>(size);
+                    encoded.resize(stored);
+                }
                 else stored = original.size();
-                const double compressMs = level ? Elapsed(start) : 0;
-                const auto& payload = level ? encoded : original;
+                const double compressMs = compressed ? Elapsed(start) : 0;
+                const auto& payload = compressed ? encoded : original;
                 start = Clock::now();
                 Write(scratch, payload);
                 const double writeMs = Elapsed(start);
                 start = Clock::now();
                 auto input = Read(scratch, stored);
                 Bytes restored;
-                if (level)
+                if (deflate)
                 {
                     restored.resize(original.size());
                     std::size_t consumed = 0;
                     if (libdeflate_deflate_decompress_ex(decompressor.get(), input.data(), input.size(),
                         restored.data(), restored.size(), &consumed, nullptr) != LIBDEFLATE_SUCCESS ||
                         consumed != input.size()) throw std::runtime_error("Decompression failed.");
+                }
+                else if (candidate.codec == Codec::Lz4)
+                {
+                    restored.resize(original.size());
+                    const int size = LZ4_decompress_safe(
+                        reinterpret_cast<const char*>(input.data()),
+                        reinterpret_cast<char*>(restored.data()),
+                        static_cast<int>(input.size()), originalSize);
+                    if (size != originalSize) throw std::runtime_error("LZ4 decompression failed.");
                 }
                 else restored = std::move(input);
                 const auto crc = libdeflate_crc32(0, restored.data(), restored.size());
@@ -117,9 +153,10 @@ namespace
                 }
             }
             std::cout << index << ',' << image.width << ',' << image.height << ',' << original.size() << ','
-                << level << ',' << stored << ',' << 100.0 * (1.0 - static_cast<double>(stored) /
+                << candidate.name << ',' << candidate.parameter << ',' << stored << ',' << 100.0 * (1.0 - static_cast<double>(stored) /
                     static_cast<double>(original.size())) << ','
                 << Median(compression) << ',' << Median(writes) << ',' << Median(reads) << ",yes\n";
+            std::cout.flush();
         }
     }
 }
@@ -157,7 +194,7 @@ int main(int argc, char** argv)
             << "; runs=" << runs << ". Scratch reads use the OS file cache.\n";
         if (images.empty()) throw std::runtime_error("Source has no images to benchmark.");
         Scratch scratch;
-        std::cout << "image,width,height,decoded_bytes,deflate_level,stored_bytes,saved_percent,"
+        std::cout << "image,width,height,decoded_bytes,codec,parameter,stored_bytes,saved_percent,"
             "compression_ms,write_io_ms,warm_read_restore_crc_ms,exact_pixels\n";
         for (std::size_t i = 0; i < images.size(); ++i)
             Benchmark(images[i], i, runs, scratch.path / "payload.bin");
